@@ -1,5 +1,7 @@
 % colorContours
 %
+% 
+%
 %  * Read in an RGB background value from a display
 %  * Read in a color direction (RGB? LMS?)
 %  * Find the threshold in that direction based on linear discriminant or
@@ -11,13 +13,36 @@
 % test trials.  Since the data we are interested in is from TAFC, we
 % should probably handle this differently in the long run.
 %
+% Requires:
+%   isetbio
+%   PsychophysicsToolbox
+%   Palamedes toolbox (for fitting psychometric functions)
+%
 % 8/2/13  DHB/BW Our excellent adventure commences.
 % 8/3/12  DHB/BW Tune up and add classifier
 
 %% Clear out the junk.  Remember where you are.
 s_initISET
 talkD = pwd;
-saveFlag = 0;           % Don't save results
+saveFlag = 0;
+
+%% Parameters
+integrationTimeSecs = 0.050;                    % Temporal integration time for detecting mechanisms.
+fieldOfViewDegrees = 2;                         % Field of view specified for the scenes.
+scenePixels = 64;                               % Size of scenes in pixels
+
+monitorName = 'LCD-Apple';                      % Monitor spectrum comes from this file
+backRGBValue = 0.5;                             % Define background for experment in monitor RGB
+
+pupilDiameterMm = 3;                            % Pupil diameter.  Used explicitly in the PSF calc.
+                                                % Need to carry this through to the absorption calculations.
+                                                
+coneProportions = [0.1 .6 .2 .1];               % Proportions of cone types in the mosaic, order: empty, L,M,S
+coneApertureMeters = [3 3]*1e-6;                % Size of (rectangular) cone apertures, in meters.
+
+nTestLevels = 6;                                % Number of test levels to simulate for each test direction psychometric function.
+nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus       
+noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
 %% Get stats path off of the path, temporarily.
 %
@@ -28,9 +53,9 @@ if (exist('RemoveMatchingPaths','file'))
 end
 
 %%  Get display spectra
-d = displayCreate('LCD-Apple');
+d = displayCreate(monitorName);
 displaySpd = displayGet(d,'spd');
-w = displayGet(d,'wave');
+wavelengthsNm = displayGet(d,'wave');
 % vcNewGraphWin; plot(w,displaySpd)
 
 %% Create a scene with the background spectrum
@@ -39,23 +64,20 @@ w = displayGet(d,'wave');
 % on disk with spatially uniform RGB values.  These are then treated
 % as frame buffer values, and will be raised to the 2.2 (gamma uncorrected)
 % by the scene creation routine.
-scenePixels = 64;
-backRGBValue = 0.5;
 gammaValue = 2.2;
 backImg = ones(scenePixels,scenePixels,3)*(backRGBValue)^(1/gammaValue);
 imwrite(backImg,'backFile.png','png');
-sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',w);
+sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',wavelengthsNm);
 sceneB = sceneSet(sceneB,'name','background');
-sceneB = sceneSet(sceneB,'fov',2);
+sceneB = sceneSet(sceneB,'fov',fieldOfViewDegrees);
 vcAddAndSelectObject(sceneB);
 %sceneWindow;
 
 %% Create standard human polychromatic PSF
 % using wavefront tools, and make it an
 % iset OI thingy.
-wvf = wvfCreate('wave',w);
-pDiameter = 3;
-sample_mean = wvfLoadThibosVirtualEyes(pDiameter);
+wvf = wvfCreate('wave',wavelengthsNm);
+sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
 wvf = wvfSet(wvf,'zcoeffs',sample_mean);
 wvf = wvfComputePSF(wvf);
 oiD = wvf2oi(wvf,'shift invariant');
@@ -64,12 +86,12 @@ oiD = wvf2oi(wvf,'shift invariant');
 %%  Create a sample cone mosaic
 % and take a look at it.
 params.sz = [128,192];
-params.rgbDensities = [0.1 .6 .2 .1]; % Empty, L,M,S
-params.coneAperture = [3 3]*1e-6;     % In meters
+params.rgbDensities = coneProportions; 
+params.coneAperture = coneApertureMeters; 
 pixel = [];
 cSensor = sensorCreate('human',pixel,params);
 %sensorConePlot(cSensor);
-cSensor = sensorSet(cSensor,'exp time',0.050);
+cSensor = sensorSet(cSensor,'exp time',integrationTimeSecs);
     
 %% Get spectrum of background directly,
 % mostly for debugging.
@@ -88,7 +110,7 @@ backSpd = displaySpd*backRGB;
 testLMS = [1 0 0]';
 
 % Get the matrix from RGB to cone space
-T_stockman = vcReadSpectra('stockman',w);  % Energy
+T_stockman = vcReadSpectra('stockman',wavelengthsNm);  % Energy
 rgb2cones = T_stockman'*displaySpd;
 
 % Compute the RGB direction and scale so that it
@@ -113,8 +135,7 @@ backCSensorNF = sensorComputeNoiseFree(cSensor,backOiD);
 
 %% Loop over a set of test levels and get classifier
 % performance for each.
-nLevels = 6;
-testLevels = linspace(0,1,nLevels);
+testLevels = linspace(0,1,nTestLevels);
 for t = 1:length(testLevels)
     % Set test level
     fprintf('Calculations for test level %d of %d\n',t,length(testLevels));
@@ -128,7 +149,7 @@ for t = 1:length(testLevels)
     tmp = tmp*diag(testRGBForThisLevel(:));
     testImg = XW2RGBFormat(tmp,row,col);
     imwrite(testImg,'testFile.png','png');
-    sceneT = sceneFromFile('testFile.png','rgb',[],'LCD-Apple.mat',w);
+    sceneT = sceneFromFile('testFile.png','rgb',[],'LCD-Apple.mat',wavelengthsNm);
     sceneT = sceneSet(sceneT,'name','test');
     sceneT = sceneSet(sceneT,'fov',2);
     vcAddAndSelectObject(sceneT);
@@ -144,14 +165,12 @@ for t = 1:length(testLevels)
     % of the poisson/sensor noise.
     %
     % Still need to control the sources of sensor noise.
-    nDraws = 100;
-    noiseType = 1;
     slot = [2 3 4];   % Typical human 1621 case.  1 empty, 6 L, 2 M, 1 S
     nSensorClasses = length(slot);
     testCSensorNF = sensorComputeNoiseFree(cSensor,testOiD);
-    backVoltImage = sensorComputeSamples(backCSensorNF,nDraws,noiseType);
-    testVoltImage = sensorComputeSamples(testCSensorNF,nDraws,noiseType);  
-    for k = 1:nDraws
+    backVoltImage = sensorComputeSamples(backCSensorNF,nDrawsPerTestStimulus,noiseType);
+    testVoltImage = sensorComputeSamples(testCSensorNF,nDrawsPerTestStimulus,noiseType);  
+    for k = 1:nDrawsPerTestStimulus
         for ii = 1:nSensorClasses
             backCSensorTemp = sensorSet(backCSensorNF,'volts',backVoltImage(:,:,k));
             %backCSensorTemp = backCSensorNF;
@@ -182,13 +201,13 @@ for t = 1:length(testLevels)
     nUseAll = sum(nUse);
     
     % Now draw samples
-    backVec = zeros(nUseAll,nDraws);
-    testVec = zeros(nUseAll,nDraws);
+    backVec = zeros(nUseAll,nDrawsPerTestStimulus);
+    testVec = zeros(nUseAll,nDrawsPerTestStimulus);
     typeVec = zeros(nUseAll,1);
     oneConeEachClassIndices = zeros(nSensorClasses,1);
-    for k = 1:nDraws
+    for k = 1:nDrawsPerTestStimulus
         if (rem(k,10) == 0)
-            fprintf('\tGetting cone catches for draw %d of %d\n',k,nDraws);
+            fprintf('\tGetting cone catches for draw %d of %d\n',k,nDrawsPerTestStimulus);
         end
         
         startIndex = 1;
@@ -338,7 +357,7 @@ threshPal = PFI(paramsValues,criterionCorr);
 plot(testLevelsInterp,probCorrInterp);
 plot([threshPal threshPal],[0.5 criterionCorr],'g');
 plot([testLevels(1) threshPal],[criterionCorr criterionCorr],'g');
-
+ylim([0.5 1]);
 
 % Print threshold 
 fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorr),threshPal);
