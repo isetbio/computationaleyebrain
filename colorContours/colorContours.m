@@ -48,7 +48,7 @@ sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',w);
 sceneB = sceneSet(sceneB,'name','background');
 sceneB = sceneSet(sceneB,'fov',2);
 vcAddAndSelectObject(sceneB);
-sceneWindow;
+%sceneWindow;
 
 %% Create standard human polychromatic PSF
 % using wavefront tools, and make it an
@@ -68,7 +68,7 @@ params.rgbDensities = [0.1 .6 .2 .1]; % Empty, L,M,S
 params.coneAperture = [3 3]*1e-6;     % In meters
 pixel = [];
 cSensor = sensorCreate('human',pixel,params);
-sensorConePlot(cSensor);
+%sensorConePlot(cSensor);
 cSensor = sensorSet(cSensor,'exp time',0.050);
     
 %% Get spectrum of background directly,
@@ -104,6 +104,12 @@ if (backRGBValue ~= 0.5)
 end
 testRGB = inv(rgb2cones)*testLMS;
 testRGB = testRGB/max(testRGB(:));
+ 
+%% Pass the background through the optics
+backOiD = oiCompute(oiD,sceneB);
+
+%% Compute noise free background sensor image
+backCSensorNF = sensorComputeNoiseFree(cSensor,backOiD);
 
 %% Loop over a set of test levels and get classifier
 % performance for each.
@@ -126,10 +132,7 @@ for t = 1:length(testLevels)
     sceneT = sceneSet(sceneT,'name','test');
     sceneT = sceneSet(sceneT,'fov',2);
     vcAddAndSelectObject(sceneT);
-    sceneWindow;
-    
-    %% Pass the background through the optics
-    backOiD = oiCompute(oiD,sceneB);
+    %sceneWindow;
     
     %% Pass test image through the optics
     testOiD = oiCompute(oiD,sceneT);
@@ -142,23 +145,29 @@ for t = 1:length(testLevels)
     %
     % Still need to control the sources of sensor noise.
     nDraws = 100;
+    noiseType = 1;
     slot = [2 3 4];   % Typical human 1621 case.  1 empty, 6 L, 2 M, 1 S
     nSensorClasses = length(slot);
+    testCSensorNF = sensorComputeNoiseFree(cSensor,testOiD);
+    backVoltImage = sensorComputeSamples(backCSensorNF,nDraws,noiseType);
+    testVoltImage = sensorComputeSamples(testCSensorNF,nDraws,noiseType);  
     for k = 1:nDraws
         for ii = 1:nSensorClasses
-            backCSensor = sensorCompute(cSensor,backOiD);
-            testCSensor = sensorCompute(cSensor,testOiD);
-            backSensorVals{k,ii} = sensorGet(backCSensor,'electrons',slot(ii));
-            testSensorVals{k,ii} = sensorGet(testCSensor,'electrons',slot(ii));
+            backCSensorTemp = sensorSet(backCSensorNF,'volts',backVoltImage(:,:,k));
+            %backCSensorTemp = backCSensorNF;
+            backSensorVals{k,ii} = sensorGet(backCSensorTemp,'electrons',slot(ii));
+            testCSensorTemp = sensorSet(testCSensorNF,'volts',testVoltImage(:,:,k));
+            %testCSensorTemp = testCSensorNF;
+            testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',slot(ii));
         end
     end
     
     %% Pop last instantions into windows for viewing etc.
-    backCSensor = sensorSet(backCSensor,'name','Background');
-    vcAddAndSelectObject(backCSensor); sensorWindow;
+    backCSensor = sensorSet(backCSensorNF,'name','Background');
+    vcAddAndSelectObject(backCSensorNF); sensorWindow;
     
-    testCSensor = sensorSet(testCSensor,'name','Test');
-    vcAddAndSelectObject(testCSensor); sensorWindow;
+    testCSensor = sensorSet(testCSensorNF,'name','Test');
+    vcAddAndSelectObject(testCSensorNF); sensorWindow;
     
     %% We want to control the integration area.
     %
