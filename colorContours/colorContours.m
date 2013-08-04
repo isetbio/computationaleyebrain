@@ -1,22 +1,49 @@
 % colorContours
 %
-% 
+% This script will eventually compute predicted ideal observer
+% isodetection contours for various psychophyiscal discrimination
+% experiments.
 %
-%  * Read in an RGB background value from a display
-%  * Read in a color direction (RGB? LMS?)
-%  * Find the threshold in that direction based on linear discriminant or
-%       svm or something
-%  * Plot it.
+% At present, this is Phase 1 (in which Doris gets her oats).
 %
-% Notes: We are currently simulating a one-interval experiment and
-% getting the fraction correct averaged over a mixture of blank and
-% test trials.  Since the data we are interested in is from TAFC, we
-% should probably handle this differently in the long run.
+% Steps currently implemented:
+%  * Create isetbio scenes based on realistic display primaries.
+%  * Model the transformations from stimulus to cone absorptions.
+%  * Specify a direction in color space and use isetbio machinery
+%    to compute distributions of mosaic responses for signal and blank
+%    trials at various levels of steps in the target color direction.
+%  * Use svmlib classifier to predict percent correct responses at
+%    each level.
+%  * Fit predicted psychometric function and find psychophysical threshold.
+%
+% To do:
+%  * Convert stimulus representation to contrast.
+%  * Check cone absorption computations against PTB calculations.
+%     - Understand parameters used by ISET and compare to those used by PTB.
+%     - DHB would like to understand where the ISET parameters are stored and 
+%       how they are controlled.
+%     - Neither set of code incorporates Stiles-Crawford effect.
+%  * Add wrapper to cycle through multiple directions in color space.
+%  * Add option for dichromats.
+%  * Add more sensible code to control spatial integration area.
+%  * Add eye movements.
+%  * Make classifier appropriate for TAFC rather than Y/N as it currently is.
+%  * Add simple foveal midget ganglion cell model.
 %
 % Requires:
 %   isetbio
+%     - Available on gitHub as https://github.com/wandell/isetbio.git
 %   PsychophysicsToolbox
+%     - Available on gitHub as https://github.com/Psychtoolbox-3/Psychtoolbox-3.git
 %   Palamedes toolbox (for fitting psychometric functions)
+%     - Available at http://www.palamedestoolbox.org, and described in Kingdom
+%       & Prins, Psychophysics: A Practical Introduction.
+%     - DHB's lab runs a version of this toolbox with some local modifications.
+%       Not sure if the code here relies on those.  The Palamedes distribution has
+%       been updated since DHB snagged his copy, and it looks like some of the features
+%       he put in are now available in the distribution.
+%     - Alternatives for fitting are psignifit and some functions in the PTB.
+%       For the simple purposes used here, probably any of these would work.
 %
 % 8/2/13  DHB/BW Our excellent adventure commences.
 % 8/3/12  DHB/BW Tune up and add classifier
@@ -38,11 +65,18 @@ pupilDiameterMm = 3;                            % Pupil diameter.  Used explicit
                                                 % Need to carry this through to the absorption calculations.
                                                 
 coneProportions = [0.1 .6 .2 .1];               % Proportions of cone types in the mosaic, order: empty, L,M,S
-coneApertureMeters = [3 3]*1e-6;                % Size of (rectangular) cone apertures, in meters.
+coneApertureMeters = [sqrt(4.1) sqrt(4.1)]*1e-6;% Size of (rectangular) cone apertures, in meters.
+                                                % The choice of 4.1 matches the area of a 2.3 micron diameter IS diameter,
+                                                % and that is PTB's default.
+isetSensorConeSlots = [2 3 4];                  % Indices for LMS cones in iset sensor returns.   These run 2-4 because
+                                                % of the empty pixels
+nSensorClasses = length(isetSensorConeSlots);   % For convenience, specify the number of sensor classes.
+
 
 nTestLevels = 6;                                % Number of test levels to simulate for each test direction psychometric function.
 nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus       
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
+
 
 %% Get stats path off of the path, temporarily.
 %
@@ -57,6 +91,11 @@ d = displayCreate(monitorName);
 displaySpd = displayGet(d,'spd');
 wavelengthsNm = displayGet(d,'wave');
 % vcNewGraphWin; plot(w,displaySpd)
+
+%% Get spectrum of background
+% mostly for debugging.
+backRGB = [backRGBValue backRGBValue backRGBValue]';
+backSpd = displaySpd*backRGB;
 
 %% Create a scene with the background spectrum
 %
@@ -81,24 +120,38 @@ sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
 wvf = wvfSet(wvf,'zcoeffs',sample_mean);
 wvf = wvfComputePSF(wvf);
 oiD = wvf2oi(wvf,'shift invariant');
+optics = oiGet(oiD,'optics');
+focalLengthMm = opticsGet(optics,'focal length','mm');
+vcAddAndSelectObject(oiD); oiWindow; 
 % vcNewGraphWin; plotOI(oiD,'psf')
 
-%%  Create a sample cone mosaic
-% and take a look at it.
+%% Use PTB to compute cone quantal sensitivities.
+[ptbBackLMSIsomerizations,pupilDiameterMm,ptbPhotorceptorsStruct,ptbIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
+    pupilDiameterMm,focalLengthMm,integrationTimeSecs);
+ptbBackLMSIsomerizations = round(ptbBackLMSIsomerizations);
+
+%%  Create a human cone mosaic sensor
+%
+% BAW will fix up the field of view of this thing
+% at some point.
 params.sz = [128,192];
 params.rgbDensities = coneProportions; 
 params.coneAperture = coneApertureMeters; 
 pixel = [];
 cSensor = sensorCreate('human',pixel,params);
-%sensorConePlot(cSensor);
 cSensor = sensorSet(cSensor,'exp time',integrationTimeSecs);
-    
-%% Get spectrum of background directly,
-% mostly for debugging.
-backRGB = [backRGBValue backRGBValue backRGBValue]';
-backSpd = displaySpd*backRGB;
-% vcNewGraphWin; plot(w,stockman);
+cSensor = sensorSet(cSensor,'wave',wavelengthsNm);
 
+% Put in PTB quantal sensitivities
+isetLMSQuantalEfficiencyWavelengths = sensorGet(cSensor,'wave');
+ptbFiltersForSensor = SplineCmf(ptbPhotorceptorsStruct.nomogram.S,ptbPhotorceptorsStruct.isomerizationAbsorbtance,isetLMSQuantalEfficiencyWavelengths)';
+%filters = sensorGet(cSensor,'filter spectra');
+%filters = filters*diag([0 0.38 0.35 0.1]);
+cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbFiltersForSensor,1),1) ptbFiltersForSensor]);
+sensorSetSizeToFOV(cSensor,0.9*fieldOfViewDegrees);
+sensorFieldOfView = sensorGet(cSensor,'fov',sceneB,oiD);
+%sensorConePlot(cSensor);
+    
 %% Create a test vector in a specified
 % direction in cone space.
 %
@@ -129,9 +182,55 @@ testRGB = testRGB/max(testRGB(:));
  
 %% Pass the background through the optics
 backOiD = oiCompute(oiD,sceneB);
+vcAddAndSelectObject(backOiD);
+%oiWindow;
+
+%% Get background irradiance out of the optical image.
+temp = load('roiLocs');
+backUdata = plotOI(backOiD,'irradiance energy roi',temp.roiLocs);
+isetIrradianceWattsPerM2 = backUdata.y';
+
+figure; hold on
+plot(wavelengthsNm,isetIrradianceWattsPerM2,'r');
+plot(wavelengthsNm,ptbIrradianceWattsPerM2,'k');
+theRatio = isetIrradianceWattsPerM2 ./ ptbIrradianceWattsPerM2;
+% PTB, conversion is pupilArea/(eyeLength^2).
+% pi /(1 + 4*fN^2*(1+abs(m))^2)
+
 
 %% Compute noise free background sensor image
 backCSensorNF = sensorComputeNoiseFree(cSensor,backOiD);
+vcAddAndSelectObject(backCSensorNF); 
+% Something broke this call to sensorWindow
+% Might be related to our fov mucking.
+% sensorWindow;
+
+%% Get noise free cone isomerizations for background
+%
+% Compare with what PTB routines compute for the same stimuli.
+%
+% We pick the max to avoid the edge effects in the sensor image.
+for ii = 1:nSensorClasses
+    backSensorValsNF{ii} = sensorGet(backCSensorNF,'electrons',isetSensorConeSlots(ii));
+    isetBackLMSIsomerizations(ii) = round(max(backSensorValsNF{ii}));
+end
+
+% Print out the comparison as well as PTB parameters.
+fprintf('ISET computes LMS isomerizations as: %d, %d, %d\n',isetBackLMSIsomerizations(1),isetBackLMSIsomerizations(2),isetBackLMSIsomerizations(3));
+fprintf('PTB computes LMS isomerizations as: %d, %d, %d\n',ptbBackLMSIsomerizations(1),ptbBackLMSIsomerizations(2),ptbBackLMSIsomerizations(3));
+PrintPhotoreceptors(ptbPhotorceptorsStruct);
+
+% Get iset LMS quantal efficiences
+temp = sensorGet(backCSensorNF,'spectralqe')';
+isetLMSQuantalEfficiencyWavelengths = sensorGet(backCSensorNF,'wave');
+isetLMSQuantalEfficiences = temp(isetSensorConeSlots,:);
+
+% Plot out PTB and isetbio cone quantal spectral 
+figure; clf; hold on
+plot(SToWls(ptbPhotorceptorsStruct.nomogram.S),ptbPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
+plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiences(end:-1:1,:)',':');
+xlabel('Wavelength (nm)');
+ylabel('Isomerization Quantal Efficiency');
 
 %% Loop over a set of test levels and get classifier
 % performance for each.
@@ -165,8 +264,7 @@ for t = 1:length(testLevels)
     % of the poisson/sensor noise.
     %
     % Still need to control the sources of sensor noise.
-    slot = [2 3 4];   % Typical human 1621 case.  1 empty, 6 L, 2 M, 1 S
-    nSensorClasses = length(slot);
+    nSensorClasses = length(isetSensorConeSlots);
     testCSensorNF = sensorComputeNoiseFree(cSensor,testOiD);
     backVoltImage = sensorComputeSamples(backCSensorNF,nDrawsPerTestStimulus,noiseType);
     testVoltImage = sensorComputeSamples(testCSensorNF,nDrawsPerTestStimulus,noiseType);  
@@ -174,10 +272,10 @@ for t = 1:length(testLevels)
         for ii = 1:nSensorClasses
             backCSensorTemp = sensorSet(backCSensorNF,'volts',backVoltImage(:,:,k));
             %backCSensorTemp = backCSensorNF;
-            backSensorVals{k,ii} = sensorGet(backCSensorTemp,'electrons',slot(ii));
+            backSensorVals{k,ii} = sensorGet(backCSensorTemp,'electrons',isetSensorConeSlots(ii));
             testCSensorTemp = sensorSet(testCSensorNF,'volts',testVoltImage(:,:,k));
             %testCSensorTemp = testCSensorNF;
-            testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',slot(ii));
+            testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',isetSensorConeSlots(ii));
         end
     end
     
