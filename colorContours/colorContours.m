@@ -18,12 +18,19 @@
 %
 % To do:
 %  * Convert stimulus representation to contrast.
-%  * Check cone absorption computations against PTB calculations.
-%     - Understand parameters used by ISET and compare to those used by PTB.
-%     - DHB would like to understand where the ISET parameters are stored and 
-%       how they are controlled.
-%     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add wrapper to cycle through multiple directions in color space.
+%  * Check cone absorption computations against PTB calculations.
+%     - ISET works by taking the cone quantal efficiences computed elsewhere
+%       and using these directly. 
+%     - This code is currently sticking the PTB computed versions into
+%       the ISET structure.
+%     - With that, there are slight differences between PTB and iset
+%       computation, due to different conversion factor for computing
+%       irradiance from radiance.  The differences are small and stem
+%       from the fact that iset takes magnification and paraxial rays
+%       into account, whereas PTB does not.
+%     - We want to compare Hiroshi's isomerization code with PTBs.
+%     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add option for dichromats.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
@@ -35,18 +42,10 @@
 %     - Available on gitHub as https://github.com/wandell/isetbio.git
 %   PsychophysicsToolbox
 %     - Available on gitHub as https://github.com/Psychtoolbox-3/Psychtoolbox-3.git
-%   Palamedes toolbox (for fitting psychometric functions)
-%     - Available at http://www.palamedestoolbox.org, and described in Kingdom
-%       & Prins, Psychophysics: A Practical Introduction.
-%     - DHB's lab runs a version of this toolbox with some local modifications.
-%       Not sure if the code here relies on those.  The Palamedes distribution has
-%       been updated since DHB snagged his copy, and it looks like some of the features
-%       he put in are now available in the distribution.
-%     - Alternatives for fitting are psignifit and some functions in the PTB.
-%       For the simple purposes used here, probably any of these would work.
 %
 % 8/2/13  DHB/BW Our excellent adventure commences.
-% 8/3/12  DHB/BW Tune up and add classifier
+% 8/3/13  DHB/BW Tune up and add classifier.
+% 8/4/13  DH /BW Check irradiance calcs between ISET and PTB.ﬂ
 
 %% Clear out the junk.  Remember where you are.
 s_initISET
@@ -77,6 +76,7 @@ nTestLevels = 6;                                % Number of test levels to simul
 nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus       
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
+criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 
 %% Get stats path off of the path, temporarily.
 %
@@ -129,6 +129,7 @@ vcAddAndSelectObject(oiD); oiWindow;
 [ptbBackLMSIsomerizations,pupilDiameterMm,ptbPhotorceptorsStruct,ptbIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
     pupilDiameterMm,focalLengthMm,integrationTimeSecs);
 ptbBackLMSIsomerizations = round(ptbBackLMSIsomerizations);
+ptbLMSQuantalEfficiency = ptbPhotorceptorsStruct.isomerizationAbsorbtance;
 
 %%  Create a human cone mosaic sensor
 %
@@ -144,10 +145,11 @@ cSensor = sensorSet(cSensor,'wave',wavelengthsNm);
 
 % Put in PTB quantal sensitivities
 isetLMSQuantalEfficiencyWavelengths = sensorGet(cSensor,'wave');
-ptbFiltersForSensor = SplineCmf(ptbPhotorceptorsStruct.nomogram.S,ptbPhotorceptorsStruct.isomerizationAbsorbtance,isetLMSQuantalEfficiencyWavelengths)';
-%filters = sensorGet(cSensor,'filter spectra');
-%filters = filters*diag([0 0.38 0.35 0.1]);
-cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbFiltersForSensor,1),1) ptbFiltersForSensor]);
+if (any(find(isetLMSQuantalEfficiencyWavelengths ~= wavelengthsNm)))
+    error('Wavelength sampling not consistent throughout.');
+end
+%ptbFiltersForSensor = SplineCmf(ptbPhotorceptorsStruct.nomogram.S,,isetLMSQuantalEfficiencyWavelengths)';
+cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbLMSQuantalEfficiency',1),1) ptbLMSQuantalEfficiency']);
 sensorSetSizeToFOV(cSensor,0.9*fieldOfViewDegrees);
 sensorFieldOfView = sensorGet(cSensor,'fov',sceneB,oiD);
 %sensorConePlot(cSensor);
@@ -435,29 +437,48 @@ end
 figure; clf; hold on
 plot(testLevels,fractionCorrect,'ro','MarkerSize',10,'MarkerFaceColor','r');
 
-% Fit and find thresholdﬂ
-criterionCorr = 0.82;
-PF = @PAL_Weibull;                  % Alternatives: PAL_Gumbel, PAL_Weibull, PAL_CumulativeNormal, PAL_HyperbolicSecant
-PFI = @PAL_inverseWeibull;
-paramsFree = [1 1 0 0];             % 1: free parameter, 0: fixed parameter
-paramsValues0 = [mean(testLevels) 1/2 0.5 0];
-options = optimset('fminsearch');   % Type help optimset
-options.TolFun = 1e-09;             % Increase required precision on LL
-options.Display = 'off';            % Suppress fminsearch messages
-lapseLimits = [0 1];                % Limit range for lambda
-[paramsValues] = PAL_PFML_Fit(...
-    testLevels',nCorrectResponses',nTotalResponses', ...
-    paramsValues0,paramsFree,PF,'searchOptions',options, ...
-    'lapseLimits',lapseLimits);
+% Fit and find threshold.
+%
+% Be setting USE_PALAMEDES to 1, you can use the Palamedes toolbox routines
+% to do the fitting.  But, you'll need to install the Palamedes toolbox to 
+% do so.  By default, we use fitting routines in the Psychtoolbox.
 testLevelsInterp = linspace(testLevels(1),testLevels(end),100);
-probCorrInterp = PF(paramsValues,testLevelsInterp);
-threshPal = PFI(paramsValues,criterionCorr);
-plot(testLevelsInterp,probCorrInterp);
-plot([threshPal threshPal],[0.5 criterionCorr],'g');
-plot([testLevels(1) threshPal],[criterionCorr criterionCorr],'g');
+USE_PALAMEDES = 0;
+if (USE_PALAMEDES)
+    % Palamedes toolbox (for fitting psychometric functions)
+    %     - Available at http://www.palamedestoolbox.org, and described in Kingdom
+    %       & Prins, Psychophysics: A Practical Introduction.
+    %     - DHB's lab runs a version of this toolbox with some local modifications.
+    %       Not sure if the code here relies on those.  The Palamedes distribution has
+    %       been updated since DHB snagged his copy, and it looks like some of the features
+    %       he put in are now available in the distribution.
+    PF = @PAL_Weibull;                  % Alternatives: PAL_Gumbel, PAL_Weibull, PAL_CumulativeNormal, PAL_HyperbolicSecant
+    PFI = @PAL_inverseWeibull;
+    paramsFree = [1 1 0 0];             % 1: free parameter, 0: fixed parameter
+    paramsValues0 = [mean(testLevels) 1/2 0.5 0];
+    options = optimset('fminsearch');   % Type help optimset
+    options.TolFun = 1e-09;             % Increase required precision on LL
+    options.Display = 'off';            % Suppress fminsearch messages
+    lapseLimits = [0 1];                % Limit range for lambda
+    [paramsValues] = PAL_PFML_Fit(...
+        testLevels',nCorrectResponses',nTotalResponses', ...
+        paramsValues0,paramsFree,PF,'searchOptions',options, ...
+        'lapseLimits',lapseLimits);
+    probCorrInterp = PF(paramsValues,testLevelsInterp);
+    thresholdEst = PFI(paramsValues,criterionCorrect);
+else  
+    [alpha,beta] = FitWeibTAFC(testLevels,nCorrectResponses,nTotalResponses-nCorrectResponses,[],1/2);
+    thresholdEst = FindThreshWeibTAFC(criterionCorrect,alpha,beta);
+    probCorrInterp = ComputeWeibTAFC(testLevelsInterp,alpha,beta);
+end
+
+plot(testLevelsInterp,probCorrInterp,'r');
+plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
+plot([testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
 ylim([0.5 1]);
 
 % Print threshold 
-fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorr),threshPal);
+fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorrect),thresholdEst);
+
 
 
