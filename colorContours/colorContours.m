@@ -126,10 +126,15 @@ vcAddAndSelectObject(oiD); oiWindow;
 % vcNewGraphWin; plotOI(oiD,'psf')
 
 %% Use PTB to compute cone quantal sensitivities.
+% 
+% We will push these into the isetbio scene structures.
+% 
+% We also convert to sensivities in energy units.
 [ptbBackLMSIsomerizations,pupilDiameterMm,ptbPhotorceptorsStruct,ptbIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
     pupilDiameterMm,focalLengthMm,integrationTimeSecs);
 ptbBackLMSIsomerizations = round(ptbBackLMSIsomerizations);
 ptbLMSQuantalEfficiency = ptbPhotorceptorsStruct.isomerizationAbsorbtance;
+ptbLMSEnergySensitivities = EnergyToQuanta(wavelengthsNm,ptbLMSQuantalEfficiency);
 
 %%  Create a human cone mosaic sensor
 %
@@ -164,7 +169,7 @@ sensorFieldOfView = sensorGet(cSensor,'fov',sceneB,oiD);
 % Define test direction in cone excitation space
 testLMS = [1 0 0]';
 
-% Get the matrix from RGB to cone space
+% Get the matrix from RGB to cone space.
 T_stockman = vcReadSpectra('stockman',wavelengthsNm);  % Energy
 rgb2cones = T_stockman'*displaySpd;
 

@@ -6,6 +6,11 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeI
 % This routine is set up for a quick commparison to isetbio calculations.  The underlying
 % code is demonstrated and (sort of) documented in PTB routine IsomerizationsInEyeDemo.
 %
+% The other key thing is that after the call to FillInPhotoreceptors, the field
+% isomerizationAbsorbtance of the photoreceptors struct contains the spectral 
+% sensitivities of the LMS cones.  These expect the spectrum to be in units
+% of quanta/[Um^2-sec].  
+%
 % 8/4/13  dhb  Wrote it.
 
 %% Set up PTB photoreceptors structure
