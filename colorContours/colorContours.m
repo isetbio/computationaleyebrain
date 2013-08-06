@@ -35,6 +35,8 @@
 %  * Make classifier appropriate for TAFC rather than Y/N as it currently is.
 %  * Add simple foveal midget ganglion cell model.
 %  * Break this big long script into sensible subfunctions.
+%  * Smarter choice of test levels to improve efficiency.
+%  * Fit an ellipse (possibly ellipsoid if we go 3D) to the data.
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -77,7 +79,7 @@ nSensorClasses = length(isetSensorConeSlots);   % For convenience, specify the n
 nColorDirections = 8;                           % Number of color directions for contour.
 dirAngleMax = pi;                               % Use pi for sampling directions from hemicircle, 2*pi for whole circle
 
-nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
+nTestLevels = 10;                               % Number of test levels to simulate for each test direction psychometric function.
 nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
@@ -201,17 +203,7 @@ for cd = 1:nColorDirections
     %% Pass the background through the optics
     backOiD = oiCompute(oiD,sceneB);
     vcAddAndSelectObject(backOiD);
-    %oiWindow;
-    
-    %% Get background irradiance out of the optical image.
-    %
-    % [**] This currently works be using an ROI that was selected
-    % by hand an then stored in a .mat file.  May want to
-    % make this more programmatic.  But, we get this just
-    % for debugging purposes.
-    temp = load('roiLocs');
-    backUdata = plotOI(backOiD,'irradiance energy roi',temp.roiLocs);
-    isetIrradianceWattsPerM2 = backUdata.y';
+    %oiWindow;    
     
     % Plot comparison of iset and ptb irradiance, optionally
     %
@@ -219,6 +211,18 @@ for cd = 1:nColorDirections
     % pi /(1 + 4*fN^2*(1+abs(m))^2)
     PLOT_COMPARE_IRRADIANCE = 0;
     if (PLOT_COMPARE_IRRADIANCE)
+        % Get background irradiance out of the optical image.
+        %
+        % [**] This currently works be using an ROI that was selected
+        % by hand an then stored in a .mat file.  May want to
+        % make this more programmatic.  But, we get this just
+        temp = load('roiLocs');
+        backUdata = plotOI(backOiD,'irradiance energy roi',temp.roiLocs);
+        isetIrradianceWattsPerM2 = backUdata.y';
+        
+        % Make a new plot of PTB and iset irradiance.  Not quite
+        % sure why we don't just add this to the window that 
+        % comes up in the call to PlotOI above.
         figure; hold on
         plot(wavelengthsNm,isetIrradianceWattsPerM2,'r');
         plot(wavelengthsNm,ptbIrradianceWattsPerM2,'k');
@@ -530,6 +534,10 @@ contourFig = figure; clf; hold on
 theContourPlotLim = 0.2;
 for cd = 1:nColorDirections
     plot(results(cd).thresholdLMSContrast(1),results(cd).thresholdLMSContrast(2),'ro','MarkerFaceColor','r','MarkerSize',8);
+    % If we only simulated around half the circle, add the reflection to the plot
+    if (dirAngleMax == pi)
+        plot(-results(cd).thresholdLMSContrast(1),-results(cd).thresholdLMSContrast(2),'ro','MarkerFaceColor','r','MarkerSize',8);
+    end
 end
 plot([-theContourPlotLim theContourPlotLim],[0 0],'k:');
 plot([0 0],[-theContourPlotLim theContourPlotLim],'k:');
