@@ -17,8 +17,6 @@
 %  * Fit predicted psychometric function and find psychophysical threshold.
 %
 % To do:
-%  * Convert stimulus representation to contrast.
-%  * Add wrapper to cycle through multiple directions in color space.
 %  * Check cone absorption computations against PTB calculations.
 %     - ISET works by taking the cone quantal efficiences computed elsewhere
 %       and using these directly.
@@ -36,6 +34,10 @@
 %  * Add eye movements.
 %  * Make classifier appropriate for TAFC rather than Y/N as it currently is.
 %  * Add simple foveal midget ganglion cell model.
+%  * Break this big long script into sensible subfunctions.
+%
+%  Some specific and minor things to patch up are indicated with comments
+%  starting with [**] below, where they apply.
 %
 % Requires:
 %   isetbio
@@ -45,7 +47,8 @@
 %
 % 8/2/13  DHB/BW Our excellent adventure commences.
 % 8/3/13  DHB/BW Tune up and add classifier.
-% 8/4/13  DH /BW Check irradiance calcs between ISET and PTB.ß
+% 8/4/13  DHB/BW Check irradiance calcs between ISET and PTB.
+% 8/6/13  DHB/BW Got contour going.  End of this DHB visit west.
 
 %% Clear out the junk.  Remember where you are.
 s_initISET
@@ -61,25 +64,24 @@ monitorName = 'LCD-Apple';                      % Monitor spectrum comes from th
 backRGBValue = 0.5;                             % Define background for experment in monitor RGB
 
 pupilDiameterMm = 3;                            % Pupil diameter.  Used explicitly in the PSF calc.
-% Need to carry this through to the absorption calculations.
+                                                % Need to carry this through to the absorption calculations.
 
 coneProportions = [0.1 .6 .2 .1];               % Proportions of cone types in the mosaic, order: empty, L,M,S
 coneApertureMeters = [sqrt(4.1) sqrt(4.1)]*1e-6;% Size of (rectangular) cone apertures, in meters.
-% The choice of 4.1 matches the area of a 2.3 micron diameter IS diameter,
-% and that is PTB's default.
+                                                % The choice of 4.1 matches the area of a 2.3 micron diameter IS diameter,
+                                                % and that is PTB's default.
 isetSensorConeSlots = [2 3 4];                  % Indices for LMS cones in iset sensor returns.   These run 2-4 because
-% of the empty pixels
+                                                % of the empty pixels
 nSensorClasses = length(isetSensorConeSlots);   % For convenience, specify the number of sensor classes.
 
+nColorDirections = 8;                           % Number of color directions for contour.
+dirAngleMax = pi;                               % Use pi for sampling directions from hemicircle, 2*pi for whole circle
 
-nTestLevels = 6;                                % Number of test levels to simulate for each test direction psychometric function.
+nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
 nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-
-nColorDirections = 4;                           % Number of color directions for contour.
-
 
 %% Get stats path off of the path, temporarily.
 %
@@ -105,6 +107,10 @@ backSpd = displaySpd*backRGB;
 % on disk with spatially uniform RGB values.  These are then treated
 % as frame buffer values, and will be raised to the 2.2 (gamma uncorrected)
 % by the scene creation routine.
+%
+% [**] May want to find a way to do this (and the corresponding version
+% for the test) that does not involve writing an image to disk and
+% that skips the gamma correction stuff.
 gammaValue = 2.2;
 backImg = ones(scenePixels,scenePixels,3)*(backRGBValue)^(1/gammaValue);
 imwrite(backImg,'backFile.png','png');
@@ -124,7 +130,8 @@ wvf = wvfComputePSF(wvf);
 oiD = wvf2oi(wvf,'shift invariant');
 optics = oiGet(oiD,'optics');
 focalLengthMm = opticsGet(optics,'focal length','mm');
-vcAddAndSelectObject(oiD); oiWindow;
+vcAddAndSelectObject(oiD);
+% oiWindow;
 % vcNewGraphWin; plotOI(oiD,'psf')
 
 %% Use PTB to compute cone quantal sensitivities.
@@ -145,7 +152,7 @@ ptbLMSEnergySensitivities = diag(1./mx)*ptbLMSEnergySensitivities;
 
 %%  Create a human cone mosaic sensor
 %
-% BAW will fix up the field of view of this thing
+% [**] BAW will fix up the field of view of this thing
 % at some point.
 params.sz = [128,192];
 params.rgbDensities = coneProportions;
@@ -160,7 +167,6 @@ isetLMSQuantalEfficiencyWavelengths = sensorGet(cSensor,'wave');
 if (any(find(isetLMSQuantalEfficiencyWavelengths ~= wavelengthsNm)))
     error('Wavelength sampling not consistent throughout.');
 end
-%ptbFiltersForSensor = SplineCmf(ptbPhotorceptorsStruct.nomogram.S,,isetLMSQuantalEfficiencyWavelengths)';
 cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbLMSQuantalEfficiency',1),1) ptbLMSQuantalEfficiency']);
 sensorSetSizeToFOV(cSensor,0.9*fieldOfViewDegrees);
 sensorFieldOfView = sensorGet(cSensor,'fov',sceneB,oiD);
@@ -178,13 +184,12 @@ backLMS = rgb2cones*backRGB;
 % Then we scale and add these to the background.
 %
 % Define test direction in cone excitation space
-cdAngles = linspace(0,pi,nColorDirections+1);
+cdAngles = linspace(0,dirAngleMax,nColorDirections+1);
 cdAngles = cdAngles(1:end-1);
 for cd = 1:nColorDirections
     Lval = cos(cdAngles(cd)); Mval = sin(cdAngles(cd));
     testLMSUnitCircle = [Lval Mval 0]';
-
-        
+     
     % Compute the RGB direction and scale so that it
     % reaches to the edge of the gamut.
     testRGBUnitCircle = inv(rgb2cones)*testLMSUnitCircle;
@@ -199,23 +204,33 @@ for cd = 1:nColorDirections
     %oiWindow;
     
     %% Get background irradiance out of the optical image.
+    %
+    % [**] This currently works be using an ROI that was selected
+    % by hand an then stored in a .mat file.  May want to
+    % make this more programmatic.  But, we get this just
+    % for debugging purposes.
     temp = load('roiLocs');
     backUdata = plotOI(backOiD,'irradiance energy roi',temp.roiLocs);
     isetIrradianceWattsPerM2 = backUdata.y';
     
-    figure; hold on
-    plot(wavelengthsNm,isetIrradianceWattsPerM2,'r');
-    plot(wavelengthsNm,ptbIrradianceWattsPerM2,'k');
-    theRatio = isetIrradianceWattsPerM2 ./ ptbIrradianceWattsPerM2;
+    % Plot comparison of iset and ptb irradiance, optionally
+    %
     % PTB, conversion is pupilArea/(eyeLength^2).
     % pi /(1 + 4*fN^2*(1+abs(m))^2)
-    
+    PLOT_COMPARE_IRRADIANCE = 0;
+    if (PLOT_COMPARE_IRRADIANCE)
+        figure; hold on
+        plot(wavelengthsNm,isetIrradianceWattsPerM2,'r');
+        plot(wavelengthsNm,ptbIrradianceWattsPerM2,'k');
+        theRatio = isetIrradianceWattsPerM2 ./ ptbIrradianceWattsPerM2;
+    end
     
     %% Compute noise free background sensor image
     backCSensorNF = sensorComputeNoiseFree(cSensor,backOiD);
     vcAddAndSelectObject(backCSensorNF);
-    % Something broke this call to sensorWindow
-    % Might be related to our fov mucking.
+    % [**] Something broke this call to sensorWindow
+    % Might be related to our fov mucking.  Or maybe
+    % it would work again if we just uncommented it.
     % sensorWindow;
     
     %% Get noise free cone isomerizations for background
@@ -238,12 +253,15 @@ for cd = 1:nColorDirections
     isetLMSQuantalEfficiencyWavelengths = sensorGet(backCSensorNF,'wave');
     isetLMSQuantalEfficiences = temp(isetSensorConeSlots,:);
     
-    % Plot out PTB and isetbio cone quantal spectral
-    figure; clf; hold on
-    plot(SToWls(ptbPhotorceptorsStruct.nomogram.S),ptbPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
-    plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiences(end:-1:1,:)',':');
-    xlabel('Wavelength (nm)');
-    ylabel('Isomerization Quantal Efficiency');
+    % Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
+    PLOT_COMPARE_CONEQE = 0;
+    if (PLOT_COMPARE_CONEQE)
+        figure; clf; hold on
+        plot(SToWls(ptbPhotorceptorsStruct.nomogram.S),ptbPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
+        plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiences(end:-1:1,:)',':');
+        xlabel('Wavelength (nm)');
+        ylabel('Isomerization Quantal Efficiency');
+    end
     
     %% Loop over a set of test levels and get classifier
     % performance for each.
@@ -274,9 +292,7 @@ for cd = 1:nColorDirections
         % responses out of the sensor objects.
         %
         % Each time through the loop we do a new instantiation
-        % of the poisson/sensor noise.
-        %
-        % Still need to control the sources of sensor noise.
+        % of the poisson noise.
         nSensorClasses = length(isetSensorConeSlots);
         testCSensorNF = sensorComputeNoiseFree(cSensor,testOiD);
         backVoltImage = sensorComputeSamples(backCSensorNF,nDrawsPerTestStimulus,noiseType);
@@ -284,20 +300,18 @@ for cd = 1:nColorDirections
         for k = 1:nDrawsPerTestStimulus
             for ii = 1:nSensorClasses
                 backCSensorTemp = sensorSet(backCSensorNF,'volts',backVoltImage(:,:,k));
-                %backCSensorTemp = backCSensorNF;
                 backSensorVals{k,ii} = sensorGet(backCSensorTemp,'electrons',isetSensorConeSlots(ii));
                 testCSensorTemp = sensorSet(testCSensorNF,'volts',testVoltImage(:,:,k));
-                %testCSensorTemp = testCSensorNF;
                 testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',isetSensorConeSlots(ii));
             end
         end
         
         %% Pop last instantions into windows for viewing etc.
         backCSensor = sensorSet(backCSensorNF,'name','Background');
-        vcAddAndSelectObject(backCSensorNF); sensorWindow;
+        %vcAddAndSelectObject(backCSensorNF); sensorWindow;
         
         testCSensor = sensorSet(testCSensorNF,'name','Test');
-        vcAddAndSelectObject(testCSensorNF); sensorWindow;
+        %vcAddAndSelectObject(testCSensorNF); sensorWindow;
         
         %% We want to control the integration area.
         %
@@ -371,7 +385,11 @@ for cd = 1:nColorDirections
         %% Plot the training and test data.  We'll plot the distribution of responses for one cone
         % in each sensor class, with the distribution taken over our resampling of each
         % scene by the mosaic.
-        f = vcNewGraphWin; hold on;
+        if (~exist('f1','var'))
+            f1 = vcNewGraphWin; hold on;
+        else
+            figure(f1); clf; hold on;
+        end
         sym = {'b.','g.','r.','c.','k.'};
         az = 65.5; el = 30;
         index = find(trainingLabels == blankLabel);
@@ -412,7 +430,11 @@ for cd = 1:nColorDirections
         % Plot the training and test data.  We'll plot the distribution of responses for one cone
         % in each sensor class, with the distribution taken over our resampling of each
         % scene by the mosaic.
-        f = vcNewGraphWin; hold on;
+        if (~exist('f2','var'))
+            f2 = vcNewGraphWin; hold on;
+        else
+            figure(f2); clf; hold on;
+        end
         sym = {'b.','g.','r.','c.','k.'};
         az = 65.5; el = 30;
         index = find(svmTrainingPredictedLabels == trainingLabels);
@@ -445,7 +467,11 @@ for cd = 1:nColorDirections
     % Requires Palamedes toolbox
     %
     % Plot data
-    figure; clf; hold on
+    if (~exist('psychoFig','var'))
+        psychoFig = figure; clf; hold on
+    else
+        figure(psychoFig); clf; hold on
+    end
     plot(testLevels,fractionCorrect,'ro','MarkerSize',10,'MarkerFaceColor','r');
     
     % Fit and find threshold.
@@ -498,6 +524,23 @@ for cd = 1:nColorDirections
     results(cd).backgroundLMS = backLMS;
     results(cd).testLMSGamut = testLMSGamut;
 end
+
+%% Make a plot of the thresholds
+contourFig = figure; clf; hold on
+theContourPlotLim = 0.2;
+for cd = 1:nColorDirections
+    plot(results(cd).thresholdLMSContrast(1),results(cd).thresholdLMSContrast(2),'ro','MarkerFaceColor','r','MarkerSize',8);
+end
+plot([-theContourPlotLim theContourPlotLim],[0 0],'k:');
+plot([0 0],[-theContourPlotLim theContourPlotLim],'k:');
+xlim([-theContourPlotLim theContourPlotLim]);
+ylim([-theContourPlotLim theContourPlotLim]);
+axis('square');
+xlabel('L cone contrast');
+ylabel('M cone contrast');
+title('Ideal observer threshold contours');
+saveas(gcf,'colourContour','png');
+
 
 
 
