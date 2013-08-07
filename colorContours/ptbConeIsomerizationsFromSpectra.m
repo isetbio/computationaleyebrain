@@ -8,8 +8,8 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeI
 %
 % The other key thing is that after the call to FillInPhotoreceptors, the field
 % isomerizationAbsorbtance of the photoreceptors struct contains the spectral 
-% sensitivities of the LMS cones.  These expect the spectrum to be in units
-% of quanta/[Um^2-sec].  
+% sensitivities of the LMS cones.  These are in quantal units (probability of
+% an isomerization).
 %
 % 8/4/13  dhb  Wrote it.
 
