@@ -25,14 +25,19 @@ function [LMSQuanta, LMSEnergyFunc] = ieReadHumanQE(inertP, melanopsinflag)
 
 %% The PTB way is right here.  We mimic it.
 
-% whatCalc = 'LivingHumanFovea';
-% photoreceptors = DefaultPhotoreceptors(whatCalc);
-% photoreceptors.eyeLengthMM.source = num2str(focalLengthMm);
-% photoreceptors.nomogram.S = WlsToS(wls_input);
-% S = photoreceptors.nomogram.S;
-% photoreceptors = FillInPhotoreceptors(photoreceptors);
+%% TODO
+%  Use the structure as a photoreceptor structure for photoreceptorCreate
+%  Separate out the sets/gets using the functions inside of
+%    FillInPhotoreceptors for some of the gets
+%  
+%  whatCalc = 'LivingHumanFovea';
+%  photoreceptors = DefaultPhotoreceptors(whatCalc);
+%  photoreceptors.eyeLengthMM.source = '17';
+%  photoreceptors.nomogram.S = [380,4,101];
+%  photoreceptors = FillInPhotoreceptors(photoreceptors);
+%
+%% 
 
-%%
 if ~exist('melanopsinflag','var') || isempty(melanopsinflag)
     melanopsinflag = false;
 end
