@@ -1,5 +1,5 @@
-function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeIsomerizationsFromSpectralRadiance(spd_input,wls_input,pupilDiamMm,focalLengthMm,integrationTimeSec)
-% [isoPerCone,pupilDiamMm,photoreceptors] = ptbConeIsomerizationsFromSpectralRadiance(spd_input,wls_input,pupilDiamMm,focalLengthMm,integrationTimeSec)
+function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeIsomerizationsFromSpectralRadiance(spd_input,wls_input,pupilDiamMm,focalLengthMm,integrationTimeSec,macularPigmentDensityAdjustment)
+% [isoPerCone,pupilDiamMm,photoreceptors] = ptbConeIsomerizationsFromSpectralRadiance(spd_input,wls_input,pupilDiamMm,focalLengthMm,integrationTimeSec,[macularPigmentDensityAdjustment])
 %
 % Compute LMS human cone isomerizations from spectral radiance in Watts/[m2-sr-nm].
 %
@@ -11,17 +11,22 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeI
 % sensitivities of the LMS cones.  These are in quantal units (probability of
 % an isomerization).
 %
+% If the macularPigmentDensityAdjustment argument is passed, it is added to the default.
+%
 % 8/4/13  dhb  Wrote it.
 
 %% Set up PTB photoreceptors structure
 % 
 % We'll do the computations at the wavelength
 % spacing passed in for the spectrum of interest.
-whatCalc = 'LivingHumanFovea';
+whatCalc = 'CIE2Deg';
 photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors.eyeLengthMM.source = num2str(focalLengthMm);
 photoreceptors.nomogram.S = WlsToS(wls_input);
 S = photoreceptors.nomogram.S;
+if (nargin > 5 && ~isempty(macularPigmentDensityAdjustment))
+    photoreceptors.macularPigmentDensity.adjustDen = macularPigmentDensityAdjustment;
+end
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
 % Convert units to power per wlband rather than power per nm.
