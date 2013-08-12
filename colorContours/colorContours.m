@@ -92,6 +92,18 @@ macularPigmentDensityAdjustments = [-0.25 -0.10 0 0.1 0.25]; % Amount to adjust 
 
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 
+DO_TAFC_CLASSIFIER = true;                      % Build the classifier assuming a TAFC design.
+
+QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
+
+%% Process quick test option
+if (QUICK_TEST_PARAMS)
+    macularPigmentDensityAdjustments = 0;
+    nColorDirections = 1;
+    nTestLevels = 4;
+    nDrawsPerTestStimulus = 100;
+end
+    
 %% Make sure random number generator seed is different each run.
 ClockRandSeed;
 
@@ -417,6 +429,10 @@ for m = 1:nMacularPigmentDensitiesAdjustments
             %% Plot the training and test data.  We'll plot the distribution of responses for one cone
             % in each sensor class, with the distribution taken over our resampling of each
             % scene by the mosaic.
+            %
+            % This plot gives an idea of the separation between the classes, but doesn't 
+            % represent all the info that may be available to the classifier (for example,
+            % if we add more receptors or do the TAFC calculation.
             if (~exist('f1','var'))
                 f1 = vcNewGraphWin; hold on;
             else
@@ -447,57 +463,127 @@ for m = 1:nMacularPigmentDensitiesAdjustments
             %
             % Performance is very sensitive to the options.
             %   The default option of a radial basis kernal '-t 2')
-            %   leads to good performance on the training set, at least
+            %   leads to good performance on the training set but does
+            %   not generalize well to the test set, at least
             %   with the default choice of fgamma.
             %
-            %   Using a linear kernal works quite well in my initial test.
-            svmOpts = '-s 0 -t 0';
-            svmModel = svmtrain(trainingLabels, trainingData, svmOpts);
-            [svmTrainingPredictedLabels] = svmpredict(trainingLabels, trainingData, svmModel);
-            [svmValidatePredictedLabels] = svmpredict(validateLabels, validateData, svmModel);
-            trainingFractionCorrect = length(find(svmTrainingPredictedLabels == trainingLabels))/length(trainingLabels);
-            validateFractionCorrect = length(find(svmValidatePredictedLabels == validateLabels))/length(validateLabels);
-            fprintf('Classifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
+            %   Using a linear kernal works quite well on test and training,
+            %   in initial tests.
+            %
+            % Convert training and test data to TAFC form, if we want.
+            if (DO_TAFC_CLASSIFIER)
+                % Build up a TAFC training and test set from the one interval data
+                oneIntervalDataDimension = size(trainingData,2);
+                nTrainingData = 2*size(trainingData,1);
+                trainingBlankIndices = find(trainingLabels == blankLabel);
+                trainingTestIndices = find(trainingLabels == testLabel);
+                validateBlankIndices = find(validateLabels == blankLabel);
+                validateTestIndices = find(validateLabels == testLabel);
+                tafcTrainingData = zeros(nTrainingData,2*oneIntervalDataDimension);
+                tafcTrainingLabels = zeros(nTrainingData,1);
+                tafcValidateData = zeros(nTrainingData,2*oneIntervalDataDimension);
+                tafcValidateLabels = zeros(nTrainingData,1);
+                for tt = 1:nTrainingData
+                    % Training set
+                    %
+                    % Flip a coin to decide whether test is in first or second interval 
+                    if (CoinFlip(1,0.5))
+                        temp1 = Shuffle(trainingTestIndices);
+                        temp2 = Shuffle(trainingBlankIndices);
+                        tafcTrainingLabels(tt) = blankLabel;
+                    else
+                        temp1 = Shuffle(trainingBlankIndices);
+                        temp2 = Shuffle(trainingTestIndices);
+                        tafcTrainingLabels(tt) = testLabel;
+                    end
+                    tafcTrainingData(tt,1:oneIntervalDataDimension) = trainingData(temp1(1),:);
+                    tafcTrainingData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = trainingData(temp2(1),:);
+                    
+                    % Validation set
+                    %
+                    % Same logic
+                    if (CoinFlip(1,0.5))
+                        temp1 = Shuffle(validateTestIndices);
+                        temp2 = Shuffle(validateBlankIndices);
+                        tafcValidateLabels(tt) = blankLabel;
+                    else
+                        temp1 = Shuffle(validateBlankIndices);
+                        temp2 = Shuffle(validateTestIndices);
+                        tafcValidateLabels(tt) = testLabel;
+                    end
+                    tafcValidateData(tt,1:oneIntervalDataDimension) = validateData(temp1(1),:);
+                    tafcValidateData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = validateData(temp2(1),:);
+                end
+            
+                svmOpts = '-s 0 -t 0';
+                svmModel = svmtrain(tafcTrainingLabels, tafcTrainingData, svmOpts);
+                [svmTrainingPredictedLabels] = svmpredict(tafcTrainingLabels, tafcTrainingData, svmModel);
+                [svmValidatePredictedLabels] = svmpredict(tafcValidateLabels, tafcValidateData, svmModel);
+                trainingFractionCorrect = length(find(svmTrainingPredictedLabels == tafcTrainingLabels))/length(tafcTrainingLabels);
+                validateFractionCorrect = length(find(svmValidatePredictedLabels == tafcValidateLabels))/length(tafcValidateLabels);
+                nCorrectResponses(t) = length(find(svmValidatePredictedLabels == tafcValidateLabels));
+                nTotalResponses(t) = length(tafcValidateLabels);
+                fractionCorrect(t) = validateFractionCorrect;
+                fprintf('Classifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
+                
+                % Indices for plots below
+                indexTG = find(svmTrainingPredictedLabels == tafcTrainingLabels);
+                indexTR = find(svmTrainingPredictedLabels ~= tafcTrainingLabels);
+                indexVG = find(svmValidatePredictedLabels == tafcValidateLabels);
+                indexVR = find(svmValidatePredictedLabels ~= tafcValidateLabels);
+            else
+                % Just do the one interval analysis
+                svmOpts = '-s 0 -t 0';
+                svmModel = svmtrain(trainingLabels, trainingData, svmOpts);
+                [svmTrainingPredictedLabels] = svmpredict(trainingLabels, trainingData, svmModel);
+                [svmValidatePredictedLabels] = svmpredict(validateLabels, validateData, svmModel);
+                trainingFractionCorrect = length(find(svmTrainingPredictedLabels == trainingLabels))/length(trainingLabels);
+                validateFractionCorrect = length(find(svmValidatePredictedLabels == validateLabels))/length(validateLabels);
+                nCorrectResponses(t) = length(find(svmValidatePredictedLabels == validateLabels));
+                nTotalResponses(t) = length(validateLabels);
+                fractionCorrect(t) = validateFractionCorrect;
+                fprintf('Classifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
+                
+                % Indices for plots below
+                indexTG = find(svmTrainingPredictedLabels == trainingLabels);
+                indexTR = find(svmTrainingPredictedLabels ~= trainingLabels);
+                indexVG = find(svmValidatePredictedLabels == validateLabels);
+                indexVR = find(svmValidatePredictedLabels ~= validateLabels);
+            end
             
             % Plot the training and test data.  We'll plot the distribution of responses for one cone
             % in each sensor class, with the distribution taken over our resampling of each
             % scene by the mosaic.
-            if (~exist('f2','var'))
-                f2 = vcNewGraphWin; hold on;
-            else
-                figure(f2); clf; hold on;
+            %
+            % Some thought is required about how to make a useful plot for the TAFC case, skipping
+            % it for now.
+            if (~DO_TAFC_CLASSIFIER)
+                if (~exist('f2','var'))
+                    f2 = vcNewGraphWin; hold on;
+                else
+                    figure(f2); clf; hold on;
+                end
+                sym = {'b.','g.','r.','c.','k.'};
+                az = 65.5; el = 30;
+                plot3(trainingData(indexTG,1), ...
+                    trainingData(indexTG,2), ...
+                    trainingData(indexTG,3),'go','MarkerFaceColor','g');
+                plot3(trainingData(indexTR,1), ...
+                    trainingData(indexTR,2), ...
+                    trainingData(indexTR,3),'ro','MarkerFaceColor','r');
+                
+                plot3(validateData(indexVG,1), ...
+                    validateData(indexVG,2), ...
+                    validateData(indexVG,3),'go');
+                plot3(validateData(indexVR,1), ...
+                    validateData(indexVR,2), ...
+                    validateData(indexVR,3),'ro');
+                xlabel('L-absorptions'); ylabel('M-Absorptions'); zlabel('S-absorptions'); axis square; grid on
             end
-            sym = {'b.','g.','r.','c.','k.'};
-            az = 65.5; el = 30;
-            index = find(svmTrainingPredictedLabels == trainingLabels);
-            plot3(trainingData(index,1), ...
-                trainingData(index,2), ...
-                trainingData(index,3),'go','MarkerFaceColor','g');
-            index = find(svmTrainingPredictedLabels ~= trainingLabels);
-            plot3(trainingData(index,1), ...
-                trainingData(index,2), ...
-                trainingData(index,3),'ro','MarkerFaceColor','r');
-            
-            index = find(svmValidatePredictedLabels == validateLabels);
-            plot3(validateData(index,1), ...
-                validateData(index,2), ...
-                validateData(index,3),'go');
-            index = find(svmValidatePredictedLabels ~= validateLabels);
-            plot3(validateData(index,1), ...
-                validateData(index,2), ...
-                validateData(index,3),'ro');
-            xlabel('L-absorptions'); ylabel('M-Absorptions'); zlabel('S-absorptions'); axis square; grid on
-            
-            %% Store out performance measure
-            nCorrectResponses(t) = length(find(svmValidatePredictedLabels == validateLabels));
-            nTotalResponses(t) = length(validateLabels);
-            fractionCorrect(t) = validateFractionCorrect;
         end
         
         %% Plot and fit psychometric function, extract threshold
-        %
-        % Requires Palamedes toolbox
-        %
+        %        
         % Plot data
         if (~exist('psychoFig','var'))
             psychoFig = figure; clf; hold on
@@ -506,7 +592,7 @@ for m = 1:nMacularPigmentDensitiesAdjustments
         end
         plot(testLevels,fractionCorrect,'ro','MarkerSize',10,'MarkerFaceColor','r');
         
-        % Fit and find threshold.
+        % Fit and find threshold, and add fit to plot
         %
         % Be setting USE_PALAMEDES to 1, you can use the Palamedes toolbox routines
         % to do the fitting.  But, you'll need to install the Palamedes toolbox to
@@ -540,7 +626,6 @@ for m = 1:nMacularPigmentDensitiesAdjustments
             thresholdEst = FindThreshWeibTAFC(criterionCorrect,alpha,beta);
             probCorrInterp = ComputeWeibTAFC(testLevelsInterp,alpha,beta);
         end
-        
         plot(testLevelsInterp,probCorrInterp,'r');
         plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
         plot([testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
@@ -568,13 +653,15 @@ for m = 1:nMacularPigmentDensitiesAdjustments
         LContourPoints = [LContourPoints ; -LContourPoints];
         MContourPoints = [MContourPoints ; -MContourPoints];
     end
-    [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
-    
+  
     %% Make a plot of the thresholds
     contourFig = figure; clf; hold on
     theContourPlotLim = 0.2;
     plot(LContourPoints,MContourPoints,'ro','MarkerFaceColor','r','MarkerSize',8);
-    plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+    if (length(LContourPoints) > 6)
+        [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
+        plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+    end
     plot([-theContourPlotLim theContourPlotLim],[0 0],'k:');
     plot([0 0],[-theContourPlotLim theContourPlotLim],'k:');
     xlim([-theContourPlotLim theContourPlotLim]);
@@ -583,7 +670,11 @@ for m = 1:nMacularPigmentDensitiesAdjustments
     xlabel('Nominal L cone contrast');
     ylabel('Nominal M cone contrast');
     title('Ideal observer threshold contours');
-    outName = sprintf('colorContour_%d',round(100*macularPigmentDensityAdjust));
+    if (DO_TAFC_CLASSIFIER)
+        outName = sprintf('colorContour_TAFC_%d',round(100*macularPigmentDensityAdjust));
+    else
+        outName = sprintf('colorContour_YN_%d',round(100*macularPigmentDensityAdjust));
+    end
     saveas(gcf,outName,'png');
     
     % These files are sort of big, so don't always save.
