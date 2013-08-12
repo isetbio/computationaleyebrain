@@ -88,24 +88,25 @@ nSensorClasses = length(isetSensorConeSlots);   % For convenience, specify the n
 nColorDirections = 16;                          % Number of color directions for contour.
 dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
 
-nTestLevels = 8;                               % Number of test levels to simulate for each test direction psychometric function.
+nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
 nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
-macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
-                                                % Note that stimuli are computed for a nominal (no adjustment) observer.
+
 
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 testContrastLengthMax = 0.25;                   % Maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
 
-DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
+outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
 
+macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
+                                                % Note that stimuli are computed for a nominal (no adjustment) observer.
+DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
 OBSERVER_STATES = {'LMandS' 'LSOnly' 'MSOnly'}; % Simulate various tri and dichromats
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
-outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
 
 %% Make output directory if it doesn't exist
 if (~exist(outputPlotDir,'dir'))
@@ -177,7 +178,9 @@ vcAddAndSelectObject(oiD);
 % vcNewGraphWin; plotOI(oiD,'psf')
 
 %% Loop over dichromatic/trichromatic observer states
-for OBSERVER_STATE = OBSERVER_STATES
+for os = 1:length(OBSERVER_STATES)
+    OBSERVER_STATE = OBSERVER_STATES{os};
+    
     %% Loop over Y/N and TAFC methods
     for DO_TAFC_CLASSIFIER = DO_TAFC_CLASSIFIER_STATES
         
