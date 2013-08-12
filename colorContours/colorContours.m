@@ -94,14 +94,16 @@ criterionCorrect = 0.82;                        % Fraction correct for definitio
 
 DO_TAFC_CLASSIFIER = true;                      % Build the classifier assuming a TAFC design.
 
-QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
+QUICK_TEST_PARAMS = true;                       % Set to true to override parameters with a small number of trials for debugging.
 
 %% Process quick test option
 if (QUICK_TEST_PARAMS)
-    macularPigmentDensityAdjustments = 0;
-    nColorDirections = 1;
+    nColorDirections = 4;
+    dirAngleMax = pi;                           % Use pi for sampling directions from hemicircle, 2*pi for whole circle
     nTestLevels = 4;
     nDrawsPerTestStimulus = 100;
+    macularPigmentDensityAdjustments = [-0.3 0 0.3];
+    DO_TAFC_CLASSIFIER = false;
 end
     
 %% Make sure random number generator seed is different each run.
@@ -630,6 +632,7 @@ for m = 1:nMacularPigmentDensitiesAdjustments
         plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
         plot([testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
         ylim([0.5 1]);
+        drawnow;
         
         % Print threshold
         fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorrect),thresholdEst);
@@ -675,13 +678,17 @@ for m = 1:nMacularPigmentDensitiesAdjustments
     else
         outName = sprintf('colorContour_YN_%d',round(100*macularPigmentDensityAdjust));
     end
-    saveas(gcf,outName,'png');
+    drawnow;
+    saveas(contourFig,outName,'png');
     
     % These files are sort of big, so don't always save.
     %
     % Probably could figure out what not to save and get 
     % a useful piece of the data if we wanted to.
     %save(outName);
+    
+    % Close windows
+    close all
     
 end
 
