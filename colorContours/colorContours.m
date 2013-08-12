@@ -683,6 +683,7 @@ for m = 1:nMacularPigmentDensitiesAdjustments
         outName = sprintf('colorContour_YN_%d',round(100*macularPigmentDensityAdjust));
     end
     drawnow;
+    set(gca,'LooseInset',get(gca,'TightInset'));
     saveas(contourFig,outName,'png');
     
     % These files are sort of big, so don't always save.
