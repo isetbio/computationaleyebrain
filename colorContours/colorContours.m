@@ -33,10 +33,13 @@
 %  * Add option for dichromats.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Make classifier appropriate for TAFC rather than Y/N as it currently is.
 %  * Add simple foveal midget ganglion cell model.
 %  * Break this big long script into sensible subfunctions.
 %  * Smarter choice of test levels to improve efficiency.
+%
+% Known bugs:
+%  * 8/12/13  For some reason, the contour plot doesn't get written with
+%             big simulations.  
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -52,6 +55,7 @@
 % 8/4/13  DHB/BW Check irradiance calcs between ISET and PTB.
 % 8/6/13  DHB/BW Got contour going.  End of this DHB visit west.
 % 8/11/13 DHB    Added ellipse fitting, macular pigment adjustment
+%         DHB    Added TAFC option.  Not fully tested.
 
 %% Clear out the junk.  Remember where you are.
 %
