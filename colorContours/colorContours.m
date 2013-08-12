@@ -92,8 +92,6 @@ nTestLevels = 8;                                % Number of test levels to simul
 nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
-
-
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 testContrastLengthMax = 0.25;                   % Maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
