@@ -57,6 +57,7 @@
 % 8/11/13 DHB    Added ellipse fitting, macular pigment adjustment
 %         DHB    Added TAFC option.  Not fully tested.
 % 8/12/13 DHB    Added dichromats, not tested at all.
+% 8/13/13 DHB    Sometimes Matlab's svmtrain lives in the bioinfo toolbox.  Remove that too.
 
 %% Clear out the junk.  Remember where you are.
 %
@@ -134,7 +135,9 @@ ClockRandSeed;
 % routines that we use here.
 if (exist('RemoveMatchingPaths','file'))
     path(RemoveMatchingPaths(path,'stats'));
+    path(RemoveMatchingPaths(path,'bioinfo'));
 end
+
 
 %%  Get display spectra
 d = displayCreate(monitorName);
