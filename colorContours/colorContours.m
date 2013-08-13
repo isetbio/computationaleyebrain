@@ -101,7 +101,7 @@ outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
 macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
                                                 % Note that stimuli are computed for a nominal (no adjustment) observer.
 DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
-OBSERVER_STATES = {'LMandS' 'LSOnly' 'MSOnly'}; % Simulate various tri and dichromats
+OBSERVER_STATES = {'LMandS' 'LSonly' 'MSonly'}; % Simulate various tri and dichromats
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
