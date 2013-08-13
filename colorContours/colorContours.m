@@ -193,7 +193,8 @@ for m = 1:nMacularPigmentDensitiesAdjustments
     ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorbtance;
     ptbNominalLMSEnergySensitivities = ptbNominalPhotorceptorsStruct.energyFundamentals;
     
-    [ptbAdjustedBackLMSIsomerizations,pupilDiameterMm,ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
+    [ptbAdjustedBackLMSIsomerizations,pupilDiameterMm,ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ...
+        ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
         pupilDiameterMm,focalLengthMm,integrationTimeSecs,macularPigmentDensityAdjust);
     ptbAdjustedBackLMSIsomerizations = round(ptbAdjustedBackLMSIsomerizations);
     ptbAdjustedLMSQuantalEfficiency = ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance;
