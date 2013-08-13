@@ -1,4 +1,4 @@
-% colorContours
+%% colorContours
 %
 % This script will eventually compute predicted ideal observer
 % isodetection contours for various psychophyiscal discrimination
@@ -125,7 +125,7 @@ end
 d = displayCreate(monitorName);
 displaySpd = displayGet(d,'spd');
 wavelengthsNm = displayGet(d,'wave');
-% vcNewGraphWin; plot(w,displaySpd)
+% vcNewGraphWin; plot(wavelengthsNm,displaySpd)
 
 %% Set background
 backRGB = [backRGBValue backRGBValue backRGBValue]';
@@ -186,7 +186,8 @@ for m = 1:nMacularPigmentDensitiesAdjustments
     % sensitivities.
     
     % First nominal sensitivities
-    [ptbNominalBackLMSIsomerizations,pupilDiameterMm,ptbNominalPhotorceptorsStruct,ptbNominalIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
+    [ptbNominalBackLMSIsomerizations,pupilDiameterMm,ptbNominalPhotorceptorsStruct,ptbNominalIrradianceWattsPerM2] = ...
+        ptbConeIsomerizationsFromSpectra(backSpd,wavelengthsNm,...
         pupilDiameterMm,focalLengthMm,integrationTimeSecs,0);
     ptbNominalBackLMSIsomerizations = round(ptbNominalBackLMSIsomerizations);
     ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorbtance;
