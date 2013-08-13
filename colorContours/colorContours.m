@@ -97,6 +97,7 @@ testContrastLengthMax = 0.25;                   % Maximum contrast lenght of tes
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
 
 outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
+psychoPlotDir = 'psychometricFcnPlots';
 
 macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
                                                 % Note that stimuli are computed for a nominal (no adjustment) observer.
@@ -106,9 +107,12 @@ OBSERVER_STATES = {'LMandS' 'LSonly' 'MSonly'}; % Simulate various tri and dichr
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
 
-%% Make output directory if it doesn't exist
+%% Make output directories if they doesn't exist
 if (~exist(outputPlotDir,'dir'))
     mkdir(outputPlotDir);
+end
+if (~exist(fullfile(outputPlotDir,psychoPlotDir,''),'file'))
+    mkdir(fullfile(outputPlotDir,psychoPlotDir,''));
 end
 
 %% Process quick test option
@@ -693,7 +697,7 @@ for os = 1:length(OBSERVER_STATES)
                     outName = sprintf('psychoFig_%s_YN_%d_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust),cd);
                 end
                 set(gca,'LooseInset',get(gca,'TightInset'));
-                saveas(psychoFig,fullfile(outputPlotDir,outName),'png');
+                saveas(psychoFig,fullfile(outputPlotDir,psychoPlotDir,outName),'png');
                 
                 % Print threshold
                 fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorrect),thresholdEst);
