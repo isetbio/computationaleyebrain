@@ -58,6 +58,7 @@
 %         DHB    Added TAFC option.  Not fully tested.
 % 8/12/13 DHB    Added dichromats, not tested at all.
 % 8/13/13 DHB    Sometimes Matlab's svmtrain lives in the bioinfo toolbox.  Remove that too.
+%         DHB    A little work on memory management.  Tweak params to leave running overnight.
 
 %% Clear out the junk.  Remember where you are.
 %
@@ -94,7 +95,7 @@ nDrawsPerTestStimulus = 400;                    % Number of noise draws used in 
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-testContrastLengthMax = 0.25;                   % Maximum contrast lenght of test color vectors used in each color direction.
+testContrastLengthMax = 0.5;                    % Maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
 
 outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
@@ -103,7 +104,7 @@ psychoPlotDir = 'psychometricFcnPlots';
 macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
                                                 % Note that stimuli are computed for a nominal (no adjustment) observer.
 DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
-OBSERVER_STATES = {'LMandS' 'LSonly' 'MSonly'}; % Simulate various tri and dichromats
+OBSERVER_STATES = {'MSonly' 'LSonly'};          % Simulate various tri and dichromats
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
@@ -179,6 +180,7 @@ oiD = wvf2oi(wvf,'shift invariant');
 optics = oiGet(oiD,'optics');
 focalLengthMm = opticsGet(optics,'focal length','mm');
 vcAddAndSelectObject(oiD);
+clear wvf
 % oiWindow;
 % vcNewGraphWin; plotOI(oiD,'psf')
 
@@ -410,6 +412,7 @@ for os = 1:length(OBSERVER_STATES)
                             testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',isetSensorConeSlots(ii));
                         end
                     end
+                    clear backVoltImage testVoltImage
                     
                     %% Pop last instantions into windows for viewing etc.
                     backCSensor = sensorSet(backCSensorNF,'name','Background');
@@ -766,6 +769,10 @@ for os = 1:length(OBSERVER_STATES)
             
             % Close windows
             close all
+            
+            % Clear some big variables and pack
+            clear backSensorVals testSensorVals
+            pack
             
         end
     end
