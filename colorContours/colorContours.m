@@ -33,14 +33,20 @@
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Add simple foveal midget ganglion cell model.
+%  * Add simple foveal midget ganglion cell model.  This would be
+%    pretty easy if we continue to ignore spatial structure.
 %  * Break this big long script into sensible subfunctions.
+%  * Clusterize.
+%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
+%  * I don't think the ellipse fitting enforces a center of zero.  It should.
+%  * Need better system for tracking output.  Currently filenames tell you
+%    something but not enough.  This is going to start to matter soon.  May
+%    also want to save data as well as plots.
 %
 % Known bugs:
-%  * 8/12/13  For some reason, the contour plot doesn't get written with
-%             big simulations. 
-%    8/12/13  This may now be fixed, pending testing.
-%
+%  * 8/14/13 - Runs out of memory when run on Penn cluster head node.  Perhaps
+%              this isn't really a problem since we should only debug on head node.
+
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
 %
@@ -58,6 +64,7 @@
 %         DHB    Added TAFC option.  Not fully tested.
 % 8/12/13 DHB    Added dichromats, not tested at all.
 % 8/13/13 DHB    Sometimes Matlab's svmtrain lives in the bioinfo toolbox.  Remove that too.
+%         DHB    A little work on memory management.  Tweak params to leave running overnight.
 
 %% Clear out the junk.  Remember where you are.
 %
@@ -94,27 +101,19 @@ nDrawsPerTestStimulus = 400;                    % Number of noise draws used in 
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-testContrastLengthMax = 0.25;                   % Maximum contrast lenght of test color vectors used in each color direction.
+testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
-
+                                                % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
+                                                
 outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
 psychoPlotDir = 'psychometricFcnPlots';
 
 macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
                                                 % Note that stimuli are computed for a nominal (no adjustment) observer.
 DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
-OBSERVER_STATES = {'LMandS' 'LSonly' 'MSonly'}; % Simulate various tri and dichromats
+OBSERVER_STATES = {'MSonly' 'LSonly'};          % Simulate various tri and dichromats
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
-
-
-%% Make output directories if they doesn't exist
-if (~exist(outputPlotDir,'dir'))
-    mkdir(outputPlotDir);
-end
-if (~exist(fullfile(outputPlotDir,psychoPlotDir,''),'file'))
-    mkdir(fullfile(outputPlotDir,psychoPlotDir,''));
-end
 
 %% Process quick test option
 if (QUICK_TEST_PARAMS)
@@ -124,6 +123,14 @@ if (QUICK_TEST_PARAMS)
     nDrawsPerTestStimulus = 100;
     macularPigmentDensityAdjustments = [-0.3 0 0.3];
     DO_TAFC_CLASSIFIER_STATES = [true false];
+end
+
+%% Make output directories if they doesn't exist
+if (~exist(outputPlotDir,'dir'))
+    mkdir(outputPlotDir);
+end
+if (~exist(fullfile(outputPlotDir,psychoPlotDir,''),'file'))
+    mkdir(fullfile(outputPlotDir,psychoPlotDir,''));
 end
     
 %% Make sure random number generator seed is different each run.
@@ -179,12 +186,27 @@ oiD = wvf2oi(wvf,'shift invariant');
 optics = oiGet(oiD,'optics');
 focalLengthMm = opticsGet(optics,'focal length','mm');
 vcAddAndSelectObject(oiD);
+clear wvf
 % oiWindow;
 % vcNewGraphWin; plotOI(oiD,'psf')
 
 %% Loop over dichromatic/trichromatic observer states
 for os = 1:length(OBSERVER_STATES)
     OBSERVER_STATE = OBSERVER_STATES{os};
+       
+    %% Set test contrast maximum length.
+    %
+    % The best values depend on observer state
+    switch (OBSERVER_STATE)
+        case 'LMandS'
+            testContrastLengthMax = 0.3;
+        case 'LSonly'
+            testContrastLengthMax = 1;
+        case 'MSonly'
+            testContrastLengthMax = 1;
+        otherwise
+            error('Unknown dichromat/trichromat type specified');
+    end
     
     %% Use PTB to compute cone quantal sensitivities.
     %
@@ -439,7 +461,10 @@ for os = 1:length(OBSERVER_STATES)
                 testLevels = linspace(0,1,nTestLevels);
                 for t = 1:length(testLevels)
                     % Set test level
-                    fprintf('Calculations for test level %d of %d\n',t,length(testLevels));
+                    fprintf('\nCalculations for observer state %s\n',OBSERVER_STATE);
+                    fprintf('\tMacular pigment density adjust %0.2f\n',macularPigmentDensityAdjust);
+                    fprintf('\tColor direction %d of %d\n',cd,nColorDirections);
+                    fprintf('\tTest level %d of %d\n',t,length(testLevels));
                     testLevel = testLevels(t);
                     testRGBForThisLevel = (backRGB + testLevel*testRGBGamut).^(1/gammaValue);
                     
@@ -476,6 +501,7 @@ for os = 1:length(OBSERVER_STATES)
                             testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',isetSensorConeSlots(ii));
                         end
                     end
+                    clear backVoltImage testVoltImage
                     
                     %% Pop last instantions into windows for viewing etc.
                     backCSensor = sensorSet(backCSensorNF,'name','Background');
@@ -756,6 +782,7 @@ for os = 1:length(OBSERVER_STATES)
                 plot(testLevelsInterp,probCorrInterp,'r');
                 plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
                 plot([testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
+                xlim([0 1]);
                 ylim([0.5 1]);
                 drawnow;
                 
@@ -832,6 +859,10 @@ for os = 1:length(OBSERVER_STATES)
             
             % Close windows
             close all
+            
+            % Clear some big variables and pack
+            clear backSensorVals testSensorVals
+            pack
             
         end
     end
