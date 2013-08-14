@@ -33,7 +33,8 @@
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Add simple foveal midget ganglion cell model.
+%  * Add simple foveal midget ganglion cell model.  This would be
+%    pretty easy if we continue to ignore spatial structure.
 %  * Break this big long script into sensible subfunctions.
 %  * Clusterize.
 %  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
