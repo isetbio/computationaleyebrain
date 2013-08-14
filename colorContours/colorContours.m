@@ -35,12 +35,17 @@
 %  * Add eye movements.
 %  * Add simple foveal midget ganglion cell model.
 %  * Break this big long script into sensible subfunctions.
+%  * Clusterize.
+%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
+%  * I don't think the ellipse fitting enforces a center of zero.  It should.
+%  * Need better system for tracking output.  Currently filenames tell you
+%    something but not enough.  This is going to start to matter soon.  May
+%    also want to save data as well as plots.
 %
 % Known bugs:
-%  * 8/12/13  For some reason, the contour plot doesn't get written with
-%             big simulations. 
-%    8/12/13  This may now be fixed, pending testing.
-%
+%  * 8/14/13 - Runs out of memory when run on Penn cluster head node.  Perhaps
+%              this isn't really a problem since we should only debug on head node.
+
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
 %
