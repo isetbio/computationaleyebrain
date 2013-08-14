@@ -95,9 +95,10 @@ nDrawsPerTestStimulus = 400;                    % Number of noise draws used in 
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-testContrastLengthMax = 0.5;                    % Maximum contrast lenght of test color vectors used in each color direction.
+testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
-
+                                                % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
+                                                
 outputPlotDir = 'outputPlots';                  % Plots get dumped in here.
 psychoPlotDir = 'psychometricFcnPlots';
 
@@ -108,15 +109,6 @@ OBSERVER_STATES = {'MSonly' 'LSonly'};          % Simulate various tri and dichr
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
-
-%% Make output directories if they doesn't exist
-if (~exist(outputPlotDir,'dir'))
-    mkdir(outputPlotDir);
-end
-if (~exist(fullfile(outputPlotDir,psychoPlotDir,''),'file'))
-    mkdir(fullfile(outputPlotDir,psychoPlotDir,''));
-end
-
 %% Process quick test option
 if (QUICK_TEST_PARAMS)
     nColorDirections = 4;
@@ -125,6 +117,14 @@ if (QUICK_TEST_PARAMS)
     nDrawsPerTestStimulus = 100;
     macularPigmentDensityAdjustments = [-0.3 0 0.3];
     DO_TAFC_CLASSIFIER_STATES = [true false];
+end
+
+%% Make output directories if they doesn't exist
+if (~exist(outputPlotDir,'dir'))
+    mkdir(outputPlotDir);
+end
+if (~exist(fullfile(outputPlotDir,psychoPlotDir,''),'file'))
+    mkdir(fullfile(outputPlotDir,psychoPlotDir,''));
 end
     
 %% Make sure random number generator seed is different each run.
@@ -187,6 +187,20 @@ clear wvf
 %% Loop over dichromatic/trichromatic observer states
 for os = 1:length(OBSERVER_STATES)
     OBSERVER_STATE = OBSERVER_STATES{os};
+       
+    %% Set test contrast maximum length.
+    %
+    % The best values depend on observer state
+    switch (OBSERVER_STATE)
+        case 'LMandS'
+            testContrastLengthMax = 0.3;
+        case 'LSonly'
+            testContrastLengthMax = 1;
+        case 'MSonly'
+            testContrastLengthMax = 1;
+        otherwise
+            error('Unknown dichromat/trichromat type specified');
+    end
     
     %% Loop over Y/N and TAFC methods
     for DO_TAFC_CLASSIFIER = DO_TAFC_CLASSIFIER_STATES
@@ -375,7 +389,10 @@ for os = 1:length(OBSERVER_STATES)
                 testLevels = linspace(0,1,nTestLevels);
                 for t = 1:length(testLevels)
                     % Set test level
-                    fprintf('Calculations for test level %d of %d\n',t,length(testLevels));
+                    fprintf('\nCalculations for observer state %s\n',OBSERVER_STATE);
+                    fprintf('\tMacular pigment density adjust %0.2f\n',macularPigmentDensityAdjust);
+                    fprintf('\tColor direction %d of %d\n',cd,nColorDirections);
+                    fprintf('\tTest level %d of %d\n',t,length(testLevels));
                     testLevel = testLevels(t);
                     testRGBForThisLevel = (backRGB + testLevel*testRGBGamut).^(1/gammaValue);
                     
@@ -693,6 +710,7 @@ for os = 1:length(OBSERVER_STATES)
                 plot(testLevelsInterp,probCorrInterp,'r');
                 plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
                 plot([testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
+                xlim([0 1]);
                 ylim([0.5 1]);
                 drawnow;
                 
