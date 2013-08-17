@@ -121,7 +121,7 @@ OBSERVER_STATES = {'MSonly'};                   % Simulate various tri and dichr
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
-COMPUTE = true;                                % Compute?
+COMPUTE = true;                                 % Compute?
 ANALYZE = true;                                 % Analyze
 
 %% Process quick test option
@@ -309,8 +309,8 @@ if (COMPUTE)
             fprintf('\tColor direction %0.3f\n',params(p).cdAngle);
             fprintf('\tTest level %0.3f\n',params(p).testLevel);
             
-            params(p).results = DoOneSimulation(params(p),staticParams);
-            fprintf('\tFraction correct %0.2f\n',params(p).results.fractionCorrect);
+            simResults(p) = DoOneSimulation(params(p),staticParams);
+            fprintf('\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
 
         end
     else
@@ -322,8 +322,8 @@ if (COMPUTE)
             fprintf('\tColor direction %0.3f\n',params(p).cdAngle);
             fprintf('\tTest level %0.3f\n',params(p).testLevel);
             
-            params(p).results = DoOneSimulation(params(p),staticParams);
-            fprintf('\tFraction correct %0.2f\n',params(p).results.fractionCorrect);
+            simResults(p) = DoOneSimulation(params(p),staticParams);
+            fprintf('\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
         end
     end
     
@@ -334,7 +334,7 @@ if (COMPUTE)
     if (~exist(outputDir,'dir'))
         mkdir(outputDir);
     end
-    save(fullfile(outputDir,'simResults'),'params');
+    save(fullfile(outputDir,'simResults'),'params','simResults');
 end
 
 %% **************
@@ -378,6 +378,7 @@ if (ANALYZE)
                     DO_TAFC_CLASSIFIER_STATE == DO_TAFC_CLASSIFIER_STATES_LIST & ...
                     macularPigmentDensityAdjust == macularPigmentDensityAdjustments_List);
                 useParams0 = theData.params(index0);
+                useResults0 = theData.simResults(index0);
                 
                 cdAngles_List = [useParams0.cdAngle];
                 the_cdAngles = unique(cdAngles_List);
@@ -385,16 +386,17 @@ if (ANALYZE)
                     cdAngle = the_cdAngles(cdi);
                     index1 = find(cdAngle == cdAngles_List);
                     useParams1 = useParams0(index1);
+                    useResults1 = theData.simResults(index1);
                     testLevels_List = [useParams1.testLevel];
                     the_testLevels = unique(testLevels_List);
                     
                     for t = 1:length(the_testLevels)
-                        the_fractionCorrects(t) = useParams1(t).results.fractionCorrect;
-                        the_nCorrectResponses(t) = useParams1(t).results.nCorrectResponses;
-                        the_nTotalResponses(t) = useParams1(t).results.nTotalResponses;
-                        the_testLMSContrast(:,t) = useParams1(t).results.testLMSContrast;
-                        the_backLMS(:,t) = useParams1(t).results.backgroundLMS;
-                     	the_testLMSGamut(:,t) = useParams1(t).results.testLMSGamut;
+                        the_fractionCorrects(t) = useResults1(t).fractionCorrect;
+                        the_nCorrectResponses(t) = useResults1(t).nCorrectResponses;
+                        the_nTotalResponses(t) = useResults1(t).nTotalResponses;
+                        the_testLMSContrast(:,t) = useResults1(t).testLMSContrast;
+                        the_backLMS(:,t) = useResults1(t).backgroundLMS;
+                     	the_testLMSGamut(:,t) = useResults1(t).testLMSGamut;
                     end
                     
                     % Plot data
@@ -467,20 +469,20 @@ if (ANALYZE)
                     end
                     
                     % Store results for this color direction
-                    results(cdi).thresholdLevel = thresholdEst;
-                    results(cdi).testLMSContrast = the_testLMSContrast;
-                    results(cdi).thresholdLMSContrast = thresholdEst*the_testLMSContrast;
-                    results(cdi).backgroundLMS = the_backLMS;
-                    results(cdi).testLMSGamut = the_testLMSGamut;
+                    contourThreshResults(cdi).thresholdLevel = thresholdEst;
+                    contourThreshResults(cdi).testLMSContrast = the_testLMSContrast;
+                    contourThreshResults(cdi).thresholdLMSContrast = thresholdEst*the_testLMSContrast;
+                    contourThreshResults(cdi).backgroundLMS = the_backLMS;
+                    contourThreshResults(cdi).testLMSGamut = the_testLMSGamut;
                 end
                 
                 % Fit an ellipse to the thresholds
-                nColorDirections = length(results);
+                nColorDirections = length(contourThreshResults);
                 LContourPoints = zeros(nColorDirections,1);
                 MContourPoints = zeros(nColorDirections,1);
                 for cdi = 1:nColorDirections
-                    LContourPoints(cdi) = results(cdi).thresholdLMSContrast(1);
-                    MContourPoints(cdi) = results(cdi).thresholdLMSContrast(2);
+                    LContourPoints(cdi) = contourThreshResults(cdi).thresholdLMSContrast(1);
+                    MContourPoints(cdi) = contourThreshResults(cdi).thresholdLMSContrast(2);
                 end
                 if (dirAngleMax == pi)
                     LContourPoints = [LContourPoints ; -LContourPoints];
