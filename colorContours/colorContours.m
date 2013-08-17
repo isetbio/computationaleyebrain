@@ -114,12 +114,15 @@ surroundSize = 0;                               % Parameter defining surround si
 surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
 integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
 
-macularPigmentDensityAdjustments = [-0.3 0 0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
+macularPigmentDensityAdjustments = [0 -0.2];    % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
 % Note that stimuli are computed for a nominal (no adjustment) observer.
 DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
-OBSERVER_STATES = {'MSonly' 'LSonly'};          % Simulate various tri and dichromats
+OBSERVER_STATES = {'MSonly'};                   % Simulate various tri and dichromats
 
-QUICK_TEST_PARAMS = true;                       % Set to true to override parameters with a small number of trials for debugging.
+QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
+
+COMPUTE = true;                                % Compute?
+ANALYZE = true;                                 % Analyze
 
 %% Process quick test option
 if (QUICK_TEST_PARAMS)
@@ -127,26 +130,20 @@ if (QUICK_TEST_PARAMS)
     dirAngleMax = pi;
     nTestLevels = 4;
     nDrawsPerTestStimulus = 100;
-    macularPigmentDensityAdjustments = [-0.3 0 0.3];
-    DO_TAFC_CLASSIFIER_STATES = [true false];
+    macularPigmentDensityAdjustments = [0];
+    DO_TAFC_CLASSIFIER_STATES = [false];
+    OBSERVER_STATES = {'LMandS'};
 end
 
 %% Make output directories if they doesn't exist.
 %
 % Try to make name tell us a lot about static conditions.
 if (dirAngleMax == 2*pi)
-    outputDir = sprintf('%s_fullCircle_%d_%d_%d  ',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+    outputDir = sprintf('%s_fullCircle_%d_%d_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
         round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea));
 else
-    outputDir = sprintf('%s_halfCircle_%d_%d_%d  ',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+    outputDir = sprintf('%s_halfCircle_%d_%d_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
         round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea));
-end
-
-if (~exist(outputDir,'dir'))
-    mkdir(outputDir);
-end
-if (~exist(fullfile(outputDir,psychoPlotDir,''),'file'))
-    mkdir(fullfile(outputDir,psychoPlotDir,''));
 end
 
 %% Make sure random number generator seed is different each run.
@@ -161,281 +158,376 @@ if (exist('RemoveMatchingPaths','file'))
     path(RemoveMatchingPaths(path,'bioinfo'));
 end
 
-
-%%  Get display spectra
-d = displayCreate(monitorName);
-displaySpd = displayGet(d,'spd');
-wavelengthsNm = displayGet(d,'wave');
-% vcNewGraphWin; plot(w,displaySpd)
-
-%% Set background
-backRGB = [backRGBValue backRGBValue backRGBValue]';
-backSpd = displaySpd*backRGB;
-
-%% Create a scene with the background spectrum
-%
-% To patch into scene creation routines, we create an image
-% on disk with spatially uniform RGB values.  These are then treated
-% as frame buffer values, and will be raised to the 2.2 (gamma uncorrected)
-% by the scene creation routine.
-%
-% [**] May want to find a way to do this (and the corresponding version
-% for the test) that does not involve writing an image to disk and
-% that skips the gamma correction stuff.
-gammaValue = 2.2;
-backImg = ones(scenePixels,scenePixels,3)*(backRGBValue)^(1/gammaValue);
-imwrite(backImg,'backFile.png','png');
-sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',wavelengthsNm);
-sceneB = sceneSet(sceneB,'name','background');
-sceneB = sceneSet(sceneB,'fov',fieldOfViewDegrees);
-vcAddAndSelectObject(sceneB);
-%sceneWindow;
-
-%% Create standard human polychromatic PSF
-% using wavefront tools, and make it an
-% iset OI thingy.
-wvf = wvfCreate('wave',wavelengthsNm);
-sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf = wvfSet(wvf,'zcoeffs',sample_mean);
-wvf = wvfComputePSF(wvf);
-oiD = wvf2oi(wvf,'shift invariant');
-optics = oiGet(oiD,'optics');
-focalLengthMm = opticsGet(optics,'focal length','mm');
-vcAddAndSelectObject(oiD);
-clear wvf
-% oiWindow;
-% vcNewGraphWin; plotOI(oiD,'psf')
-
-%% Construct list of conditions
-%
-% These are strung out so that we can chunk through
-% them in a big parfor loop below.
-cdAngles = linspace(0,dirAngleMax,nColorDirections+1);
-cdAngles = cdAngles(1:end-1);
-testLevels = linspace(0,1,nTestLevels);
-paramIndex = 1;
-for os = 1:length(OBSERVER_STATES)
-    for ct = 1:length(DO_TAFC_CLASSIFIER_STATES)
-        for m = 1:length(macularPigmentDensityAdjustments)
-            for cdi = 1:nColorDirections
-                for t = 1:length(testLevels)
-                    params(paramIndex).OBSERVER_STATE = OBSERVER_STATES{os};
-                    params(paramIndex).DO_TAFC_CLASSIFIER = DO_TAFC_CLASSIFIER_STATES(ct);
-                    params(paramIndex).macularPigmentDensityAdjust = macularPigmentDensityAdjustments(m);
-                    params(paramIndex).cdAngle = cdAngles(cdi);
-                    params(paramIndex).testLevel = testLevels(t);
-                    
-                    % Set test contrast maximum length.
-                    %
-                    % The best values depend on observer state
-                    % and are currently set manually based on
-                    % experience.
-                    switch (params(paramIndex).OBSERVER_STATE)
-                        case 'LMandS'
-                            params(paramIndex).testContrastLengthMax = 0.3;
-                        case 'LSonly'
-                            params(paramIndex).testContrastLengthMax = 1;
-                        case 'MSonly'
-                            params(paramIndex).testContrastLengthMax = 1;
-                        otherwise
-                            error('Unknown dichromat/trichromat type specified');
+%% **************
+% Compute Section
+%% **************
+if (COMPUTE)
+    
+    %%  Get display spectra
+    d = displayCreate(monitorName);
+    displaySpd = displayGet(d,'spd');
+    wavelengthsNm = displayGet(d,'wave');
+    % vcNewGraphWin; plot(w,displaySpd)
+    
+    %% Set background
+    backRGB = [backRGBValue backRGBValue backRGBValue]';
+    backSpd = displaySpd*backRGB;
+    
+    %% Create a scene with the background spectrum
+    %
+    % To patch into scene creation routines, we create an image
+    % on disk with spatially uniform RGB values.  These are then treated
+    % as frame buffer values, and will be raised to the 2.2 (gamma uncorrected)
+    % by the scene creation routine.
+    %
+    % [**] May want to find a way to do this (and the corresponding version
+    % for the test) that does not involve writing an image to disk and
+    % that skips the gamma correction stuff.
+    gammaValue = 2.2;
+    backImg = ones(scenePixels,scenePixels,3)*(backRGBValue)^(1/gammaValue);
+    imwrite(backImg,'backFile.png','png');
+    sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',wavelengthsNm);
+    sceneB = sceneSet(sceneB,'name','background');
+    sceneB = sceneSet(sceneB,'fov',fieldOfViewDegrees);
+    vcAddAndSelectObject(sceneB);
+    %sceneWindow;
+    
+    %% Create standard human polychromatic PSF
+    % using wavefront tools, and make it an
+    % iset OI thingy.
+    wvf = wvfCreate('wave',wavelengthsNm);
+    sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
+    wvf = wvfSet(wvf,'zcoeffs',sample_mean);
+    wvf = wvfComputePSF(wvf);
+    oiD = wvf2oi(wvf,'shift invariant');
+    optics = oiGet(oiD,'optics');
+    focalLengthMm = opticsGet(optics,'focal length','mm');
+    vcAddAndSelectObject(oiD);
+    clear wvf
+    % oiWindow;
+    % vcNewGraphWin; plotOI(oiD,'psf')
+    
+    %% Construct list of conditions
+    %
+    % These are strung out so that we can chunk through
+    % them in a big parfor loop below.
+    cdAngles = linspace(0,dirAngleMax,nColorDirections+1);
+    cdAngles = cdAngles(1:end-1);
+    testLevels = linspace(0,1,nTestLevels);
+    paramIndex = 1;
+    for os = 1:length(OBSERVER_STATES)
+        for ct = 1:length(DO_TAFC_CLASSIFIER_STATES)
+            for m = 1:length(macularPigmentDensityAdjustments)
+                for cdi = 1:nColorDirections
+                    for t = 1:length(testLevels)
+                        params(paramIndex).OBSERVER_STATE = OBSERVER_STATES{os};
+                        params(paramIndex).DO_TAFC_CLASSIFIER = DO_TAFC_CLASSIFIER_STATES(ct);
+                        params(paramIndex).macularPigmentDensityAdjust = macularPigmentDensityAdjustments(m);
+                        params(paramIndex).cdAngle = cdAngles(cdi);
+                        params(paramIndex).testLevel = testLevels(t);
+                        
+                        % Set test contrast maximum length.
+                        %
+                        % The best values depend on observer state
+                        % and are currently set manually based on
+                        % experience.
+                        switch (params(paramIndex).OBSERVER_STATE)
+                            case 'LMandS'
+                                params(paramIndex).testContrastLengthMax = 0.3;
+                            case 'LSonly'
+                                params(paramIndex).testContrastLengthMax = 1;
+                            case 'MSonly'
+                                params(paramIndex).testContrastLengthMax = 1;
+                            otherwise
+                                error('Unknown dichromat/trichromat type specified');
+                        end
+                        
+                        % Nuisance parameters
+                        
+                        % Set fixed params.  These can be made variable by
+                        % adding a loop here.
+                        params(paramIndex).gammaValue = gammaValue;
+                        params(paramIndex).wavelengthsNm = wavelengthsNm;
+                        params(paramIndex).backSpd = backSpd;
+                        params(paramIndex).displaySpd = displaySpd;
+                        params(paramIndex).pupilDiameterMm = pupilDiameterMm;
+                        params(paramIndex).focalLengthMm = focalLengthMm;
+                        params(paramIndex).integrationTimeSecs = integrationTimeSecs;
+                        params(paramIndex).coneProportions = coneProportions;
+                        params(paramIndex).coneApertureMeters = coneApertureMeters;
+                        params(paramIndex).fieldOfViewDegrees = fieldOfViewDegrees;
+                        params(paramIndex).backRGB = backRGB;
+                        params(paramIndex).isetSensorConeSlots = isetSensorConeSlots;
+                        params(paramIndex).nSensorClasses = nSensorClasses;
+                        params(paramIndex).scenePixels = scenePixels;
+                        params(paramIndex).nDrawsPerTestStimulus = nDrawsPerTestStimulus;
+                        params(paramIndex).noiseType = noiseType;
+                        
+                        % Kluge for now to select subregion of total cones
+                        params(paramIndex).fractionUse = 0.001;
+                        
+                        % Control diagnostics
+                        %
+                        % These are useful when debugging but messy
+                        % when running in parallel.  We probably don't
+                        % need this fine level of control.
+                        params(paramIndex).PLOT_COMPARE_IRRADIANCE = false;
+                        params(paramIndex).PLOT_TRAINING_TEST = false;
+                        params(paramIndex).PLOT_COMPARE_CONEQE = false;
+                        params(paramIndex).PRINT_OUT_PHOTORECEPTORS = false;
+                        params(paramIndex).VERBOSE = false;
+                        params(paramIndex).SVM_QUIET = true;
+                        params(paramIndex).DO_PSYCHO_PLOTS = false;
+                        
+                        
+                        % Bump counter
+                        paramIndex = paramIndex+1;
                     end
                     
-                    % Nuisance parameters
-                    
-                    % Set fixed params.  These can be made variable by
-                    % adding a loop here.
-                    params(paramIndex).sceneB = sceneB;
-                    params(paramIndex).gammaValue = gammaValue;
-                    params(paramIndex).oiD = oiD;
-                    params(paramIndex).wavelengthsNm = wavelengthsNm;
-                    params(paramIndex).backSpd = backSpd;
-                    params(paramIndex).displaySpd = displaySpd;
-                    params(paramIndex).pupilDiameterMm = pupilDiameterMm;
-                    params(paramIndex).focalLengthMm = focalLengthMm;
-                    params(paramIndex).integrationTimeSecs = integrationTimeSecs;
-                    params(paramIndex).coneProportions = coneProportions;
-                    params(paramIndex).coneApertureMeters = coneApertureMeters;
-                    params(paramIndex).fieldOfViewDegrees = fieldOfViewDegrees;
-                    params(paramIndex).backRGB = backRGB;
-                    params(paramIndex).isetSensorConeSlots = isetSensorConeSlots;
-                    params(paramIndex).nSensorClasses = nSensorClasses;
-                    params(paramIndex).scenePixels = scenePixels;
-                    params(paramIndex).nDrawsPerTestStimulus = nDrawsPerTestStimulus;
-                    params(paramIndex).noiseType = noiseType;
-                    
-                    % Control diagnostics
-                    % 
-                    % These are useful when debugging but messy
-                    % when running in parallel.  We probably don't
-                    % need this fine level of control.
-                    params(paramIndex).PLOT_COMPARE_IRRADIANCE = 0;
-                    params(paramIndex).PLOT_TRAINING_TEST = 0;
-                    params(paramIndex).PLOT_COMPARE_CONEQE = 0;
-                    params(paramIndex).PRINT_OUT_PHOTORECEPTORS = 0;
-                    params(paramIndex).VERBOSE = 0;
-
-                    % Kluge for now to select subregion of total cones
-                    params(paramIndex).fractionUse = 0.001;
-
-
-                    % Bump counter
-                    paramIndex = paramIndex+1;
                 end
-                
             end
         end
     end
-end
-nParams = length(params);
-clear sceneB optics oiD
+    nParams = length(params);
+    
+    %% Static params
+    %
+    % We only keep one copy of these, because they are big
+    staticParams.oiD = oiD;
+    staticParams.sceneB = sceneB;
+    clear sceneB optics oiD
+    
+    %% Loop over all the simulations in one big parfor loop.
+    %
+    % This is the long slow part.
+    if (exist('IsCluster','file') && IsCluster)
+        parfor p = 1:nParams
+            fprintf('\n\tParfor simulation %d of %d\n',p,nParams);
+            fprintf('\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
+            fprintf('\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
+            fprintf('\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);
+            fprintf('\tColor direction %0.3f\n',params(p).cdAngle);
+            fprintf('\tTest level %0.3f\n',params(p).testLevel);
+            
+            params(p).results = DoOneSimulation(params(p),staticParams);
+            fprintf('\tFraction correct %0.2f\n',params(p).results.fractionCorrect);
 
-%% Loop over all the simulations in one big parfor loop.
-if (exist('IsCluster','file') && IsCluster)
-    parfor p = 1:nParams
-        params(p).results = DoOneSimulation(params(p));      
+        end
+    else
+        for p = 1:nParams
+            fprintf('\n\tSimulation %d of %d\n',p,nParams);
+            fprintf('\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
+            fprintf('\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
+            fprintf('\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);
+            fprintf('\tColor direction %0.3f\n',params(p).cdAngle);
+            fprintf('\tTest level %0.3f\n',params(p).testLevel);
+            
+            params(p).results = DoOneSimulation(params(p),staticParams);
+            fprintf('\tFraction correct %0.2f\n',params(p).results.fractionCorrect);
+        end
     end
-else
-    for p = 1:nParams
-        fprintf('\tSimulation %d of %d\n',p,nParams);
-        fprintf('\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
-        fprintf('\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
-        fprintf('\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);
-        fprintf('\tColor direction %0.3f\n',params(p).cdAngle);
-        fprintf('\tTest level %0.3f\n',params(p).testLevel);
-        
-        params(p).results = DoOneSimulation(params(p));
-        %                    
-        
+    
+    %% Save the results
+    %
+    % This lets us reload
+    % and analyze/plot away from the cluster.
+    if (~exist(outputDir,'dir'))
+        mkdir(outputDir);
     end
+    save(fullfile(outputDir,'simResults'),'params');
 end
 
-%% Plot and fit psychometric function, extract threshold
-%
-% Plot data
-if (~exist('psychoFig','var'))
-    psychoFig = figure; clf; hold on
-else
-    figure(psychoFig); clf; hold on
-end
-plot(testLevels,fractionCorrect,'ro','MarkerSize',10,'MarkerFaceColor','r');
-
-% Fit and find threshold, and add fit to plot
-%
-% Be setting USE_PALAMEDES to 1, you can use the Palamedes toolbox routines
-% to do the fitting.  But, you'll need to install the Palamedes toolbox to
-% do so.  By default, we use fitting routines in the Psychtoolbox.
-testLevelsInterp = linspace(testLevels(1),testLevels(end),100);
-USE_PALAMEDES = 0;
-if (USE_PALAMEDES)
-    % Palamedes toolbox (for fitting psychometric functions)
-    %     - Available at http://www.palamedestoolbox.org, and described in Kingdom
-    %       & Prins, Psychophysics: A Practical Introduction.
-    %     - DHB's lab runs a version of this toolbox with some local modifications.
-    %       Not sure if the code here relies on those.  The Palamedes distribution has
-    %       been updated since DHB snagged his copy, and it looks like some of the features
-    %       he put in are now available in the distribution.
-    PF = @PAL_Weibull;                  % Alternatives: PAL_Gumbel, PAL_Weibull, PAL_CumulativeNormal, PAL_HyperbolicSecant
-    PFI = @PAL_inverseWeibull;
-    paramsFree = [1 1 0 0];             % 1: free parameter, 0: fixed parameter
-    paramsValues0 = [mean(testLevels) 1/2 0.5 0];
-    options = optimset('fminsearch');   % Type help optimset
-    options.TolFun = 1e-09;             % Increase required precision on LL
-    options.Display = 'off';            % Suppress fminsearch messages
-    lapseLimits = [0 1];                % Limit range for lambda
-    [paramsValues] = PAL_PFML_Fit(...
-        testLevels',nCorrectResponses',nTotalResponses', ...
-        paramsValues0,paramsFree,PF,'searchOptions',options, ...
-        'lapseLimits',lapseLimits);
-    probCorrInterp = PF(paramsValues,testLevelsInterp);
-    thresholdEst = PFI(paramsValues,criterionCorrect);
-else
-    [alpha,beta] = FitWeibTAFC(testLevels,nCorrectResponses,nTotalResponses-nCorrectResponses,[],1/2);
-    thresholdEst = FindThreshWeibTAFC(criterionCorrect,alpha,beta);
-    probCorrInterp = ComputeWeibTAFC(testLevelsInterp,alpha,beta);
-end
-plot(testLevelsInterp,probCorrInterp,'r');
-plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
-plot([testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
-xlim([0 1]);
-ylim([0.5 1]);
-drawnow;
-
-% Save individual psychometric function figures, mainly for debugging level choice
-if (DO_TAFC_CLASSIFIER)
-    outName = sprintf('psychoFig_%s_TAFC_%d_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust),cd);
-else
-    outName = sprintf('psychoFig_%s_YN_%d_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust),cd);
-end
-set(gca,'LooseInset',get(gca,'TightInset'));
-saveas(psychoFig,fullfile(outputDir,psychoPlotDir,outName),'png');
-
-% Print threshold
-fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorrect),thresholdEst);
-
-% Store results for this color direction
-results(cd).thresholdLevel = thresholdEst;
-results(cd).testLMSContrast = testLMSContrast;
-results(cd).thresholdLMSContrast = thresholdEst*testLMSContrast;
-results(cd).backgroundLMS = backLMS;
-results(cd).testLMSGamut = testLMSGamut;
-
-%% Fit an ellipse to the thresholds
-LContourPoints = zeros(nColorDirections,1);
-MContourPoints = zeros(nColorDirections,1);
-for cd = 1:nColorDirections
-    LContourPoints(cd) = results(cd).thresholdLMSContrast(1);
-    MContourPoints(cd) = results(cd).thresholdLMSContrast(2);
-end
-if (dirAngleMax == pi)
-    LContourPoints = [LContourPoints ; -LContourPoints];
-    MContourPoints = [MContourPoints ; -MContourPoints];
-end
-
-%% Make a plot of the thresholds
-contourFig = figure; clf; hold on
-theContourPlotLim = 0.2;
-plot(LContourPoints,MContourPoints,'ro','MarkerFaceColor','r','MarkerSize',8);
-if (length(LContourPoints) > 6)
-    % Sometimes the ellipse fitting routine throws an error if the data aren't close enough
-    % to an ellipse.  We could diagnose this more, but it generally happens only for cases
-    % where the number of parameters is set small to test something, and the try/catch keeps
-    % the program from crashing out.
-    try
-        [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
-        plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
-    catch
-        fprintf('Ellipse fit failed, skipping and moving on\n');
+%% **************
+% Analyze Section
+%% **************
+if (ANALYZE)
+    %% Load
+    theData = load(fullfile(outputDir,'simResults'),'params');
+    
+    %% Figure out what was run
+    %
+    % If all is working right, we already have this from the parameters
+    % at the top, but it seems wise to recreate from the data.
+    %
+    % [** Could implement a check that these match what is listed at the top.]
+    OBSERVER_STATES_LIST = {theData.params.OBSERVER_STATE};
+    THE_OBSERVER_STATES = unique(OBSERVER_STATES_LIST);
+    DO_TAFC_CLASSIFIER_STATES_LIST = [theData.params.DO_TAFC_CLASSIFIER];
+    THE_DO_TAFC_CLASSIFIER_STATES = unique(DO_TAFC_CLASSIFIER_STATES_LIST);
+    macularPigmentDensityAdjustments_List = [theData.params.macularPigmentDensityAdjust];
+    the_macularPigmentDensityAdjustments = unique(macularPigmentDensityAdjustments);
+    DO_PSYCHO_PLOTS = any([theData.params.DO_PSYCHO_PLOTS]);
+    VERBOSE = any([theData.params.VERBOSE]);
+    
+    %% Make psychometric function output dir, if necessary
+    if (DO_PSYCHO_PLOTS)
+        if (~exist(fullfile(outputDir,psychoPlotDir,''),'file'))
+            mkdir(fullfile(outputDir,psychoPlotDir,''));
+        end
     end
+                        
+    %% We loop over the outer variables and get a contour for each, and
+    % make and save a plot.
+    for os = 1:length(THE_OBSERVER_STATES)
+        OBSERVER_STATE = THE_OBSERVER_STATES{os};
+        for ct = 1:length(THE_DO_TAFC_CLASSIFIER_STATES)
+            DO_TAFC_CLASSIFIER_STATE = THE_DO_TAFC_CLASSIFIER_STATES(ct);
+            for m = 1:length(the_macularPigmentDensityAdjustments)
+                macularPigmentDensityAdjust = the_macularPigmentDensityAdjustments(m);
+                index0 = find(strcmp(OBSERVER_STATE,OBSERVER_STATES_LIST)  & ...
+                    DO_TAFC_CLASSIFIER_STATE == DO_TAFC_CLASSIFIER_STATES_LIST & ...
+                    macularPigmentDensityAdjust == macularPigmentDensityAdjustments_List);
+                useParams0 = theData.params(index0);
+                
+                cdAngles_List = [useParams0.cdAngle];
+                the_cdAngles = unique(cdAngles_List);
+                for cdi = 1:length(the_cdAngles);
+                    cdAngle = the_cdAngles(cdi);
+                    index1 = find(cdAngle == cdAngles_List);
+                    useParams1 = useParams0(index1);
+                    testLevels_List = [useParams1.testLevel];
+                    the_testLevels = unique(testLevels_List);
+                    
+                    for t = 1:length(the_testLevels)
+                        the_fractionCorrects(t) = useParams1(t).results.fractionCorrect;
+                        the_nCorrectResponses(t) = useParams1(t).results.nCorrectResponses;
+                        the_nTotalResponses(t) = useParams1(t).results.nTotalResponses;
+                        the_testLMSContrast(:,t) = useParams1(t).results.testLMSContrast;
+                        the_backLMS(:,t) = useParams1(t).results.backgroundLMS;
+                     	the_testLMSGamut(:,t) = useParams1(t).results.testLMSGamut;
+                    end
+                    
+                    % Plot data
+                    if (DO_PSYCHO_PLOTS)
+                        if (~exist('psychoFig','var'))
+                            psychoFig = figure; clf; hold on
+                        else
+                            figure(psychoFig); clf; hold on
+                        end
+                        plot(the_testLevels,the_fractionCorrects,'ro','MarkerSize',10,'MarkerFaceColor','r');
+                    end
+                    
+                    % Fit and find threshold, and add fit to plot
+                    %
+                    % Be setting USE_PALAMEDES to 1, you can use the Palamedes toolbox routines
+                    % to do the fitting.  But, you'll need to install the Palamedes toolbox to
+                    % do so.  By default, we use fitting routines in the Psychtoolbox.
+                    testLevelsInterp = linspace(the_testLevels(1),the_testLevels(end),100);
+                    USE_PALAMEDES = 0;
+                    if (USE_PALAMEDES)
+                        % Palamedes toolbox (for fitting psychometric functions)
+                        %     - Available at http://www.palamedestoolbox.org, and described in Kingdom
+                        %       & Prins, Psychophysics: A Practical Introduction.
+                        %     - DHB's lab runs a version of this toolbox with some local modifications.
+                        %       Not sure if the code here relies on those.  The Palamedes distribution has
+                        %       been updated since DHB snagged his copy, and it looks like some of the features
+                        %       he put in are now available in the distribution.
+                        PF = @PAL_Weibull;                  % Alternatives: PAL_Gumbel, PAL_Weibull, PAL_CumulativeNormal, PAL_HyperbolicSecant
+                        PFI = @PAL_inverseWeibull;
+                        paramsFree = [1 1 0 0];             % 1: free parameter, 0: fixed parameter
+                        paramsValues0 = [mean(the_testLevels) 1/2 0.5 0];
+                        options = optimset('fminsearch');   % Type help optimset
+                        options.TolFun = 1e-09;             % Increase required precision on LL
+                        options.Display = 'off';            % Suppress fminsearch messages
+                        lapseLimits = [0 1];                % Limit range for lambda
+                        [paramsValues] = PAL_PFML_Fit(...
+                            the_testLevels',the_nCorrectResponses',the_nTotalResponses', ...
+                            paramsValues0,paramsFree,PF,'searchOptions',options, ...
+                            'lapseLimits',lapseLimits);
+                        probCorrInterp = PF(paramsValues,testLevelsInterp);
+                        thresholdEst = PFI(paramsValues,criterionCorrect);
+                    else
+                        [alpha,beta] = FitWeibTAFC(the_testLevels,the_nCorrectResponses,the_nTotalResponses-the_nCorrectResponses,[],1/2);
+                        thresholdEst = FindThreshWeibTAFC(criterionCorrect,alpha,beta);
+                        probCorrInterp = ComputeWeibTAFC(testLevelsInterp,alpha,beta);
+                    end
+                    
+                    % Print threshold
+                    if (VERBOSE)
+                        fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorrect),thresholdEst);
+                    end
+                    
+                    % Finish plot
+                    if (DO_PSYCHO_PLOTS)
+                        plot(testLevelsInterp,probCorrInterp,'r');
+                        plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
+                        plot([the_testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
+                        xlim([0 1]);
+                        ylim([0.5 1]);
+                        drawnow;
+                        
+                        % Save individual psychometric function figures, mainly for debugging level choice
+                        if (DO_TAFC_CLASSIFIER_STATE)
+                            outName = sprintf('psychoFig_%s_TAFC_%d_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust),round(1000*cdAngle));
+                        else
+                            outName = sprintf('psychoFig_%s_YN_%d_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust),round(1000*cdAngle));
+                        end
+                        set(gca,'LooseInset',get(gca,'TightInset'));
+                        saveas(psychoFig,fullfile(outputDir,psychoPlotDir,outName),'png');
+                    end
+                    
+                    % Store results for this color direction
+                    results(cdi).thresholdLevel = thresholdEst;
+                    results(cdi).testLMSContrast = the_testLMSContrast;
+                    results(cdi).thresholdLMSContrast = thresholdEst*the_testLMSContrast;
+                    results(cdi).backgroundLMS = the_backLMS;
+                    results(cdi).testLMSGamut = the_testLMSGamut;
+                end
+                
+                % Fit an ellipse to the thresholds
+                nColorDirections = length(results);
+                LContourPoints = zeros(nColorDirections,1);
+                MContourPoints = zeros(nColorDirections,1);
+                for cdi = 1:nColorDirections
+                    LContourPoints(cdi) = results(cdi).thresholdLMSContrast(1);
+                    MContourPoints(cdi) = results(cdi).thresholdLMSContrast(2);
+                end
+                if (dirAngleMax == pi)
+                    LContourPoints = [LContourPoints ; -LContourPoints];
+                    MContourPoints = [MContourPoints ; -MContourPoints];
+                end
+                
+                %% Make a plot of the thresholds
+                contourFig = figure; clf; hold on
+                theContourPlotLim = 0.2;
+                plot(LContourPoints,MContourPoints,'ro','MarkerFaceColor','r','MarkerSize',8);
+                if (length(LContourPoints) > 6)
+                    % Sometimes the ellipse fitting routine throws an error if the data aren't close enough
+                    % to an ellipse.  We could diagnose this more, but it generally happens only for cases
+                    % where the number of parameters is set small to test something, and the try/catch keeps
+                    % the program from crashing out.
+                    try
+                        [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
+                        plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+                    catch
+                        fprintf('Ellipse fit failed, skipping and moving on\n');
+                    end
+                end
+                plot([-theContourPlotLim theContourPlotLim],[0 0],'k:');
+                plot([0 0],[-theContourPlotLim theContourPlotLim],'k:');
+                xlim([-theContourPlotLim theContourPlotLim]);
+                ylim([-theContourPlotLim theContourPlotLim]);
+                axis('square');
+                xlabel('Nominal L cone contrast');
+                ylabel('Nominal M cone contrast');
+                title('Ideal observer threshold contours');
+                if (DO_TAFC_CLASSIFIER_STATE)
+                    outName = sprintf('colorContour_%s_TAFC_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust));
+                else
+                    outName = sprintf('colorContour_%s_YN_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust));
+                end
+                drawnow;
+                set(gca,'LooseInset',get(gca,'TightInset'));
+                saveas(contourFig,fullfile(outputDir,outName),'png');
+                
+                % Close windows
+                close all
+            end
+        end
+    end
+    
+    
 end
-plot([-theContourPlotLim theContourPlotLim],[0 0],'k:');
-plot([0 0],[-theContourPlotLim theContourPlotLim],'k:');
-xlim([-theContourPlotLim theContourPlotLim]);
-ylim([-theContourPlotLim theContourPlotLim]);
-axis('square');
-xlabel('Nominal L cone contrast');
-ylabel('Nominal M cone contrast');
-title('Ideal observer threshold contours');
-if (DO_TAFC_CLASSIFIER)
-    outName = sprintf('colorContour_%s_TAFC_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust));
-else
-    outName = sprintf('colorContour_%s_YN_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust));
-end
-drawnow;
-set(gca,'LooseInset',get(gca,'TightInset'));
-saveas(contourFig,fullfile(outputDir,outName),'png');
-
-% These files are sort of big, so don't always save.
-%
-% Probably could figure out what not to save and get
-% a useful piece of the data if we wanted to.
-%save(outName);
-
-% Close windows
-close all
-
-% Clear some big variables and pack
-clear backSensorVals testSensorVals
 
 
 

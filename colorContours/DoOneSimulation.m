@@ -1,5 +1,5 @@
-function results = DoOneSimulation(params)
-% results = DoOneSimulation(params)
+function results = DoOneSimulation(params,staticParams)
+% results = DoOneSimulation(params,staticParams)
 %
 % Do one inner level of the simulations for colorContour.  Written so that
 % it can be called in parallel.  See colorContours for comments about
@@ -92,7 +92,7 @@ if (any(find(isetLMSQuantalEfficiencyWavelengths ~= params.wavelengthsNm)))
 end
 cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbAdjustedLMSQuantalEfficiency',1),1) ptbAdjustedLMSQuantalEfficiency']);
 sensorSetSizeToFOV(cSensor,0.9*params.fieldOfViewDegrees);
-sensorFieldOfView = sensorGet(cSensor,'fov', params.sceneB,params.oiD);
+sensorFieldOfView = sensorGet(cSensor,'fov', staticParams.sceneB,staticParams.oiD);
 %sensorConePlot(cSensor);
 
 %% Set up cone conversions
@@ -128,9 +128,12 @@ if (testContrastLength > testContrastLengthMax)
     testLMSContrast = testLMSGamut./backLMS;
     testContrastLength = norm(testLMSContrast);
 end
+results.testLMSContrast = testLMSContrast;
+results.backgroundLMS = backLMS;
+results.testLMSGamut = testLMSGamut;
 
 %% Pass the background through the optics
-backOiD = oiCompute(params.oiD, params.sceneB);
+backOiD = oiCompute(staticParams.oiD, staticParams.sceneB);
 vcAddAndSelectObject(backOiD);
 %oiWindow;
 
@@ -177,8 +180,8 @@ end
 
 % Print out the comparison as well as PTB parameters.
 if (params.PRINT_OUT_PHOTORECEPTORS)
-    fprintf('ISET computes LMS isomerizations as: %d, %d, %d\n',isetBackLMSIsomerizations(1),isetBackLMSIsomerizations(2),isetBackLMSIsomerizations(3));
-    fprintf('PTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
+    fprintf('\tISET computes LMS isomerizations as: %d, %d, %d\n',isetBackLMSIsomerizations(1),isetBackLMSIsomerizations(2),isetBackLMSIsomerizations(3));
+    fprintf('\tPTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
     PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
 end
 
@@ -204,7 +207,7 @@ tmp = ones(params.scenePixels,params.scenePixels,3);
 tmp = tmp*diag(testRGBForThisLevel(:));
 testImg = XW2RGBFormat(tmp,row,col);
 imwrite(testImg,testFileName,'png');
-sceneT = sceneFromFile('testFile.png','rgb',[],'LCD-Apple.mat',params.wavelengthsNm);
+sceneT = sceneFromFile(testFileName,'rgb',[],'LCD-Apple.mat',params.wavelengthsNm);
 sceneT = sceneSet(sceneT,'name','test');
 sceneT = sceneSet(sceneT,'fov',2);
 vcAddAndSelectObject(sceneT);
@@ -212,7 +215,7 @@ unix(['rm ' testFileName]);
 %sceneWindow;
 
 %% Pass test image through the optics
-testOiD = oiCompute(params.oiD,sceneT);
+testOiD = oiCompute(staticParams.oiD,sceneT);
 
 %% Get multivariate sample distribution of LMS
 % responses out of the sensor objects.
@@ -394,16 +397,21 @@ if (params.DO_TAFC_CLASSIFIER)
     end
     
     svmOpts = '-s 0 -t 0';
+    predictOpts = '';
+    if (params.SVM_QUIET)
+        svmOpts =  [svmOpts ' -q'];
+        predictOpts = [predictOpts ' -q'];
+    end
     svmModel = svmtrain(tafcTrainingLabels, tafcTrainingData, svmOpts);
-    [svmTrainingPredictedLabels] = svmpredict(tafcTrainingLabels, tafcTrainingData, svmModel);
-    [svmValidatePredictedLabels] = svmpredict(tafcValidateLabels, tafcValidateData, svmModel);
+    [svmTrainingPredictedLabels] = svmpredict(tafcTrainingLabels, tafcTrainingData, svmModel, predictOpts);
+    [svmValidatePredictedLabels] = svmpredict(tafcValidateLabels, tafcValidateData, svmModel, predictOpts);
     trainingFractionCorrect = length(find(svmTrainingPredictedLabels == tafcTrainingLabels))/length(tafcTrainingLabels);
     validateFractionCorrect = length(find(svmValidatePredictedLabels == tafcValidateLabels))/length(tafcValidateLabels);
     results.nCorrectResponses = length(find(svmValidatePredictedLabels == tafcValidateLabels));
     results.nTotalResponses = length(tafcValidateLabels);
     results.fractionCorrect = validateFractionCorrect;
     if (params.VERBOSE)
-        fprintf('Classifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
+        fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
     end
     
     % Indices for plots below
@@ -414,16 +422,21 @@ if (params.DO_TAFC_CLASSIFIER)
 else
     % Just do the one interval analysis
     svmOpts = '-s 0 -t 0';
+    predictOpts = '';
+    if (params.SVM_QUIET)
+        svmOpts =  [svmOpts ' -q'];
+        predictOpts = [predictOpts ' -q'];
+    end
     svmModel = svmtrain(trainingLabels, trainingData, svmOpts);
-    [svmTrainingPredictedLabels] = svmpredict(trainingLabels, trainingData, svmModel);
-    [svmValidatePredictedLabels] = svmpredict(validateLabels, validateData, svmModel);
+    [svmTrainingPredictedLabels] = svmpredict(trainingLabels, trainingData, svmModel, predictOpts);
+    [svmValidatePredictedLabels] = svmpredict(validateLabels, validateData, svmModel, predictOpts);
     trainingFractionCorrect = length(find(svmTrainingPredictedLabels == trainingLabels))/length(trainingLabels);
     validateFractionCorrect = length(find(svmValidatePredictedLabels == validateLabels))/length(validateLabels);
     results.nCorrectResponses = length(find(svmValidatePredictedLabels == validateLabels));
     results.nTotalResponses = length(validateLabels);
-    results.fractionCorrect = validateFractionCorrect;'
+    results.fractionCorrect = validateFractionCorrect;
     if (params.VERBOSE)
-        fprintf('Classifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
+        fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
     end
     
     % Indices for plots below
