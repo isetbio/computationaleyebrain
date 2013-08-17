@@ -121,7 +121,7 @@ OBSERVER_STATES = {'MSonly'};                   % Simulate various tri and dichr
 
 QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
-COMPUTE = true;                                 % Compute?
+COMPUTE = false;                                 % Compute?
 ANALYZE = true;                                 % Analyze
 
 %% Process quick test option
@@ -342,7 +342,7 @@ end
 %% **************
 if (ANALYZE)
     %% Load
-    theData = load(fullfile(outputDir,'simResults'),'params');
+    theData = load(fullfile(outputDir,'simResults'),'params','simResults');
     
     %% Figure out what was run
     %
