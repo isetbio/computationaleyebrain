@@ -10,6 +10,9 @@ clear; close all;  %s_initISET
 talkD = pwd;
 saveFlag = 0;
 
+%% Make sure we are in the right place
+cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
+
 %% Run 'em
 runBasicNoSurround;
 runBasicDetermSurround;
