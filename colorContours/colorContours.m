@@ -336,12 +336,12 @@ try
         %
         % This is the long slow part.
         if (exist('IsCluster','file') && IsCluster)
-            mdkir(fullfile(outputDir,'clusterLogFiles',''));
+            mkdir(fullfile(outputDir,'clusterLogFiles',''));
             parfor p = 1:nParams
                 simResults(p) = DoOneSimulation(params(p),staticParams);
                 
                 % Write a little log file so we can track what's happening from afar
-                fid = fopen(fullfile(outputDir,'clusterLogFiles',['done.' num2str(p) '_' num2str(nparams)]),'wt');
+                fid = fopen(fullfile(outputDir,'clusterLogFiles',['done.' num2str(p) '_' num2str(nParams)]),'wt');
                 fprintf(fid,'\n\tSimulation %d of %d\n',p,nParams);
                 fprintf(fid,'\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
                 fprintf(fid,'\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
