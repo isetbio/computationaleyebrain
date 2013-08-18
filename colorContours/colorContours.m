@@ -124,7 +124,7 @@ integrationArea = 0;                            % Stimulus integration area.  NO
 opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination.  NOT YET IMPLEMENTED.
 
                                                
-QUICK_TEST_PARAMS = true;                       % Set to true to override parameters with a small number of trials for debugging.
+QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
 
 COMPUTE = true;                                 % Compute?
 ANALYZE = true;                                 % Analyze
