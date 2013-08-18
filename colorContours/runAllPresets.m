@@ -12,7 +12,8 @@ saveFlag = 0;
 
 %% Run 'em
 runBasicNoSurround;
-runBasicRDrawSurround;
 runBasicDetermSurround;
+runBasicNoSurroundWithNoise;
 runBasicDetermSurroundWithNoise;
+runBasicRDrawSurround;
 runMacularPigmentVary;
