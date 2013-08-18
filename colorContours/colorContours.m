@@ -17,7 +17,8 @@ function colorContours(parameterPreset)
 %    each level.
 %  * Fit predicted psychometric function and find psychophysical threshold.
 %  * Loop over different observer types and macular pigment density adjustments.
-%  * can do both YN and TAFC svm based observers.
+%  * Can do both YN and TAFC svm based observers.
+%  * Has a simple surround model, along with simple second site noise.
 %  * Written so the slow part will run in parallel on a DCE cluster.
 %
 % To do:
@@ -35,14 +36,14 @@ function colorContours(parameterPreset)
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Add simple foveal midget ganglion cell model.  This would be
-%    pretty easy if we continue to ignore spatial structure.
+%  * Think about how to add a real surround, and to control second site noise
+%    in a sensible fashion.  We want enough noise so that second site noise 
+%    is the limiting noise, but not so much as to make thresholds crazy. 
+%    And, how to equate noise for opponenent and non-opponent calcs?  (Maybe
+%    this isn't a sensible thing to try to do.)
 %  * Break this big long script into sensible subfunctions.
 %  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
 %  * I don't think the ellipse fitting enforces a center of zero.  It should.
-%  * Need better system for tracking output.  Currently filenames tell you
-%    something but not enough.  This is going to start to matter soon.  May
-%    also want to save data as well as plots.
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -64,7 +65,7 @@ function colorContours(parameterPreset)
 %         DHB    A little work on memory management.  Tweak params to leave running overnight.
 % 8/16/13 DHB    Working on parallization.  In a broken state right now but gotta run.
 % 8/18/13 DHB    I think cluster stuff is working now.
-%         DHB    Surround support.
+%         DHB    Surround, second site noise support.
 
 %% Parameter section
 
