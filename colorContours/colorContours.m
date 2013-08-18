@@ -1,4 +1,5 @@
-% colorContours
+function colorContours(parameterPreset)
+% colorContours([parameterPreset])
 %
 % This script will eventually compute predicted ideal observer
 % isodetection contours for various psychophyiscal discrimination
@@ -43,10 +44,6 @@
 %    something but not enough.  This is going to start to matter soon.  May
 %    also want to save data as well as plots.
 %
-% Known bugs:
-%  * 8/14/13 - Runs out of memory when run on Penn cluster head node.  Perhaps
-%              this isn't really a problem since we should only debug on head node.
-
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
 %
@@ -67,14 +64,7 @@
 %         DHB    A little work on memory management.  Tweak params to leave running overnight.
 % 8/16/13 DHB    Working on parallization.  In a broken state right now but gotta run.
 % 8/18/13 DHB    I think cluster stuff is working now.
-
-%% Clear out the junk.  Remember where you are.
-%
-% Sometime, but not always s_initISET clears debugger stop points.
-% So I (DHB) commented it out pending a better understanding.
-clear; close all;  %s_initISET
-talkD = pwd;
-saveFlag = 0;
+%         DHB    Surround support.
 
 %% Parameter section
 
@@ -113,19 +103,108 @@ outputRoot = 'output';                          % Plots get dumped a directory w
                                                 % characters to identify parameters of the run tacked on below.
 psychoPlotDir = 'psychometricFcnPlots';         % Subdir for dumping psychometric function plots.
 
-OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
-DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
-macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
-                                                % Note that stimuli are computed for a nominal (no adjustment) observer.
+% Preset parameter set name
+% 
+% Options are:
+%   'BasicNoSurround'
+%   'BasicRDrawSurround'
+%   'BasicDetermSurround'
+%   'BasicDetermSurroundWithNoise'
+%   'MacularPigmentVary'
+%   'QuickTest'
+if (nargin < 1 || isempty(parameterPreset))
+    parameterPreset = 'BasicNoSurround';
+end
+switch (parameterPreset)
+                            
+    case 'BasicNoSurround'
+        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
+        DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
+        macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
+                                                        % Note that stimuli are computed for a nominal (no adjustment) observer.
+        
+        surroundType = 'none';                          % Define type of surround calc to implement
+        surroundSize = 0;                               % Parameter defining surround size.
+        surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
+        integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
+        opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination.
+                                                        % Expressed as a fraction of the background Poisson sd
+ 
+    case 'BasicNoSurroundWithNoise'
+        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
+        DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
+        macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
+                                                        % Note that stimuli are computed for a nominal (no adjustment) observer.
+        
+        surroundType = 'none';                          % Define type of surround calc to implement
+        surroundSize = 0;                               % Parameter defining surround size.
+        surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
+        integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
+        opponentLevelNoiseSd = 3;                       % Noise added after opponent recombination.
+                                                        % Expressed as a fraction of the background Poisson sd
+                                                       
+    case 'BasicRDrawSurround'
+        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
+        DO_TAFC_CLASSIFIER_STATES = [true];             
+        macularPigmentDensityAdjustments = [0];         
+        surroundType = 'rdraw';                         
+        surroundSize = 10;                             
+        surroundWeight = 0.7;                        
+        integrationArea = 0;                            
+        opponentLevelNoiseSd = 0;
+        
+    case 'BasicDetermSurround'
+        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
+        DO_TAFC_CLASSIFIER_STATES = [true];             
+        macularPigmentDensityAdjustments = [0];         
+        surroundType = 'determ';                         
+        surroundSize = 10;                             
+        surroundWeight = 0.7;                        
+        integrationArea = 0;                            
+        opponentLevelNoiseSd = 0;
+        
+    case 'BasicDetermSurroundWithNoise'
+        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
+        DO_TAFC_CLASSIFIER_STATES = [true];             
+        macularPigmentDensityAdjustments = [0];         
+        surroundType = 'determ';                         
+        surroundSize = 10;                             
+        surroundWeight = 0.7;                        
+        integrationArea = 0;                            
+        opponentLevelNoiseSd = 3;
+        testContrastLengthMax = 1;
 
-surroundSize = 10;                              % Parameter defining surround size.  NOT YET IMPLEMENTED.
-surroundWeight = 0.7;                           % Parameter defining surround weight.  NOT YET IMPLEMENTED.
-integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination.  NOT YET IMPLEMENTED.
+    case 'MacularPigmentVary'
+        OBSERVER_STATES = {'MSonly' 'LSonly'}; 
+        DO_TAFC_CLASSIFIER_STATES = [true];             
+        macularPigmentDensityAdjustments = [-0.3 0 0.3];
+        
+        surroundType = 'none';                          
+        surroundSize = 0;                              
+        surroundWeight = 0;                             
+        integrationArea = 0;                           
+        opponentLevelNoiseSd = 0;
+    
+    case 'QuickTest'
+        nColorDirections = 4;
+        dirAngleMax = pi;
+        nTestLevels = 4;
+        nDrawsPerTestStimulus = 100;
+        
+        OBSERVER_STATES = {'LMandS'};
+        DO_TAFC_CLASSIFIER_STATES = [false];
+        macularPigmentDensityAdjustments = [0];
+        surroundType = 'none';                          
+        surroundSize = 0;                               
+        surroundWeight = 0;                            
+        integrationArea = 0;     otherwise
+        error('Unknown parameter presets');
+end
 
-                                               
-QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
-
+%% Can compute only, analyze only, or do both
+%
+% Generally do both unless analysis changes without need
+% to do the long recompute.
 COMPUTE = true;                                 % Compute?
 ANALYZE = true;                                 % Analyze
 
@@ -147,27 +226,16 @@ try
         NEEDTOCLOSEPOOL = 0;
     end
     
-    %% Process quick test option
-    if (QUICK_TEST_PARAMS)
-        nColorDirections = 4;
-        dirAngleMax = pi;
-        nTestLevels = 4;
-        nDrawsPerTestStimulus = 100;
-        macularPigmentDensityAdjustments = [0];
-        DO_TAFC_CLASSIFIER_STATES = [false];
-        OBSERVER_STATES = {'LMandS'};
-    end
-    
     %% Make output directories if they doesn't exist.
     %
     % Try to make name tell us a lot about static conditions,
     % so that we can keep separate what happened in different runs.
     if (dirAngleMax == 2*pi)
-        outputDir = sprintf('%s_fullCircle_%d_%d_%d_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
-            round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
+        outputDir = sprintf('%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+            surroundType,round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
     else
-        outputDir = sprintf('%s_halfCircle_%d_%d_%d_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
-            round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
+        outputDir = sprintf('%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+            surroundType,round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
     end
     
     %% Make sure random number generator seed is different each run.
@@ -286,6 +354,7 @@ try
                             params(paramIndex).scenePixels = scenePixels;
                             params(paramIndex).nDrawsPerTestStimulus = nDrawsPerTestStimulus;
                             params(paramIndex).noiseType = noiseType;
+                            params(paramIndex).surroundType = surroundType;
                             params(paramIndex).surroundSize = surroundSize;
                             params(paramIndex).surroundWeight = surroundWeight;
                             params(paramIndex).integrationArea = integrationArea;
@@ -342,7 +411,7 @@ try
                 
                 % Write a little log file so we can track what's happening from afar
                 fid = fopen(fullfile(outputDir,'clusterLogFiles',['done.' num2str(p) '_' num2str(nParams)]),'wt');
-                fprintf(fid,'\n\tSimulation %d of %d\n',p,nParams);
+                fprintf(fid,'\tSimulation %d of %d\n',p,nParams);
                 fprintf(fid,'\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
                 fprintf(fid,'\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
                 fprintf(fid,'\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);

@@ -185,6 +185,9 @@ if (params.PRINT_OUT_PHOTORECEPTORS)
     PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
 end
 
+% Compute baseline Poisson sd from background
+backPoissonSd = sqrt(mean(isetBackLMSIsomerizations));
+
 % Get iset LMS quantal efficiences
 temp = sensorGet(backCSensorNF,'spectralqe')';
 isetLMSQuantalEfficiencyWavelengths = sensorGet(backCSensorNF,'wave');
@@ -311,40 +314,78 @@ testLMSFullSet = [testVectors(oneConeEachClassStartIndices(1),:) ; ...
     testVectors(oneConeEachClassStartIndices(3),:)]';
 
 % Implement a quick and dirty surround for L and M
-% cone.  This subtracts a random mix of L and M cone
-% responses from the L and M cone response.
-if (params.surroundSize > 0)
-    for k = 1:params.nDrawsPerTestStimulus
-        % Back L cone
-        LCenterVal = backLMSFullSet(k,1);
-        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
-        MSurroundVals = backVectors(otherConesIndex(1:params.surroundSize),k);
-        LOpponentVal = LCenterVal - params.surroundWeight*sum(MSurroundVals)/params.surroundSize;
-        backLMSFullset(1,k) = LOpponentVal; 
-    
-        % Back M cone
-        MCenterVal = backLMSFullSet(k,2);
-        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
-        LSurroundVals = backVectors(otherConesIndex(1:params.surroundSize),k);
-        MOpponentVal = MCenterVal - params.surroundWeight*sum(LSurroundVals)/params.surroundSize;
-        backLMSFullset(2,k) = MOpponentVal; 
+% cone. 
+switch params.surroundType
+    case 'none'
+        % No surround. Do nothing here.
+    case 'rdraw'
+        % This subtracts a random mix of L and M cone
+        % responses from the single L and M cone response.
+        % This means that more cones are being used in the
+        % classification than in the case without a surround,
+        % which may not be a good idea.
+        if (params.surroundSize > 0 & params.surroundWeight > 0)
+            for k = 1:params.nDrawsPerTestStimulus
+                % Back L cone
+                LCenterVal = backLMSFullSet(k,1);
+                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+                MSurroundVals = backVectors(otherConesIndex(1:params.surroundSize),k);
+                LOpponentVal = LCenterVal - params.surroundWeight*sum(MSurroundVals)/params.surroundSize;
+                backLMSFullset(1,k) = LOpponentVal;
+                
+                % Back M cone
+                MCenterVal = backLMSFullSet(k,2);
+                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+                LSurroundVals = backVectors(otherConesIndex(1:params.surroundSize),k);
+                MOpponentVal = MCenterVal - params.surroundWeight*sum(LSurroundVals)/params.surroundSize;
+                backLMSFullset(2,k) = MOpponentVal;
+                
+                % Test L cone
+                LCenterVal = testLMSFullSet(k,1);
+                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+                MSurroundVals = testVectors(otherConesIndex(1:params.surroundSize),k);
+                LOpponentVal = LCenterVal - params.surroundWeight*sum(MSurroundVals)/params.surroundSize;
+                testLMSFullset(1,k) = LOpponentVal;
+                
+                % Test M cone
+                MCenterVal = testLMSFullSet(k,2);
+                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+                LSurroundVals = testVectors(otherConesIndex(1:params.surroundSize),k);
+                MOpponentVal = MCenterVal - params.surroundWeight*sum(LSurroundVals)/params.surroundSize;
+                testLMSFullset(2,k) = MOpponentVal;
+            end      
+        end
+    case 'determ'
+        % This subtracts the M from the L and the L from the M.
+        %
+        % This version I think should not have an effect unless we add some noise
+        % after the recombination.
+        if (params.surroundWeight > 0)
+            for k = 1:params.nDrawsPerTestStimulus
+                % Background
+                LCenterVal = backLMSFullSet(k,1);
+                MCenterVal = backLMSFullSet(k,2);
+                backLMSFullSet(k,1) = LCenterVal - params.surroundWeight*MCenterVal;
+                backLMSFullSet(k,2) = MCenterVal - params.surroundWeight*LCenterVal;
+                
+                % Test 
+                LCenterVal = testLMSFullSet(k,1);
+                MCenterVal = testLMSFullSet(k,2);
+                testLMSFullSet(k,1) = LCenterVal - params.surroundWeight*MCenterVal;
+                testLMSFullSet(k,2) = MCenterVal - params.surroundWeight*LCenterVal;
+            end
+        end
         
-        % Test L cone
-        LCenterVal = testLMSFullSet(k,1);
-        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
-        MSurroundVals = testVectors(otherConesIndex(1:params.surroundSize),k);
-        LOpponentVal = LCenterVal - params.surroundWeight*sum(MSurroundVals)/params.surroundSize;
-        testLMSFullset(1,k) = LOpponentVal; 
-    
-        % Test M cone
-        MCenterVal = testLMSFullSet(k,2);
-        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
-        LSurroundVals = testVectors(otherConesIndex(1:params.surroundSize),k);
-        MOpponentVal = MCenterVal - params.surroundWeight*sum(LSurroundVals)/params.surroundSize;
-        testLMSFullset(2,k) = MOpponentVal;
-    end
+    otherwise
+        error('Unknown surround type specified');     
 end
 
+%% Add noise at a second site
+if (params.opponentLevelNoiseSd > 0)
+    backLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*randn(size(backLMSFullSet));
+    testLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*randn(size(testLMSFullSet));
+end
+            
 fullData = [backLMSFullSet ; testLMSFullSet];
 fullLabels = [blankLabel*ones(size(backLMSFullSet,1),1) ; testLabel*ones(size(testLMSFullSet,1),1)];
 fullDataN = size(fullData,1);
