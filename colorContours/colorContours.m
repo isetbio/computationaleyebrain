@@ -66,6 +66,7 @@
 % 8/13/13 DHB    Sometimes Matlab's svmtrain lives in the bioinfo toolbox.  Remove that too.
 %         DHB    A little work on memory management.  Tweak params to leave running overnight.
 % 8/16/13 DHB    Working on parallization.  In a broken state right now but gotta run.
+% 8/18/13 DHB    I think cluster stuff is working now.
 
 %% Clear out the junk.  Remember where you are.
 %
@@ -100,11 +101,9 @@ nSensorClasses = length(isetSensorConeSlots);   % For convenience, specify the n
 
 nColorDirections = 16;                          % Number of color directions for contour.
 dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
-
 nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
 nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
 noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
-
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
@@ -114,17 +113,18 @@ outputRoot = 'output';                          % Plots get dumped a directory w
                                                 % characters to identify parameters of the run tacked on below.
 psychoPlotDir = 'psychometricFcnPlots';         % Subdir for dumping psychometric function plots.
 
-surroundSize = 0;                               % Parameter defining surround size.  NOT YET IMPLEMENTED.
-surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
+OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
+DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
+macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
+                                                % Note that stimuli are computed for a nominal (no adjustment) observer.
+
+surroundSize = 10;                              % Parameter defining surround size.  NOT YET IMPLEMENTED.
+surroundWeight = 0.7;                           % Parameter defining surround weight.  NOT YET IMPLEMENTED.
 integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
 opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination.  NOT YET IMPLEMENTED.
 
-macularPigmentDensityAdjustments = [-0.3 0 -0.3]; % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
-                                                % Note that stimuli are computed for a nominal (no adjustment) observer.
-DO_TAFC_CLASSIFIER_STATES = [true false];       % Can be true, false, or [true false]
-OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
-
-QUICK_TEST_PARAMS = false;                      % Set to true to override parameters with a small number of trials for debugging.
+                                               
+QUICK_TEST_PARAMS = true;                       % Set to true to override parameters with a small number of trials for debugging.
 
 COMPUTE = true;                                 % Compute?
 ANALYZE = true;                                 % Analyze
@@ -163,10 +163,10 @@ try
     % Try to make name tell us a lot about static conditions,
     % so that we can keep separate what happened in different runs.
     if (dirAngleMax == 2*pi)
-        outputDir = sprintf('%s_fullCircle_%d_%d_%d_%d_%d_%d_d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+        outputDir = sprintf('%s_fullCircle_%d_%d_%d_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
             round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
     else
-        outputDir = sprintf('%s_halfCircle_%d_%d_%d_%d_%d_%d_d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+        outputDir = sprintf('%s_halfCircle_%d_%d_%d_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
             round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
     end
     
@@ -292,7 +292,7 @@ try
                             params(paramIndex).opponentLevelNoiseSd = opponentLevelNoiseSd;
                             
                             % Kluge for now to select subregion of total cones
-                            params(paramIndex).fractionUse = 0.001;
+                            params(paramIndex).fractionUse = 0.005;
                             
                             % Control diagnostics
                             %
@@ -325,13 +325,31 @@ try
         staticParams.sceneB = sceneB;
         clear sceneB optics oiD
         
+        %% Make/clear output directory
+        if (~exist(outputDir,'dir'))
+            mkdir(outputDir);
+        else
+            unix(['rm -rf ' fullfile(outputDir,'*') ';']);
+        end
+        
         %% Loop over all the simulations in one big parfor loop.
         %
         % This is the long slow part.
         if (exist('IsCluster','file') && IsCluster)
+            mdkir(fullfile(outputDir,'clusterLogFiles',''));
             parfor p = 1:nParams
-                fprintf('\n\tParfor simulation %d of %d\n',p,nParams);
                 simResults(p) = DoOneSimulation(params(p),staticParams);
+                
+                % Write a little log file so we can track what's happening from afar
+                fid = fopen(fullfile(outputDir,'clusterLogFiles',['done.' num2str(p) '_' num2str(nparams)]),'wt');
+                fprintf(fid,'\n\tSimulation %d of %d\n',p,nParams);
+                fprintf(fid,'\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
+                fprintf(fid,'\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
+                fprintf(fid,'\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);
+                fprintf(fid,'\tColor direction %0.3f\n',params(p).cdAngle);
+                fprintf(fid,'\tTest level %0.3f\n',params(p).testLevel);
+                fprintf(fid,'\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
+                fclose(fid);
             end
         else
             for p = 1:nParams
@@ -351,10 +369,7 @@ try
         %
         % This lets us reload
         % and analyze/plot away from the cluster.
-        if (~exist(outputDir,'dir'))
-            mkdir(outputDir);
-        end
-        save(fullfile(outputDir,'simResults'),'params','simResults');
+        save(fullfile(outputDir,'simResults.mat'),'params','simResults');
     end
     
     %% **************
@@ -375,7 +390,7 @@ try
         DO_TAFC_CLASSIFIER_STATES_LIST = [theData.params.DO_TAFC_CLASSIFIER];
         THE_DO_TAFC_CLASSIFIER_STATES = unique(DO_TAFC_CLASSIFIER_STATES_LIST);
         macularPigmentDensityAdjustments_List = [theData.params.macularPigmentDensityAdjust];
-        the_macularPigmentDensityAdjustments = unique(macularPigmentDensityAdjustments);
+        the_macularPigmentDensityAdjustments = unique(macularPigmentDensityAdjustments_List);
         DO_PSYCHO_PLOTS = any([theData.params.DO_PSYCHO_PLOTS]);
         VERBOSE = any([theData.params.VERBOSE]);
         
@@ -406,7 +421,7 @@ try
                         cdAngle = the_cdAngles(cdi);
                         index1 = find(cdAngle == cdAngles_List);
                         useParams1 = useParams0(index1);
-                        useResults1 = theData.simResults(index1);
+                        useResults1 = useResults0(index1);
                         testLevels_List = [useParams1.testLevel];
                         the_testLevels = unique(testLevels_List);
                         

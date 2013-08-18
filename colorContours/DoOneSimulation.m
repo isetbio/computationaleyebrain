@@ -199,8 +199,7 @@ if (params.PLOT_COMPARE_CONEQE)
     ylabel('Isomerization Quantal Efficiency');
 end
 
-% Make test scene, in same fashion as we made the
-% background scene.
+% Make test scene, in same fashion as we made the background scene.
 testRGBForThisLevel = (params.backRGB + testLevel*testRGBGamut).^(1/params.gammaValue);
 tmp = ones(params.scenePixels,params.scenePixels,3);
 [tmp,row,col] = RGB2XWFormat(tmp);
@@ -247,10 +246,10 @@ end
 nUseAll = sum(nUse);
 
 % Now draw samples
-backVec = zeros(nUseAll,params.nDrawsPerTestStimulus);
-testVec = zeros(nUseAll,params.nDrawsPerTestStimulus);
+backVectors = zeros(nUseAll,params.nDrawsPerTestStimulus);
+testVectors = zeros(nUseAll,params.nDrawsPerTestStimulus);
 typeVec = zeros(nUseAll,1);
-oneConeEachClassIndices = zeros(params.nSensorClasses,1);
+oneConeEachClassStartIndices = zeros(params.nSensorClasses,1);
 for k = 1:params.nDrawsPerTestStimulus
     if (rem(k,10) == 0)
         if (params.VERBOSE)
@@ -267,14 +266,16 @@ for k = 1:params.nDrawsPerTestStimulus
         
         % Currently, this shufles the responses of each class before
         % pulling out the requisite number of responses, for some reason.
-        % Better will be to fix this up to be more realistic.
+        % It shouldn't have any 
+        %
+        % [** Better will be to fix this up to be more realistic.]
         temp = Shuffle(backSensorVals{k,ii});
-        backVec(startIndex:endIndex,k) = temp(1:nUse(ii));
+        backVectors(startIndex:endIndex,k) = temp(1:nUse(ii));
         temp = Shuffle(testSensorVals{k,ii});
-        testVec(startIndex:endIndex,k) = temp(1:nUse(ii));
+        testVectors(startIndex:endIndex,k) = temp(1:nUse(ii));
         if (k == 1)
             typeVec(startIndex:endIndex) = ii;
-            oneConeEachClassIndices(ii) = startIndex;
+            oneConeEachClassStartIndices(ii) = startIndex;
         end
         
         startIndex = endIndex+1;
@@ -283,19 +284,69 @@ end
 
 %% Build a clasifier on the training set
 %
-% Set up training/test data and label them.  Here
-% we use the reponses of just one cone from each class,
-% just as a place to start.
+% Set up training/test data and label them.
+%
+% The matrix backVectors has one column for each sample,
+% with the entries going down the rows representing
+% different cones.
+%
+% Same for the matrix testVectors.  
+%
+% Currently just using the responses of just one
+% cone from each class, as a place to start, so
+% for each column we pull out one entry for cones
+% of each class.
+%
+% There is also a transpose, so that each data
+% instance is in a single row, rather than in a
+% single column.  This matches what the classification
+% routines want.
 blankLabel = -1;
 testLabel = 1;
-backgroundLMSTraining = [backVec(oneConeEachClassIndices(1),:) ; ...
-    backVec(oneConeEachClassIndices(2),:) ; ...
-    backVec(oneConeEachClassIndices(3),:)]';
-testLMSTraining = [testVec(oneConeEachClassIndices(1),:) ; ...
-    testVec(oneConeEachClassIndices(2),:) ; ...
-    testVec(oneConeEachClassIndices(3),:)]';
-fullData = [backgroundLMSTraining ; testLMSTraining];
-fullLabels = [blankLabel*ones(size(backgroundLMSTraining,1),1) ; testLabel*ones(size(testLMSTraining,1),1)];
+backLMSFullSet = [backVectors(oneConeEachClassStartIndices(1),:) ; ...
+    backVectors(oneConeEachClassStartIndices(2),:) ; ...
+    backVectors(oneConeEachClassStartIndices(3),:)]';
+testLMSFullSet = [testVectors(oneConeEachClassStartIndices(1),:) ; ...
+    testVectors(oneConeEachClassStartIndices(2),:) ; ...
+    testVectors(oneConeEachClassStartIndices(3),:)]';
+
+% Implement a quick and dirty surround for L and M
+% cone.  This subtracts a random mix of L and M cone
+% responses from the L and M cone response.
+if (params.surroundSize > 0)
+    for k = 1:params.nDrawsPerTestStimulus
+        % Back L cone
+        LCenterVal = backLMSFullSet(k,1);
+        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+        MSurroundVals = backVectors(otherConesIndex(1:params.surroundSize),k);
+        LOpponentVal = LCenterVal - params.surroundWeight*sum(MSurroundVals)/params.surroundSize;
+        backLMSFullset(1,k) = LOpponentVal; 
+    
+        % Back M cone
+        MCenterVal = backLMSFullSet(k,2);
+        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+        LSurroundVals = backVectors(otherConesIndex(1:params.surroundSize),k);
+        MOpponentVal = MCenterVal - params.surroundWeight*sum(LSurroundVals)/params.surroundSize;
+        backLMSFullset(2,k) = MOpponentVal; 
+        
+        % Test L cone
+        LCenterVal = testLMSFullSet(k,1);
+        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+        MSurroundVals = testVectors(otherConesIndex(1:params.surroundSize),k);
+        LOpponentVal = LCenterVal - params.surroundWeight*sum(MSurroundVals)/params.surroundSize;
+        testLMSFullset(1,k) = LOpponentVal; 
+    
+        % Test M cone
+        MCenterVal = testLMSFullSet(k,2);
+        otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+        LSurroundVals = testVectors(otherConesIndex(1:params.surroundSize),k);
+        MOpponentVal = MCenterVal - params.surroundWeight*sum(LSurroundVals)/params.surroundSize;
+        testLMSFullset(2,k) = MOpponentVal;
+    end
+end
+
+fullData = [backLMSFullSet ; testLMSFullSet];
+fullLabels = [blankLabel*ones(size(backLMSFullSet,1),1) ; testLabel*ones(size(testLMSFullSet,1),1)];
 fullDataN = size(fullData,1);
 trainingDataN = round(fullDataN/2);
 testDataN = fullDataN-trainingDataN;
