@@ -54,18 +54,18 @@ function colorContours(parameterPreset)
 %   PsychophysicsToolbox
 %     - Available on gitHub as https://github.com/Psychtoolbox-3/Psychtoolbox-3.git
 %
-% 8/2/13  DHB/BW Our excellent adventure commences.
-% 8/3/13  DHB/BW Tune up and add classifier.
-% 8/4/13  DHB/BW Check irradiance calcs between ISET and PTB.
-% 8/6/13  DHB/BW Got contour going.  End of this DHB visit west.
-% 8/11/13 DHB    Added ellipse fitting, macular pigment adjustment
-%         DHB    Added TAFC option.  Not fully tested.
-% 8/12/13 DHB    Added dichromats, not tested at all.
-% 8/13/13 DHB    Sometimes Matlab's svmtrain lives in the bioinfo toolbox.  Remove that too.
-%         DHB    A little work on memory management.  Tweak params to leave running overnight.
-% 8/16/13 DHB    Working on parallization.  In a broken state right now but gotta run.
-% 8/18/13 DHB    I think cluster stuff is working now.
-%         DHB    Surround, second site noise support.
+% 8/2/13  dhb/bw Our excellent adventure commences.
+% 8/3/13  dhb/bw Tune up and add classifier.
+% 8/4/13  dhb/bw Check irradiance calcs between ISET and PTB.
+% 8/6/13  dhb/bw Got contour going.  End of this DHB visit west.
+% 8/11/13 dhb    Added ellipse fitting, macular pigment adjustment
+%         dhb    Added TAFC option.  Not fully tested.
+% 8/12/13 dhb    Added dichromats, not tested at all.
+% 8/13/13 dhb    Sometimes Matlab's svmtrain lives in the bioinfo toolbox.  Remove that too.
+%         dhb    A little work on memory management.  Tweak params to leave running overnight.
+% 8/16/13 dhb    Working on parallization.  In a broken state right now but gotta run.
+% 8/18/13 dhb    I think cluster stuff is working now.
+%         dhb    Surround, second site noise support.
 
 %% Parameter section
 
@@ -99,12 +99,15 @@ criterionCorrect = 0.82;                        % Fraction correct for definitio
 testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
                                                 % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
+                                                
+theContourPlotLim = 0.2;                        % Axis limit for contour plots.
 
-outputRoot = 'output';                          % Plots get dumped a directory with this root name, but with additional
+
+outputRoot = 'out';                             % Plots get dumped a directory with this root name, but with additional
                                                 % characters to identify parameters of the run tacked on below.
 psychoPlotDir = 'psychometricFcnPlots';         % Subdir for dumping psychometric function plots.
 
-% Preset parameter set name
+% Preset parameters, vary wit name.
 % 
 % Options are:
 %   'BasicNoSurround'
@@ -232,10 +235,10 @@ try
     % Try to make name tell us a lot about static conditions,
     % so that we can keep separate what happened in different runs.
     if (dirAngleMax == 2*pi)
-        outputDir = sprintf('%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+        outputDir = sprintf('%s%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',outputRoot,parameterPreset,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
             surroundType,round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
     else
-        outputDir = sprintf('%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',outputRoot,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
+        outputDir = sprintf('%s%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',outputRoot,parameterPreset,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
             surroundType,round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
     end
     
@@ -596,7 +599,6 @@ try
                     
                     %% Make a plot of the threshold contour, and fit it.
                     contourFig = figure; clf; hold on
-                    theContourPlotLim = 0.2;
                     plot(LContourPoints,MContourPoints,'ro','MarkerFaceColor','r','MarkerSize',8);
                     if (length(LContourPoints) > 6)
                         % Sometimes the ellipse fitting routine throws an error if the data aren't close enough

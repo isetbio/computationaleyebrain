@@ -12,6 +12,7 @@ function results = DoOneSimulation(params,staticParams)
 %  * Better control of diagnositc printouts.
 %
 % 8/16/13  dhb  Working on this.
+% 8/18/13  dhb  Opponency and second site noise.
 
 %% Extract parameters to simplify code below.
 OBSERVER_STATE = params.OBSERVER_STATE;
@@ -381,11 +382,15 @@ switch params.surroundType
 end
 
 %% Add noise at a second site
+%
+% The factor of (1-params.surroundWeight) attempts to adjust for
+% changes in mean response with changes in net 'RF' strength.
 if (params.opponentLevelNoiseSd > 0)
-    backLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*randn(size(backLMSFullSet));
-    testLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*randn(size(testLMSFullSet));
+    backLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*(1-params.surroundWeight)*randn(size(backLMSFullSet));
+    testLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*(1-params.surroundWeight)*randn(size(testLMSFullSet));
 end
-            
+
+%% Pull apart into training and validation datasets.
 fullData = [backLMSFullSet ; testLMSFullSet];
 fullLabels = [blankLabel*ones(size(backLMSFullSet,1),1) ; testLabel*ones(size(testLMSFullSet,1),1)];
 fullDataN = size(fullData,1);
