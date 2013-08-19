@@ -67,6 +67,27 @@ function colorContours(parameterPreset)
 % 8/18/13 dhb    I think cluster stuff is working now.
 %         dhb    Surround, second site noise support.
 
+
+%% Can compute only, analyze only, or do both
+%
+% Generally do both unless analysis changes without need
+% to do the long recompute.
+COMPUTE = false;                                % Compute?
+ANALYZE = true;                                 % Analyze
+
+%% Control diagnostics
+%
+% These are useful when debugging but messy
+% when running in parallel.  We probably don't
+% need this fine level of control.
+PLOT_COMPARE_IRRADIANCE = false;
+PLOT_TRAINING_TEST = false;
+PLOT_COMPARE_CONEQE = false;
+PRINT_OUT_PHOTORECEPTORS = false;
+VERBOSE = false;
+SVM_QUIET = true;
+DO_PSYCHO_PLOTS = false;
+                            
 %% Parameter section
 
 integrationTimeSecs = 0.050;                    % Temporal integration time for detecting mechanisms.
@@ -207,13 +228,6 @@ switch (parameterPreset)
         error('Unknown parameter presets');
 end
 
-%% Can compute only, analyze only, or do both
-%
-% Generally do both unless analysis changes without need
-% to do the long recompute.
-COMPUTE = true;                                 % Compute?
-ANALYZE = true;                                 % Analyze
-
 %% Initialization for running on the cluster
 %
 % Make sure we are in our directory.  This does not
@@ -224,7 +238,7 @@ try
     % Open Matlab pool if it hasn't been opened for us.
     %
     % If we didn't open it, we don't close it.
-    if (exist('IsCluster','file') && IsCluster && exist('matlabpool','file') && matlabpool('size') == 0)
+    if (COMPUTE & exist('IsCluster','file') && IsCluster && exist('matlabpool','file') && matlabpool('size') == 0)
         desiredPoolSize = 15;
         matlabpool(desiredPoolSize);
         NEEDTOCLOSEPOOL = 1;
@@ -370,17 +384,13 @@ try
                             params(paramIndex).fractionUse = 0.005;
                             
                             % Control diagnostics
-                            %
-                            % These are useful when debugging but messy
-                            % when running in parallel.  We probably don't
-                            % need this fine level of control.
-                            params(paramIndex).PLOT_COMPARE_IRRADIANCE = false;
-                            params(paramIndex).PLOT_TRAINING_TEST = false;
-                            params(paramIndex).PLOT_COMPARE_CONEQE = false;
-                            params(paramIndex).PRINT_OUT_PHOTORECEPTORS = false;
-                            params(paramIndex).VERBOSE = false;
-                            params(paramIndex).SVM_QUIET = true;
-                            params(paramIndex).DO_PSYCHO_PLOTS = false;
+                            params(paramIndex).PLOT_COMPARE_IRRADIANCE = PLOT_COMPARE_IRRADIANCE;
+                            params(paramIndex).PLOT_TRAINING_TEST = PLOT_TRAINING_TEST;
+                            params(paramIndex).PLOT_COMPARE_CONEQE = PLOT_COMPARE_CONEQE;
+                            params(paramIndex).PRINT_OUT_PHOTORECEPTORS = PRINT_OUT_PHOTORECEPTORS;
+                            params(paramIndex).VERBOSE = VERBOSE;
+                            params(paramIndex).SVM_QUIET = SVM_QUIET;
+                            params(paramIndex).DO_PSYCHO_PLOTS = DO_PSYCHO_PLOTS;
                             
                             
                             % Bump counter
