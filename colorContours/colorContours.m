@@ -144,8 +144,10 @@ switch (parameterPreset)
         surroundSize = 0;                               % Parameter defining surround size.
         surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
         integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-        opponentLevelNoiseSd = 3;                       % Noise added after opponent recombination.
+        opponentLevelNoiseSd = 1;                       % Noise added after opponent recombination.
                                                         % Expressed as a fraction of the background Poisson sd
+        testContrastLengthMax = 1;
+
                                                        
     case 'BasicRDrawSurround'
         OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -175,7 +177,7 @@ switch (parameterPreset)
         surroundSize = 10;                             
         surroundWeight = 0.7;                        
         integrationArea = 0;                            
-        opponentLevelNoiseSd = 3;
+        opponentLevelNoiseSd = 1;
         testContrastLengthMax = 1;
 
     case 'MacularPigmentVary'
