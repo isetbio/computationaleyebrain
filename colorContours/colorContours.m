@@ -86,7 +86,7 @@ PLOT_COMPARE_CONEQE = false;
 PRINT_OUT_PHOTORECEPTORS = false;
 VERBOSE = false;
 SVM_QUIET = true;
-DO_PSYCHO_PLOTS = false;
+DO_PSYCHO_PLOTS = true;
                             
 %% Parameter section
 
