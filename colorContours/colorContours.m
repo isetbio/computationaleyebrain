@@ -100,7 +100,7 @@ testContrastLengthMax = 0.5;                    % Default maximum contrast lengh
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
                                                 % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
                                                 
-theContourPlotLim = 0.2;                        % Axis limit for contour plots.
+theContourPlotLim = 0.5;                        % Axis limit for contour plots.
 
 
 outputRoot = 'out';                             % Plots get dumped a directory with this root name, but with additional
