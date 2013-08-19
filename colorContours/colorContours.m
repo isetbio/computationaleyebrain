@@ -72,7 +72,7 @@ function colorContours(parameterPreset)
 %
 % Generally do both unless analysis changes without need
 % to do the long recompute.
-COMPUTE = false;                                % Compute?
+COMPUTE = true;                                % Compute?
 ANALYZE = true;                                 % Analyze
 
 %% Control diagnostics
@@ -138,7 +138,7 @@ psychoPlotDir = 'psychometricFcnPlots';         % Subdir for dumping psychometri
 %   'MacularPigmentVary'
 %   'QuickTest'
 if (nargin < 1 || isempty(parameterPreset))
-    parameterPreset = 'BasicNoSurround';
+    parameterPreset = 'QuickTest';
 end
 switch (parameterPreset)
                             
@@ -221,10 +221,13 @@ switch (parameterPreset)
         OBSERVER_STATES = {'LMandS'};
         DO_TAFC_CLASSIFIER_STATES = [false];
         macularPigmentDensityAdjustments = [0];
-        surroundType = 'none';                          
-        surroundSize = 0;                               
+        surroundType = 'none';                        
+        surroundSize = 0;                              
         surroundWeight = 0;                            
-        integrationArea = 0;     otherwise
+        integrationArea = 0;                         
+        opponentLevelNoiseSd = 0;                      
+                                                       
+    otherwise
         error('Unknown parameter presets');
 end
 

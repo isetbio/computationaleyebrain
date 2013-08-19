@@ -225,9 +225,26 @@ testOiD = oiCompute(staticParams.oiD,sceneT);
 %
 % Each time through the loop we do a new instantiation
 % of the poisson noise.
+%
+% Have option of doing this noise free here, so we can add all
+% our noise at an opponent site.  That isn't realistic, but
+% I'm charging ahead just to try to get some intuitions about
+% what opponency does.
 testCSensorNF = sensorComputeNoiseFree(cSensor,testOiD);
-backVoltImage = sensorComputeSamples(backCSensorNF,params.nDrawsPerTestStimulus,params.noiseType);
-testVoltImage = sensorComputeSamples(testCSensorNF,params.nDrawsPerTestStimulus,params.noiseType);
+if (params.noiseType ~= 0)
+    backVoltImage = sensorComputeSamples(backCSensorNF,params.nDrawsPerTestStimulus,params.noiseType);
+    testVoltImage = sensorComputeSamples(testCSensorNF,params.nDrawsPerTestStimulus,params.noiseType);
+else
+    backVoltImageNF = sensorGet(backCSensorNF,'volts');
+    testVoltImageNF = sensorGet(testCSensorNF,'volts');
+    backVoltImage = backVoltImageNF(:,:,ones(1,params.nDrawsPerTestStimulus));
+    testVoltImage = testVoltImageNF(:,:,ones(1,params.nDrawsPerTestStimulus));
+end
+
+%% I'm sure there is a reason why we put volts back in and then
+% take electrons out.  Brian probably explained it to me.  But
+% now I forget.
+% [** Brian, can you write a comment here?]
 for k = 1:params.nDrawsPerTestStimulus
     for ii = 1:params.nSensorClasses
         backCSensorTemp = sensorSet(backCSensorNF,'volts',backVoltImage(:,:,k));
