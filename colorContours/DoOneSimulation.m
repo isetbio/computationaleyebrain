@@ -410,7 +410,7 @@ if (params.opponentLevelNoiseSd > 0)
     
     testVarMat = abs(testLMSFullSet);
     testSdMat = sqrt(testVarMat);
-    testLMSFullSet = testLMSFullSet + params.opponentLevelNoiseSd*testPoissonSd*(1-params.surroundWeight)*randn(size(testLMSFullSet));
+    testLMSFullSet = testLMSFullSet + params.opponentLevelNoiseSd*testSdMat.*randn(size(testLMSFullSet));
 end
 
 %% Pull apart into training and validation datasets.
