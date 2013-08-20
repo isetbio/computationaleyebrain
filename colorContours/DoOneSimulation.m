@@ -398,13 +398,19 @@ switch params.surroundType
         error('Unknown surround type specified');     
 end
 
-%% Add noise at a second site
+%% Add Poisson noise at a second site
 %
-% The factor of (1-params.surroundWeight) attempts to adjust for
-% changes in mean response with changes in net 'RF' strength.
+% You can scale the Poisson variance by the parameter
+% params.opponetLevelNoiseSd.  Setting this to 1 gives
+% Poisson.
 if (params.opponentLevelNoiseSd > 0)
-    backLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*(1-params.surroundWeight)*randn(size(backLMSFullSet));
-    testLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backPoissonSd*(1-params.surroundWeight)*randn(size(testLMSFullSet));
+    backVarMat = abs(backLMSFullSet);
+    backSdMat = sqrt(backVarMat);
+    backLMSFullSet = backLMSFullSet + params.opponentLevelNoiseSd*backSdMat.*randn(size(backLMSFullSet));
+    
+    testVarMat = abs(testLMSFullSet);
+    testSdMat = sqrt(testVarMat);
+    testLMSFullSet = testLMSFullSet + params.opponentLevelNoiseSd*testPoissonSd*(1-params.surroundWeight)*randn(size(testLMSFullSet));
 end
 
 %% Pull apart into training and validation datasets.

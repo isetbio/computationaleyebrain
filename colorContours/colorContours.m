@@ -115,7 +115,6 @@ nColorDirections = 16;                          % Number of color directions for
 dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
 nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
 nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
-noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
 criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
                                                 % Setting this helps make the sampling of the psychometric functions more efficient.
@@ -147,33 +146,34 @@ switch (parameterPreset)
         DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
         macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
                                                         % Note that stimuli are computed for a nominal (no adjustment) observer.
-        
+                                                        
+        noiseType = 1;                                  % Type of photoreceptor noise.  1 -> Poisson.  0 -> none.
         surroundType = 'none';                          % Define type of surround calc to implement
         surroundSize = 0;                               % Parameter defining surround size.
         surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
         integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-        opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination.
-                                                        % Expressed as a fraction of the background Poisson sd
+        opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination, if any added.
+                                                        % Expressed as a fraction Poisson sd to use.
  
     case 'BasicNoSurroundWithNoise'
-        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
-        DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
-        macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
-                                                        % Note that stimuli are computed for a nominal (no adjustment) observer.
+        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
+        DO_TAFC_CLASSIFIER_STATES = [true];             
+        macularPigmentDensityAdjustments = [0];         
         
-        surroundType = 'none';                          % Define type of surround calc to implement
-        surroundSize = 0;                               % Parameter defining surround size.
-        surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
-        integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-        opponentLevelNoiseSd = 1;                       % Noise added after opponent recombination.
-                                                        % Expressed as a fraction of the background Poisson sd
+        noiseType = 0;  
+        surroundType = 'determ';                          
+        surroundSize = 0;                               
+        surroundWeight = 0;                             
+        integrationArea = 0;                            
+        opponentLevelNoiseSd = 1;                                                                        
         testContrastLengthMax = 1;
-
                                                        
     case 'BasicRDrawSurround'
         OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [0];         
+        macularPigmentDensityAdjustments = [0];
+        
+        noiseType = 1;
         surroundType = 'rdraw';                         
         surroundSize = 10;                             
         surroundWeight = 0.7;                        
@@ -183,7 +183,9 @@ switch (parameterPreset)
     case 'BasicDetermSurround'
         OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [0];         
+        macularPigmentDensityAdjustments = [0]; 
+        
+        noiseType = 1;
         surroundType = 'determ';                         
         surroundSize = 10;                             
         surroundWeight = 0.7;                        
@@ -193,7 +195,9 @@ switch (parameterPreset)
     case 'BasicDetermSurroundWithNoise'
         OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [0];         
+        macularPigmentDensityAdjustments = [0]; 
+        
+        noiseType = 0;
         surroundType = 'determ';                         
         surroundSize = 10;                             
         surroundWeight = 0.7;                        
@@ -206,6 +210,7 @@ switch (parameterPreset)
         DO_TAFC_CLASSIFIER_STATES = [true];             
         macularPigmentDensityAdjustments = [-0.3 0 0.3];
         
+        noiseType = 1;
         surroundType = 'none';                          
         surroundSize = 0;                              
         surroundWeight = 0;                             
@@ -221,6 +226,8 @@ switch (parameterPreset)
         OBSERVER_STATES = {'LMandS'};
         DO_TAFC_CLASSIFIER_STATES = [false];
         macularPigmentDensityAdjustments = [0];
+        
+        noiseType = 1;
         surroundType = 'none';                        
         surroundSize = 0;                              
         surroundWeight = 0;                            
