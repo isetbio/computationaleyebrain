@@ -1,5 +1,5 @@
-function results = DoOneSimulation(params,staticParams)
-% results = DoOneSimulation(params,staticParams)
+function results = doOneSimulation(params,staticParams)
+% results = doOneSimulation(params,staticParams)
 %
 % Do one inner level of the simulations for colorContour.  Written so that
 % it can be called in parallel.  See colorContours for comments about
@@ -142,7 +142,7 @@ vcAddAndSelectObject(backOiD);
 %
 % PTB, conversion is pupilArea/(eyeLength^2).
 % pi /(1 + 4*fN^2*(1+abs(m))^2)
-if (params.PLOT_COMPARE_IRRADIANCE)
+if (staticParams.DO_SIM_PLOTS)
     % Get background irradiance out of the optical image.
     %
     % [**] This currently works be using an ROI that was selected
@@ -180,7 +180,7 @@ for ii = 1:params.nSensorClasses
 end
 
 % Print out the comparison as well as PTB parameters.
-if (params.PRINT_OUT_PHOTORECEPTORS)
+if (~staticParams.SIM_QUIET)
     fprintf('\tISET computes LMS isomerizations as: %d, %d, %d\n',isetBackLMSIsomerizations(1),isetBackLMSIsomerizations(2),isetBackLMSIsomerizations(3));
     fprintf('\tPTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
     PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
@@ -195,7 +195,7 @@ isetLMSQuantalEfficiencyWavelengths = sensorGet(backCSensorNF,'wave');
 isetLMSQuantalEfficiences = temp(params.isetSensorConeSlots,:);
 
 % Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
-if (params.PLOT_COMPARE_CONEQE)
+if (staticParams.DO_SIM_PLOTS)
     figure; clf; hold on
     plot(SToWls(ptbAdjustedPhotorceptorsStruct.nomogram.S),ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
     plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiences(end:-1:1,:)',':');
@@ -273,7 +273,7 @@ typeVec = zeros(nUseAll,1);
 oneConeEachClassStartIndices = zeros(params.nSensorClasses,1);
 for k = 1:params.nDrawsPerTestStimulus
     if (rem(k,10) == 0)
-        if (params.VERBOSE)
+        if (~staticParams.SIM_QUIET)
             fprintf('\tGetting cone catches for draw %d of %d\n',k,params.nDrawsPerTestStimulus);
         end
     end
@@ -426,7 +426,7 @@ validateData = fullData(indices(trainingDataN+1:end),:);
 validateLabels = fullLabels(indices(trainingDataN+1:end));
 
 %% Plot the training and test data.  We'll plot the distribution of responses for one cone
-if (params.PLOT_TRAINING_TEST)
+if (staticParams.DO_SIM_PLOTS)
     % in each sensor class, with the distribution taken over our resampling of each
     % scene by the mosaic.
     %
@@ -518,7 +518,7 @@ if (params.DO_TAFC_CLASSIFIER)
     
     svmOpts = '-s 0 -t 0';
     predictOpts = '';
-    if (params.SVM_QUIET)
+    if (staticParams.SIM_QUIET)
         svmOpts =  [svmOpts ' -q'];
         predictOpts = [predictOpts ' -q'];
     end
@@ -530,7 +530,7 @@ if (params.DO_TAFC_CLASSIFIER)
     results.nCorrectResponses = length(find(svmValidatePredictedLabels == tafcValidateLabels));
     results.nTotalResponses = length(tafcValidateLabels);
     results.fractionCorrect = validateFractionCorrect;
-    if (params.VERBOSE)
+    if (~staticParams.SIM_QUIET)
         fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
     end
     
@@ -543,7 +543,7 @@ else
     % Just do the one interval analysis
     svmOpts = '-s 0 -t 0';
     predictOpts = '';
-    if (params.SVM_QUIET)
+    if (staticParams.SIM_QUIET)
         svmOpts =  [svmOpts ' -q'];
         predictOpts = [predictOpts ' -q'];
     end
@@ -555,7 +555,7 @@ else
     results.nCorrectResponses = length(find(svmValidatePredictedLabels == validateLabels));
     results.nTotalResponses = length(validateLabels);
     results.fractionCorrect = validateFractionCorrect;
-    if (params.VERBOSE)
+    if (~staticParams.SIM_QUIET)
         fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
     end
     
@@ -572,7 +572,7 @@ end
 %
 % Some thought is required about how to make a useful plot for the TAFC case, skipping
 % it for now.
-if (params.PLOT_TRAINING_TEST)
+if (staticParams.DO_SIM_PLOTS)
     if (~params.DO_TAFC_CLASSIFIER)
         if (~exist('f2','var'))
             f2 = vcNewGraphWin; hold on;
