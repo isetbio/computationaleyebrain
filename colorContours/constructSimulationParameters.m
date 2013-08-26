@@ -1,7 +1,7 @@
-function simParams = constructSimulationParameters(theParams)
-% simParams = constructSimulationParameters(theParams)
+function simParams = constructSimulationParameters(theParams,staticParams)
+% simParams = constructSimulationParameters(theParams,staticParams)
 %
-% Deal out the parameters structure to create a struct
+% Deal out the parameters structures to create a struct
 % array of parameters, one entry of which will be used
 % in each (potentially parallel) simulation run.
 %
@@ -11,14 +11,14 @@ function simParams = constructSimulationParameters(theParams)
 %
 % These are strung out so that we can chunk through
 % them in a big parfor loop below.
-cdAngles = linspace(0,theParams.dirAngleMax,theParams.nColorDirections+1);
+cdAngles = linspace(0,staticParams.dirAngleMax,staticParams.nColorDirections+1);
 cdAngles = cdAngles(1:end-1);
-testLevels = linspace(0,1,theParams.nTestLevels);
+testLevels = linspace(0,1,staticParams.nTestLevels);
 paramIndex = 1;
 for os = 1:length(theParams.OBSERVER_STATES)
     for ct = 1:length(theParams.DO_TAFC_CLASSIFIER_STATES)
         for m = 1:length(theParams.macularPigmentDensityAdjustments)
-            for cdi = 1:theParams.nColorDirections
+            for cdi = 1:staticParams.nColorDirections
                 for t = 1:length(testLevels)
                     simParams(paramIndex).OBSERVER_STATE = theParams.OBSERVER_STATES{os};
                     simParams(paramIndex).DO_TAFC_CLASSIFIER = theParams.DO_TAFC_CLASSIFIER_STATES(ct);
@@ -45,21 +45,6 @@ for os = 1:length(theParams.OBSERVER_STATES)
                     % Nuisance parameters
                     
                     % Set fixed params.  These can be made variable by adding a loop in this routine
-                    simParams(paramIndex).gammaValue = theParams.gammaValue;
-                    simParams(paramIndex).wavelengthsNm = theParams.wavelengthsNm;
-                    simParams(paramIndex).backSpd = theParams.backSpd;
-                    simParams(paramIndex).displaySpd = theParams.displaySpd;
-                    simParams(paramIndex).pupilDiameterMm = theParams.pupilDiameterMm;
-                    simParams(paramIndex).focalLengthMm = theParams.focalLengthMm;
-                    simParams(paramIndex).integrationTimeSecs = theParams.integrationTimeSecs;
-                    simParams(paramIndex).coneProportions = theParams.coneProportions;
-                    simParams(paramIndex).coneApertureMeters = theParams.coneApertureMeters;
-                    simParams(paramIndex).fieldOfViewDegrees = theParams.fieldOfViewDegrees;
-                    simParams(paramIndex).backRGB = theParams.backRGB;
-                    simParams(paramIndex).isetSensorConeSlots = theParams.isetSensorConeSlots;
-                    simParams(paramIndex).nSensorClasses = theParams.nSensorClasses;
-                    simParams(paramIndex).scenePixels = theParams.scenePixels;
-                    simParams(paramIndex).nDrawsPerTestStimulus = theParams.nDrawsPerTestStimulus;
                     simParams(paramIndex).noiseType = theParams.noiseType;
                     simParams(paramIndex).surroundType = theParams.surroundType;
                     simParams(paramIndex).surroundSize = theParams.surroundSize;

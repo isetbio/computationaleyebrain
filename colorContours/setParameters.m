@@ -1,7 +1,15 @@
-function theParams = setParameters(parameterPreset)
-%  theParams = setParameters([parameterPreset])
+function [theParams,staticParams] = setParameters(parameterPreset)
+%  [theParams,staticParams] = setParameters([parameterPreset])
 %
-% Manage simulation parameters, return as one big struct.
+% Manage simulation parameters, return as two structs.  One (theParams)
+% is variables that do or might someday vary within a simulation,
+% the other (staticParams) is variables that remain constant throughout a single
+% simulation.
+%
+% The division between theParams and staticParams is not completely rational,
+% and carries some inertia from before this split was set up.  The split is
+% important because some variables that get passed around are really big and
+% we don't want multiple copies.
 %
 % Sets of parameters may be defined and invoked by the
 % passed name.  Preset options are:
@@ -17,39 +25,43 @@ function theParams = setParameters(parameterPreset)
 %% Parameter section
 
 % Visual system related
-theParams.integrationTimeSecs = 0.050;                    % Temporal integration time for detecting mechanisms.
-theParams.fieldOfViewDegrees = 2;                         % Field of view specified for the scenes.
-theParams.scenePixels = 64;                               % Size of scenes in pixels
-theParams.pupilDiameterMm = 3;                            % Pupil diameter.  Used explicitly in the PSF calc.
-                                                          % [** Need to check that this is carried through to 
-                                                          % the absorption calculations.  We might be using an isetbio
-                                                          % default rather than the value set here.]
-theParams.coneProportions = [0.1 .6 .2 .1];               % Proportions of cone types in the mosaic, order: empty, L,M,S
-theParams.isetSensorConeSlots = [2 3 4];                  % Indices for LMS cones in iset sensor returns.   These run 2-4 because
-                                                          % of the empty pixels
-theParams.coneApertureMeters = [sqrt(4.1) sqrt(4.1)]*1e-6;% Size of (rectangular) cone apertures, in meters.
-                                                          % The choice of 4.1 matches the area of a 2.3 micron diameter IS diameter,
-                                                          % and that is PTB's default.
+staticParams.integrationTimeSecs = 0.050;                    % Temporal integration time for detecting mechanisms.
+staticParams.fieldOfViewDegrees = 2;                         % Field of view specified for the scenes.
+staticParams.scenePixels = 64;                               % Size of scenes in pixels
+staticParams.pupilDiameterMm = 3;                            % Pupil diameter.  Used explicitly in the PSF calc.
+                                                             % [** Need to check that this is carried through to 
+                                                             % the absorption calculations.  We might be using an isetbio
+                                                             % default rather than the value set here.]
+staticParams.coneProportions = [0.1 .6 .2 .1];               % Proportions of cone types in the mosaic, order: empty, L,M,S
+staticParams.isetSensorConeSlots = [2 3 4];                  % Indices for LMS cones in iset sensor returns.   These run 2-4 because
+                                                             % of the empty pixels
+staticParams.coneApertureMeters = [sqrt(4.1) sqrt(4.1)]*1e-6;% Size of (rectangular) cone apertures, in meters.
+                                                             % The choice of 4.1 matches the area of a 2.3 micron diameter IS diameter,
+                                                             % and that is PTB's default.
                                                 
 % Stimulus related
-theParams.monitorName = 'LCD-Apple';                      % Monitor spectrum comes from this file
-theParams.backRGBValue = 0.5;                             % Define background for experment in monitor RGB
-theParams.gammaValue = 2.2;
+staticParams.monitorName = 'LCD-Apple';                      % Monitor spectrum comes from this file
+staticParams.backRGBValue = 0.5;                             % Define background for experment in monitor RGB
+staticParams.isetGammaValue = 2.2;
 
-theParams.nColorDirections = 16;                          % Number of color directions for contour.
-theParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
-theParams.nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
-theParams.nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
-theParams.criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-theParams.testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
-                                                          % Setting this helps make the sampling of the psychometric functions more efficient.
-                                                          % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
+staticParams.nColorDirections = 16;                          % Number of color directions for contour.
+staticParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
+staticParams.nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
+staticParams.nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
+staticParams.criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
+staticParams.testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
+                                                             % Setting this helps make the sampling of the psychometric functions more efficient.
+                                                             % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
 
 % Data management parameters
-theParams.theContourPlotLim = 0.5;                        % Axis limit for contour plots.
-theParams.outputRoot = 'out';                             % Plots get dumped a directory with this root name, but with additional
-                                                          % characters to identify parameters of the run tacked on below.
+staticParams.theContourPlotLim = 0.5;                        % Axis limit for contour plots.
+staticParams.outputRoot = 'out';                             % Plots get dumped a directory with this root name, but with additional
+                                                             % characters to identify parameters of the run tacked on below.
+staticParams.parameterPreset = parameterPreset;              % Name of preset used to determine entries of theParams.
 
+% Convenience parameters
+staticParams.nSensorClasses = length(staticParams.isetSensorConeSlots);
+  
 % Preset parameters, vary with preset name.
 if (nargin < 1 || isempty(parameterPreset))
     parameterPreset = 'QuickTest';
@@ -81,7 +93,7 @@ switch (parameterPreset)
         theParams.surroundWeight = 0;                             
         theParams.integrationArea = 0;                            
         theParams.opponentLevelNoiseSd = 1;                                                                        
-        theParams.testContrastLengthMax = 1;
+        staticParams.testContrastLengthMax = 1;
                                                        
     case 'BasicRDrawSurround'
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -118,7 +130,7 @@ switch (parameterPreset)
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
         theParams.opponentLevelNoiseSd = 1;
-        theParams.testContrastLengthMax = 1;
+        staticParams.testContrastLengthMax = 1;
 
     case 'MacularPigmentVary'
         theParams.OBSERVER_STATES = {'MSonly' 'LSonly'}; 
@@ -133,10 +145,10 @@ switch (parameterPreset)
         theParams.opponentLevelNoiseSd = 0;
     
     case 'QuickTest'
-        theParams.nColorDirections = 4;
-        theParams.dirAngleMax = pi;
-        theParams.nTestLevels = 4;
-        theParams.nDrawsPerTestStimulus = 100;
+        staticParams.nColorDirections = 4;
+        staticParams.dirAngleMax = pi;
+        staticParams.nTestLevels = 4;
+        staticParams.nDrawsPerTestStimulus = 100;
         
         theParams.OBSERVER_STATES = {'LMandS'};
         theParams.DO_TAFC_CLASSIFIER_STATES = [false];
@@ -153,6 +165,3 @@ switch (parameterPreset)
         error('Unknown parameter presets');
 end
 
-% Convenience parameters
-theParams.nSensorClasses = length(theParams.isetSensorConeSlots);
-theParams.parameterPreset = parameterPreset;
