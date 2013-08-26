@@ -88,7 +88,9 @@ sensorSetSizeToFOV(cSensor,0.9*staticParams.fieldOfViewDegrees);
 sensorFieldOfView = sensorGet(cSensor,'fov', staticComputedValues.sceneB,staticComputedValues.oiD);
 %sensorConePlot(cSensor);
 
-%% Set up cone conversions
+%% Set up cone conversions for computing stimuli.  These
+% are done in a nominal LMS energy space, which may differ
+% from the space of the simulated observer.
 rgb2cones = ptbNominalLMSEnergySensitivities*staticComputedValues.displaySpd;
 backLMS = rgb2cones*staticComputedValues.backRGB;
 
@@ -101,11 +103,11 @@ backLMS = rgb2cones*staticComputedValues.backRGB;
 %
 % Define test direction in cone excitation space
 Lval = cos(theParams.cdAngle); Mval = sin(theParams.cdAngle);
-testLMSUnitCircle = [Lval Mval 0]';
+testLMSOnUnitCircle = [Lval Mval 0]';
 
 % Compute the RGB direction and scale so that it
 % reaches to the edge of the gamut.
-testRGBUnitCircle = inv(rgb2cones)*testLMSUnitCircle;
+testRGBUnitCircle = inv(rgb2cones)*testLMSOnUnitCircle;
 gamutScaleFactor = MaximizeGamutContrast(testRGBUnitCircle,staticComputedValues.backRGB);
 testRGBGamut = gamutScaleFactor*testRGBUnitCircle;
 testLMSGamut = rgb2cones*testRGBGamut;
