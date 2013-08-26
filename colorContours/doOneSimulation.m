@@ -15,11 +15,6 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 % 8/18/13  dhb  Opponency and second site noise.
 % 8/25/13  dhb  Parameter rationalization.
 
-%% Set unique test and back filenames, so that they don't clobber
-% each other when things are run in parallel.
-testFileName = sprintf('testFile_%s_%d_%d_%d_%d.png',theParams.OBSERVER_STATE,theParams.DO_TAFC_CLASSIFIER,round(100*theParams.macularPigmentDensityAdjust),...
-    round(1000*theParams.cdAngle),round(1000*theParams.testLevel));
-
 %% Use PTB to compute cone quantal sensitivities.
 %
 % We will use these in the isetbio scene structures and calculations.
@@ -79,13 +74,12 @@ cSensor = sensorSet(cSensor,'exp time',staticParams.integrationTimeSecs);
 cSensor = sensorSet(cSensor,'wave',staticComputedValues.wavelengthsNm);
 
 % Put in PTB quantal sensitivities
-isetLMSQuantalEfficiencyWavelengths = sensorGet(cSensor,'wave');
-if (any(find(isetLMSQuantalEfficiencyWavelengths ~= staticComputedValues.wavelengthsNm)))
+tempWavelengths = sensorGet(cSensor,'wave');
+if (any(find(tempWavelengths ~= staticComputedValues.wavelengthsNm)))
     error('Wavelength sampling not consistent throughout.');
 end
 cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbAdjustedLMSQuantalEfficiency',1),1) ptbAdjustedLMSQuantalEfficiency']);
 sensorSetSizeToFOV(cSensor,0.9*staticParams.fieldOfViewDegrees);
-sensorFieldOfView = sensorGet(cSensor,'fov', staticComputedValues.sceneB,staticComputedValues.oiD);
 %sensorConePlot(cSensor);
 
 %% Set up cone conversions for computing stimuli.  These
@@ -126,12 +120,7 @@ end
 results.testLMSContrast = testLMSContrast;
 results.backgroundLMS = backLMS;
 results.testLMSGamut = testLMSGamut;
-
-%% Pass the background through the optics
-backOiD = oiCompute(staticComputedValues.oiD, staticComputedValues.sceneB);
-vcAddAndSelectObject(backOiD);
-%oiWindow;
-
+        
 % Plot comparison of iset and ptb irradiance, optionally
 %
 % PTB, conversion is pupilArea/(eyeLength^2).
@@ -155,146 +144,29 @@ if (runtimeParams.DO_SIM_PLOTS)
     theRatio = isetIrradianceWattsPerM2 ./ ptbAdjustedIrradianceWattsPerM2;
 end
 
-%% Compute noise free background sensor image
-backCSensorNF = sensorComputeNoiseFree(cSensor,backOiD);
-vcAddAndSelectObject(backCSensorNF);
-% [**] Something broke this call to sensorWindow
-% Might be related to our fov mucking.  Or maybe
-% it would work again if we just uncommented it.
-% sensorWindow;
 
-%% Get noise free cone isomerizations for background
-%
-% Compare with what PTB routines compute for the same stimuli.
-%
-% We pick the max to avoid the edge effects in the sensor image.
-for ii = 1:staticParams.nSensorClasses
-    backSensorValsNF{ii} = sensorGet(backCSensorNF,'electrons',staticParams.isetSensorConeSlots(ii));
-    isetBackLMSIsomerizations(ii) = round(max(backSensorValsNF{ii}));
-end
+%% Get cell arrays of noisy sensor values for both blank (background) and test intervals.
+[blankVectors,blankOneConeEachClassStartIndices,isetBlankLMSIsomerizations,isetLMSQuantalEfficiencies,isetLMSQuantalEfficiencyWavelengths] = ...
+    getConeResponsesToStimRGB(cSensor,staticComputedValues.backRGB,theParams,staticParams,runtimeParams,staticComputedValues);
+[testVectors,testOneConeEachClassStartIndices,isetTestLMSIsomerizations] = getConeResponsesToStimRGB(cSensor,(staticComputedValues.backRGB + theParams.testLevel*testRGBGamut),theParams,staticParams,runtimeParams,staticComputedValues);
 
-% Print out the comparison as well as PTB parameters.
-if (~runtimeParams.SIM_QUIET)
-    fprintf('\tISET computes LMS isomerizations as: %d, %d, %d\n',isetBackLMSIsomerizations(1),isetBackLMSIsomerizations(2),isetBackLMSIsomerizations(3));
-    fprintf('\tPTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
-    PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
-end
-
-% Compute baseline Poisson sd from background
-backPoissonSd = sqrt(mean(isetBackLMSIsomerizations));
-
-% Get iset LMS quantal efficiences
-temp = sensorGet(backCSensorNF,'spectralqe')';
-isetLMSQuantalEfficiencyWavelengths = sensorGet(backCSensorNF,'wave');
-isetLMSQuantalEfficiences = temp(staticParams.isetSensorConeSlots,:);
-
-% Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
+%% Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
 if (runtimeParams.DO_SIM_PLOTS)
     figure; clf; hold on
     plot(SToWls(ptbAdjustedPhotorceptorsStruct.nomogram.S),ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
-    plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiences(end:-1:1,:)',':');
+    plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiencies(end:-1:1,:)',':');
     xlabel('Wavelength (nm)');
     ylabel('Isomerization Quantal Efficiency');
 end
 
-% Make test scene, in same fashion as we made the background scene.
-testRGBForThisLevel = (staticComputedValues.backRGB + theParams.testLevel*testRGBGamut).^(1/staticParams.isetGammaValue);
-tmp = ones(staticParams.scenePixels,staticParams.scenePixels,3);
-[tmp,row,col] = RGB2XWFormat(tmp);
-tmp = tmp*diag(testRGBForThisLevel(:));
-testImg = XW2RGBFormat(tmp,row,col);
-imwrite(testImg,testFileName,'png');
-sceneT = sceneFromFile(testFileName,'rgb',[],'LCD-Apple.mat',staticComputedValues.wavelengthsNm);
-sceneT = sceneSet(sceneT,'name','test');
-sceneT = sceneSet(sceneT,'fov',2);
-vcAddAndSelectObject(sceneT);
-unix(['rm ' testFileName]);
-%sceneWindow;
+% Compute baseline Poisson sd from background
+%backPoissonSd = sqrt(mean(isetBackLMSIsomerizations));
 
-%% Pass test image through the optics
-testOiD = oiCompute(staticComputedValues.oiD,sceneT);
-
-%% Get multivariate sample distribution of LMS
-% responses out of the sensor objects.
-%
-% Each time through the loop we do a new instantiation
-% of the poisson noise.
-%
-% Have option of doing this noise free here, so we can add all
-% our noise at an opponent site.  That isn't realistic, but
-% I'm charging ahead just to try to get some intuitions about
-% what opponency does.
-testCSensorNF = sensorComputeNoiseFree(cSensor,testOiD);
-if (theParams.noiseType ~= 0)
-    backVoltImage = sensorComputeSamples(backCSensorNF,staticParams.nDrawsPerTestStimulus,theParams.noiseType);
-    testVoltImage = sensorComputeSamples(testCSensorNF,staticParams.nDrawsPerTestStimulus,theParams.noiseType);
-else
-    backVoltImageNF = sensorGet(backCSensorNF,'volts');
-    testVoltImageNF = sensorGet(testCSensorNF,'volts');
-    backVoltImage = backVoltImageNF(:,:,ones(1,staticParams.nDrawsPerTestStimulus));
-    testVoltImage = testVoltImageNF(:,:,ones(1,staticParams.nDrawsPerTestStimulus));
-end
-
-%% I'm sure there is a reason why we put volts back in and then
-% take electrons out.  Brian probably explained it to me.  But
-% now I forget.
-% [** Brian, can you write a comment here?]
-for k = 1:staticParams.nDrawsPerTestStimulus
-    for ii = 1:staticParams.nSensorClasses
-        backCSensorTemp = sensorSet(backCSensorNF,'volts',backVoltImage(:,:,k));
-        backSensorVals{k,ii} = sensorGet(backCSensorTemp,'electrons',staticParams.isetSensorConeSlots(ii));
-        testCSensorTemp = sensorSet(testCSensorNF,'volts',testVoltImage(:,:,k));
-        testSensorVals{k,ii} = sensorGet(testCSensorTemp,'electrons',staticParams.isetSensorConeSlots(ii));
-    end
-end
-clear backVoltImage testVoltImage
-
-%% We want to control the integration area.
-%
-% Here we'll do this by specifying the fraction of
-% the total mosaic to use.
-%
-% First figure out length of sample vector
-for ii = 1:staticParams.nSensorClasses
-    nUse(ii) = round(theParams.fractionUse*length(backSensorVals{1,ii}));
-end
-nUseAll = sum(nUse);
-
-% Now draw samples
-backVectors = zeros(nUseAll,staticParams.nDrawsPerTestStimulus);
-testVectors = zeros(nUseAll,staticParams.nDrawsPerTestStimulus);
-typeVec = zeros(nUseAll,1);
-oneConeEachClassStartIndices = zeros(staticParams.nSensorClasses,1);
-for k = 1:staticParams.nDrawsPerTestStimulus
-    if (rem(k,10) == 0)
-        if (~runtimeParams.SIM_QUIET)
-            fprintf('\tGetting cone catches for draw %d of %d\n',k,staticParams.nDrawsPerTestStimulus);
-        end
-    end
-    
-    startIndex = 1;
-    for ii = 1:staticParams.nSensorClasses
-        % Pull out a set of randomly chosen responses for this sensor class
-        % and tuck it into the response vector, for both background and test.
-        % Also store the sensor class index for each stored response.
-        endIndex = startIndex + nUse(ii) - 1;
-        
-        % Currently, this shufles the responses of each class before
-        % pulling out the requisite number of responses, for some reason.
-        % It shouldn't have any 
-        %
-        % [** Better will be to fix this up to be more realistic.]
-        temp = Shuffle(backSensorVals{k,ii});
-        backVectors(startIndex:endIndex,k) = temp(1:nUse(ii));
-        temp = Shuffle(testSensorVals{k,ii});
-        testVectors(startIndex:endIndex,k) = temp(1:nUse(ii));
-        if (k == 1)
-            typeVec(startIndex:endIndex) = ii;
-            oneConeEachClassStartIndices(ii) = startIndex;
-        end
-        
-        startIndex = endIndex+1;
-    end
+%% Print out comparison of isomerization rates between PTB and iset, as well as PTB photoreceptor parameters.
+if (~runtimeParams.SIM_QUIET)
+    fprintf('\tISET computes LMS isomerizations as: %d, %d, %d\n',isetBlankLMSIsomerizations(1),isetBlankLMSIsomerizations(2),isetBlankLMSIsomerizations(3));
+    fprintf('\tPTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
+    PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
 end
 
 %% Build a clasifier on the training set
@@ -318,12 +190,12 @@ end
 % routines want.
 blankLabel = -1;
 testLabel = 1;
-backLMSFullSet = [backVectors(oneConeEachClassStartIndices(1),:) ; ...
-    backVectors(oneConeEachClassStartIndices(2),:) ; ...
-    backVectors(oneConeEachClassStartIndices(3),:)]';
-testLMSFullSet = [testVectors(oneConeEachClassStartIndices(1),:) ; ...
-    testVectors(oneConeEachClassStartIndices(2),:) ; ...
-    testVectors(oneConeEachClassStartIndices(3),:)]';
+blankLMSFullSet = [blankVectors(blankOneConeEachClassStartIndices(1),:) ; ...
+    blankVectors(blankOneConeEachClassStartIndices(2),:) ; ...
+    blankVectors(blankOneConeEachClassStartIndices(3),:)]';
+testLMSFullSet = [testVectors(testOneConeEachClassStartIndices(1),:) ; ...
+    testVectors(testOneConeEachClassStartIndices(2),:) ; ...
+    testVectors(testOneConeEachClassStartIndices(3),:)]';
 
 % Implement a quick and dirty surround for L and M
 % cone. 
@@ -338,30 +210,30 @@ switch theParams.surroundType
         % which may not be a good idea.
         if (theParams.surroundSize > 0 & theParams.surroundWeight > 0)
             for k = 1:staticParams.nDrawsPerTestStimulus
-                % Back L cone
-                LCenterVal = backLMSFullSet(k,1);
-                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
-                MSurroundVals = backVectors(otherConesIndex(1:theParams.surroundSize),k);
+                % Blank L cone
+                LCenterVal = blankLMSFullSet(k,1);
+                otherConesIndex = Shuffle(1:blankOneConeEachClassStartIndices(3)-1);
+                MSurroundVals = blankVectors(otherConesIndex(1:theParams.surroundSize),k);
                 LOpponentVal = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
-                backLMSFullset(1,k) = LOpponentVal;
+                blankLMSFullset(1,k) = LOpponentVal;
                 
-                % Back M cone
-                MCenterVal = backLMSFullSet(k,2);
-                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
-                LSurroundVals = backVectors(otherConesIndex(1:theParams.surroundSize),k);
+                % Blank M cone
+                MCenterVal = blankLMSFullSet(k,2);
+                otherConesIndex = Shuffle(1:blankOneConeEachClassStartIndices(3)-1);
+                LSurroundVals = blankVectors(otherConesIndex(1:theParams.surroundSize),k);
                 MOpponentVal = MCenterVal - theParams.surroundWeight*sum(LSurroundVals)/theParams.surroundSize;
-                backLMSFullset(2,k) = MOpponentVal;
+                blankLMSFullset(2,k) = MOpponentVal;
                 
                 % Test L cone
                 LCenterVal = testLMSFullSet(k,1);
-                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+                otherConesIndex = Shuffle(1:testOneConeEachClassStartIndices(3)-1);
                 MSurroundVals = testVectors(otherConesIndex(1:theParams.surroundSize),k);
                 LOpponentVal = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
                 testLMSFullset(1,k) = LOpponentVal;
                 
                 % Test M cone
                 MCenterVal = testLMSFullSet(k,2);
-                otherConesIndex = Shuffle(1:oneConeEachClassStartIndices(3)-1);
+                otherConesIndex = Shuffle(1:testOneConeEachClassStartIndices(3)-1);
                 LSurroundVals = testVectors(otherConesIndex(1:theParams.surroundSize),k);
                 MOpponentVal = MCenterVal - theParams.surroundWeight*sum(LSurroundVals)/theParams.surroundSize;
                 testLMSFullset(2,k) = MOpponentVal;
@@ -374,11 +246,11 @@ switch theParams.surroundType
         % after the recombination.
         if (theParams.surroundWeight > 0)
             for k = 1:staticParams.nDrawsPerTestStimulus
-                % Background
-                LCenterVal = backLMSFullSet(k,1);
-                MCenterVal = backLMSFullSet(k,2);
-                backLMSFullSet(k,1) = LCenterVal - theParams.surroundWeight*MCenterVal;
-                backLMSFullSet(k,2) = MCenterVal - theParams.surroundWeight*LCenterVal;
+                % Blank
+                LCenterVal = blankLMSFullSet(k,1);
+                MCenterVal = blankLMSFullSet(k,2);
+                blankLMSFullSet(k,1) = LCenterVal - theParams.surroundWeight*MCenterVal;
+                blankLMSFullSet(k,2) = MCenterVal - theParams.surroundWeight*LCenterVal;
                 
                 % Test 
                 LCenterVal = testLMSFullSet(k,1);
@@ -398,9 +270,9 @@ end
 % params.opponetLevelNoiseSd.  Setting this to 1 gives
 % Poisson.
 if (theParams.opponentLevelNoiseSd > 0)
-    backVarMat = abs(backLMSFullSet);
-    backSdMat = sqrt(backVarMat);
-    backLMSFullSet = backLMSFullSet + theParams.opponentLevelNoiseSd*backSdMat.*randn(size(backLMSFullSet));
+    blankVarMat = abs(blankLMSFullSet);
+    blankSdMat = sqrt(blankVarMat);
+    blankLMSFullSet = blankLMSFullSet + theParams.opponentLevelNoiseSd*blankSdMat.*randn(size(blankLMSFullSet));
     
     testVarMat = abs(testLMSFullSet);
     testSdMat = sqrt(testVarMat);
@@ -408,8 +280,8 @@ if (theParams.opponentLevelNoiseSd > 0)
 end
 
 %% Pull apart into training and validation datasets.
-fullData = [backLMSFullSet ; testLMSFullSet];
-fullLabels = [blankLabel*ones(size(backLMSFullSet,1),1) ; testLabel*ones(size(testLMSFullSet,1),1)];
+fullData = [blankLMSFullSet ; testLMSFullSet];
+fullLabels = [blankLabel*ones(size(blankLMSFullSet,1),1) ; testLabel*ones(size(testLMSFullSet,1),1)];
 fullDataN = size(fullData,1);
 trainingDataN = round(fullDataN/2);
 testDataN = fullDataN-trainingDataN;

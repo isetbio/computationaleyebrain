@@ -161,28 +161,10 @@ try
         staticComputedValues.wavelengthsNm = displayGet(d,'wave');
         % vcNewGraphWin; plot(w,displaySpd)
         
-        %% Set background
+        %% Set background spectrum
         staticComputedValues.backRGB = [staticParams.backRGBValue staticParams.backRGBValue staticParams.backRGBValue]';
         staticComputedValues.backSpd = staticComputedValues.displaySpd*staticComputedValues.backRGB;
-        
-        %% Create a scene with the background spectrum
-        %
-        % To patch into scene creation routines, we create an image
-        % on disk with spatially uniform RGB values.  These are then treated
-        % as frame buffer values, and will be raised to the specified
-        % gamma value(gamma uncorrected) by the scene creation routine.
-        %
-        % [**] Find a way to do this (and the corresponding version
-        % for the test) that does not involve writing an image to disk and
-        % that skips the gamma correction stuff.
-        backImg = ones(staticParams.scenePixels,staticParams.scenePixels,3)*(staticParams.backRGBValue)^(1/staticParams.isetGammaValue);
-        imwrite(backImg,'backFile.png','png');
-        sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',staticComputedValues.wavelengthsNm);
-        sceneB = sceneSet(sceneB,'name','background');
-        sceneB = sceneSet(sceneB,'fov',staticParams.fieldOfViewDegrees);
-        vcAddAndSelectObject(sceneB);
-        %sceneWindow;
-        
+
         %% Create standard human polychromatic PSF
         % using wavefront tools, and make it an
         % iset OI thingy.
@@ -202,8 +184,7 @@ try
         %
         % We only keep one copy of these, because they are big
         staticComputedValues.oiD = oiD;
-        staticComputedValues.sceneB = sceneB;
-        clear sceneB optics oiD
+        clear optics oiD
         
         simParams = constructSimulationParameters(theParams,staticParams);
         nParams = length(simParams);  
