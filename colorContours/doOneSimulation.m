@@ -144,153 +144,44 @@ if (runtimeParams.DO_SIM_PLOTS)
     theRatio = isetIrradianceWattsPerM2 ./ ptbAdjustedIrradianceWattsPerM2;
 end
 
-
-%% Get cell arrays of noisy sensor values for both blank (background) and test intervals.
-[blankVectors,blankOneConeEachClassStartIndices,isetBlankLMSIsomerizations,isetLMSQuantalEfficiencies,isetLMSQuantalEfficiencyWavelengths] = ...
-    getConeResponsesToStimRGB(cSensor,staticComputedValues.backRGB,theParams,staticParams,runtimeParams,staticComputedValues);
-[testVectors,testOneConeEachClassStartIndices,isetTestLMSIsomerizations] = getConeResponsesToStimRGB(cSensor,(staticComputedValues.backRGB + theParams.testLevel*testRGBGamut),theParams,staticParams,runtimeParams,staticComputedValues);
-
-%% Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
-if (runtimeParams.DO_SIM_PLOTS)
-    figure; clf; hold on
-    plot(SToWls(ptbAdjustedPhotorceptorsStruct.nomogram.S),ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
-    plot(isetLMSQuantalEfficiencyWavelengths,isetLMSQuantalEfficiencies(end:-1:1,:)',':');
-    xlabel('Wavelength (nm)');
-    ylabel('Isomerization Quantal Efficiency');
-end
-
-% Compute baseline Poisson sd from background
-%backPoissonSd = sqrt(mean(isetBackLMSIsomerizations));
-
-%% Print out comparison of isomerization rates between PTB and iset, as well as PTB photoreceptor parameters.
-if (~runtimeParams.SIM_QUIET)
-    fprintf('\tISET computes LMS isomerizations as: %d, %d, %d\n',isetBlankLMSIsomerizations(1),isetBlankLMSIsomerizations(2),isetBlankLMSIsomerizations(3));
-    fprintf('\tPTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
-    PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
-end
-
-%% Build a clasifier on the training set
-%
-% Set up training/test data and label them.
-%
-% The matrix backVectors has one column for each sample,
-% with the entries going down the rows representing
-% different cones.
-%
-% Same for the matrix testVectors.  
-%
-% Currently just using the responses of just one
-% cone from each class, as a place to start, so
-% for each column we pull out one entry for cones
-% of each class.
-%
-% There is also a transpose, so that each data
-% instance is in a single row, rather than in a
-% single column.  This matches what the classification
-% routines want.
-blankLabel = -1;
-testLabel = 1;
-blankLMSFullSet = [blankVectors(blankOneConeEachClassStartIndices(1),:) ; ...
-    blankVectors(blankOneConeEachClassStartIndices(2),:) ; ...
-    blankVectors(blankOneConeEachClassStartIndices(3),:)]';
-testLMSFullSet = [testVectors(testOneConeEachClassStartIndices(1),:) ; ...
-    testVectors(testOneConeEachClassStartIndices(2),:) ; ...
-    testVectors(testOneConeEachClassStartIndices(3),:)]';
-
-% Implement a quick and dirty surround for L and M
-% cone. 
-switch theParams.surroundType
-    case 'none'
-        % No surround. Do nothing here.
-    case 'rdraw'
-        % This subtracts a random mix of L and M cone
-        % responses from the single L and M cone response.
-        % This means that more cones are being used in the
-        % classification than in the case without a surround,
-        % which may not be a good idea.
-        if (theParams.surroundSize > 0 & theParams.surroundWeight > 0)
-            for k = 1:staticParams.nDrawsPerTestStimulus
-                % Blank L cone
-                LCenterVal = blankLMSFullSet(k,1);
-                otherConesIndex = Shuffle(1:blankOneConeEachClassStartIndices(3)-1);
-                MSurroundVals = blankVectors(otherConesIndex(1:theParams.surroundSize),k);
-                LOpponentVal = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
-                blankLMSFullset(1,k) = LOpponentVal;
-                
-                % Blank M cone
-                MCenterVal = blankLMSFullSet(k,2);
-                otherConesIndex = Shuffle(1:blankOneConeEachClassStartIndices(3)-1);
-                LSurroundVals = blankVectors(otherConesIndex(1:theParams.surroundSize),k);
-                MOpponentVal = MCenterVal - theParams.surroundWeight*sum(LSurroundVals)/theParams.surroundSize;
-                blankLMSFullset(2,k) = MOpponentVal;
-                
-                % Test L cone
-                LCenterVal = testLMSFullSet(k,1);
-                otherConesIndex = Shuffle(1:testOneConeEachClassStartIndices(3)-1);
-                MSurroundVals = testVectors(otherConesIndex(1:theParams.surroundSize),k);
-                LOpponentVal = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
-                testLMSFullset(1,k) = LOpponentVal;
-                
-                % Test M cone
-                MCenterVal = testLMSFullSet(k,2);
-                otherConesIndex = Shuffle(1:testOneConeEachClassStartIndices(3)-1);
-                LSurroundVals = testVectors(otherConesIndex(1:theParams.surroundSize),k);
-                MOpponentVal = MCenterVal - theParams.surroundWeight*sum(LSurroundVals)/theParams.surroundSize;
-                testLMSFullset(2,k) = MOpponentVal;
-            end      
-        end
-    case 'determ'
-        % This subtracts the M from the L and the L from the M.
-        %
-        % This version I think should not have an effect unless we add some noise
-        % after the recombination.
-        if (theParams.surroundWeight > 0)
-            for k = 1:staticParams.nDrawsPerTestStimulus
-                % Blank
-                LCenterVal = blankLMSFullSet(k,1);
-                MCenterVal = blankLMSFullSet(k,2);
-                blankLMSFullSet(k,1) = LCenterVal - theParams.surroundWeight*MCenterVal;
-                blankLMSFullSet(k,2) = MCenterVal - theParams.surroundWeight*LCenterVal;
-                
-                % Test 
-                LCenterVal = testLMSFullSet(k,1);
-                MCenterVal = testLMSFullSet(k,2);
-                testLMSFullSet(k,1) = LCenterVal - theParams.surroundWeight*MCenterVal;
-                testLMSFullSet(k,2) = MCenterVal - theParams.surroundWeight*LCenterVal;
-            end
+%% Get noisy sensor values for both blank (background) and test intervals.
+switch (staticParams.stimulus.type)
+    case 'rgb_uniform'
+        backStimulus = staticParams.stimulus;
+        backStimulus.rgbVector = staticComputedValues.backRGB;
+        blankConeResponses = getConeResponsesToStimRGB(cSensor,backStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
+        
+        testStimulus = staticParams.stimulus;
+        testStimulus.rgbVector = (staticComputedValues.backRGB + theParams.testLevel*testRGBGamut);
+        testConeResponses = getConeResponsesToStimRGB(cSensor,testStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
+        
+        % Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
+        if (runtimeParams.DO_SIM_PLOTS)
+            figure; clf; hold on
+            plot(SToWls(ptbAdjustedPhotorceptorsStruct.nomogram.S),ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
+            plot(blankConeResponses.isetLMSQuantalEfficiencyWavelengths,blankConeResponses.isetLMSQuantalEfficiencies(end:-1:1,:)',':');
+            xlabel('Wavelength (nm)');
+            ylabel('Isomerization Quantal Efficiency');
         end
         
+        % Print out comparison of isomerization rates between PTB and iset, as well as PTB photoreceptor parameters.
+        if (~runtimeParams.SIM_QUIET)
+            fprintf('\tISET computes LMS isomerizations as: %d, %d, %d\n',blankConeResponses.isetLMSIsomerizations(1),blankConeResponses.isetLMSIsomerizations(2),blankConeResponses.isetLMSIsomerizations(3));
+            fprintf('\tPTB computes LMS isomerizations as: %d, %d, %d\n',ptbAdjustedBackLMSIsomerizations(1),ptbAdjustedBackLMSIsomerizations(2),ptbAdjustedBackLMSIsomerizations(3));
+            PrintPhotoreceptors(ptbAdjustedPhotorceptorsStruct);
+        end
+
     otherwise
-        error('Unknown surround type specified');     
+        error('Unknown stimulus type specified');
 end
 
-%% Add Poisson noise at a second site
-%
-% You can scale the Poisson variance by the parameter
-% params.opponetLevelNoiseSd.  Setting this to 1 gives
-% Poisson.
-if (theParams.opponentLevelNoiseSd > 0)
-    blankVarMat = abs(blankLMSFullSet);
-    blankSdMat = sqrt(blankVarMat);
-    blankLMSFullSet = blankLMSFullSet + theParams.opponentLevelNoiseSd*blankSdMat.*randn(size(blankLMSFullSet));
-    
-    testVarMat = abs(testLMSFullSet);
-    testSdMat = sqrt(testVarMat);
-    testLMSFullSet = testLMSFullSet + theParams.opponentLevelNoiseSd*testSdMat.*randn(size(testLMSFullSet));
-end
+%% Compute second site responses
+blankSecondSiteResponses = getSecondSiteResponsesFromConeResponses(blankConeResponses,theParams,staticParams,runtimeParams,staticComputedValues);
+testSecondSiteResponses = getSecondSiteResponsesFromConeResponses(testConeResponses,theParams,staticParams,runtimeParams,staticComputedValues);
 
-%% Pull apart into training and validation datasets.
-fullData = [blankLMSFullSet ; testLMSFullSet];
-fullLabels = [blankLabel*ones(size(blankLMSFullSet,1),1) ; testLabel*ones(size(testLMSFullSet,1),1)];
-fullDataN = size(fullData,1);
-trainingDataN = round(fullDataN/2);
-testDataN = fullDataN-trainingDataN;
-indices = Shuffle(1:size(fullData,1));
-trainingData = fullData(indices(1:trainingDataN),:);
-trainingLabels = fullLabels(indices(1:trainingDataN));
-validateData = fullData(indices(trainingDataN+1:end),:);
-validateLabels = fullLabels(indices(trainingDataN+1:end));
-
+%% Get the data in a form to use with the classifier
+classificationData = getTrainingAndValidationData(blankSecondSiteResponses,testSecondSiteResponses);
+       
 %% Plot the training and test data.  We'll plot the distribution of responses for one cone
 if (runtimeParams.DO_SIM_PLOTS)
     % in each sensor class, with the distribution taken over our resampling of each
@@ -306,23 +197,23 @@ if (runtimeParams.DO_SIM_PLOTS)
     end
     sym = {'b.','g.','r.','c.','k.'};
     az = 65.5; el = 30;
-    index = find(trainingLabels == blankLabel);
-    plot3(trainingData(index,1), ...
-        trainingData(index,2), ...
-        trainingData(index,3),'ko','MarkerFaceColor','k');
-    index = find(trainingLabels == testLabel);
-    plot3(trainingData(index,1), ...
-        trainingData(index,2), ...
-        trainingData(index,3),'ro','MarkerFaceColor','r');
+    index = find(classificationData.trainingLabels == classificationData.blankLabel);
+    plot3(classificationData.trainingData(index,1), ...
+        classificationData.trainingData(index,2), ...
+        classificationData.trainingData(index,3),'ko','MarkerFaceColor','k');
+    index = find(classificationData.trainingLabels == classificationData.testLabel);
+    plot3(classificationData.classificationData.trainingData(index,1), ...
+        classificationData.classificationData.trainingData(index,2), ...
+        classificationData.classificationData.trainingData(index,3),'ro','MarkerFaceColor','r');
     
-    index = find(validateLabels == blankLabel);
-    plot3(validateData(index,1), ...
-        validateData(index,2), ...
-        validateData(index,3),'ko');
-    index = find(validateLabels == testLabel);
-    plot3(validateData(index,1), ...
-        validateData(index,2), ...
-        validateData(index,3),'ro');
+    index = find(classificationData.validateLabels == classificationData.blankLabel);
+    plot3(classificationData.validateData(index,1), ...
+        classificationData.validateData(index,2), ...
+        classificationData.validateData(index,3),'ko');
+    index = find(classificationData.validateLabels == classificationData.testLabel);
+    plot3(classificationData.validateData(index,1), ...
+        classificationData.validateData(index,2), ...
+        classificationData.validateData(index,3),'ro');
     xlabel('L-absorptions'); ylabel('M-Absorptions'); zlabel('S-absorptions'); axis square; grid on
 end
 
@@ -340,12 +231,12 @@ end
 % Convert training and test data to TAFC form, if we want.
 if (theParams.DO_TAFC_CLASSIFIER)
     % Build up a TAFC training and test set from the one interval data
-    oneIntervalDataDimension = size(trainingData,2);
-    nTrainingData = 2*size(trainingData,1);
-    trainingBlankIndices = find(trainingLabels == blankLabel);
-    trainingTestIndices = find(trainingLabels == testLabel);
-    validateBlankIndices = find(validateLabels == blankLabel);
-    validateTestIndices = find(validateLabels == testLabel);
+    oneIntervalDataDimension = size(classificationData.trainingData,2);
+    nTrainingData = 2*size(classificationData.trainingData,1);
+    trainingBlankIndices = find(classificationData.trainingLabels == classificationData.blankLabel);
+    trainingTestIndices = find(classificationData.trainingLabels == classificationData.testLabel);
+    validateBlankIndices = find(classificationData.validateLabels == classificationData.blankLabel);
+    validateTestIndices = find(classificationData.validateLabels == classificationData.testLabel);
     tafcTrainingData = zeros(nTrainingData,2*oneIntervalDataDimension);
     tafcTrainingLabels = zeros(nTrainingData,1);
     tafcValidateData = zeros(nTrainingData,2*oneIntervalDataDimension);
@@ -357,14 +248,14 @@ if (theParams.DO_TAFC_CLASSIFIER)
         if (CoinFlip(1,0.5))
             temp1 = Shuffle(trainingTestIndices);
             temp2 = Shuffle(trainingBlankIndices);
-            tafcTrainingLabels(tt) = blankLabel;
+            tafcTrainingLabels(tt) = classificationData.blankLabel;
         else
             temp1 = Shuffle(trainingBlankIndices);
             temp2 = Shuffle(trainingTestIndices);
-            tafcTrainingLabels(tt) = testLabel;
+            tafcTrainingLabels(tt) = classificationData.testLabel;
         end
-        tafcTrainingData(tt,1:oneIntervalDataDimension) = trainingData(temp1(1),:);
-        tafcTrainingData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = trainingData(temp2(1),:);
+        tafcTrainingData(tt,1:oneIntervalDataDimension) = classificationData.trainingData(temp1(1),:);
+        tafcTrainingData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = classificationData.trainingData(temp2(1),:);
         
         % Validation set
         %
@@ -372,14 +263,14 @@ if (theParams.DO_TAFC_CLASSIFIER)
         if (CoinFlip(1,0.5))
             temp1 = Shuffle(validateTestIndices);
             temp2 = Shuffle(validateBlankIndices);
-            tafcValidateLabels(tt) = blankLabel;
+            tafcValidateLabels(tt) = classificationData.blankLabel;
         else
             temp1 = Shuffle(validateBlankIndices);
             temp2 = Shuffle(validateTestIndices);
-            tafcValidateLabels(tt) = testLabel;
+            tafcValidateLabels(tt) = classificationData.testLabel;
         end
-        tafcValidateData(tt,1:oneIntervalDataDimension) = validateData(temp1(1),:);
-        tafcValidateData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = validateData(temp2(1),:);
+        tafcValidateData(tt,1:oneIntervalDataDimension) = classificationData.validateData(temp1(1),:);
+        tafcValidateData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = classificationData.validateData(temp2(1),:);
     end
     
     svmOpts = '-s 0 -t 0';
@@ -413,23 +304,23 @@ else
         svmOpts =  [svmOpts ' -q'];
         predictOpts = [predictOpts ' -q'];
     end
-    svmModel = svmtrain(trainingLabels, trainingData, svmOpts);
-    [svmTrainingPredictedLabels] = svmpredict(trainingLabels, trainingData, svmModel, predictOpts);
-    [svmValidatePredictedLabels] = svmpredict(validateLabels, validateData, svmModel, predictOpts);
-    trainingFractionCorrect = length(find(svmTrainingPredictedLabels == trainingLabels))/length(trainingLabels);
-    validateFractionCorrect = length(find(svmValidatePredictedLabels == validateLabels))/length(validateLabels);
-    results.nCorrectResponses = length(find(svmValidatePredictedLabels == validateLabels));
-    results.nTotalResponses = length(validateLabels);
+    svmModel = svmtrain(classificationData.trainingLabels, classificationData.trainingData, svmOpts);
+    [svmTrainingPredictedLabels] = svmpredict(classificationData.trainingLabels, classificationData.trainingData, svmModel, predictOpts);
+    [svmValidatePredictedLabels] = svmpredict(classificationData.validateLabels, classificationData.validateData, svmModel, predictOpts);
+    trainingFractionCorrect = length(find(svmTrainingPredictedLabels == classificationData.trainingLabels))/length(classificationData.trainingLabels);
+    validateFractionCorrect = length(find(svmValidatePredictedLabels == classificationData.validateLabels))/length(classificationData.validateLabels);
+    results.nCorrectResponses = length(find(svmValidatePredictedLabels == classificationData.validateLabels));
+    results.nTotalResponses = length(classificationData.validateLabels);
     results.fractionCorrect = validateFractionCorrect;
     if (~runtimeParams.SIM_QUIET)
         fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
     end
     
     % Indices for plots below
-    indexTG = find(svmTrainingPredictedLabels == trainingLabels);
-    indexTR = find(svmTrainingPredictedLabels ~= trainingLabels);
-    indexVG = find(svmValidatePredictedLabels == validateLabels);
-    indexVR = find(svmValidatePredictedLabels ~= validateLabels);
+    indexTG = find(svmTrainingPredictedLabels == classificationData.trainingLabels);
+    indexTR = find(svmTrainingPredictedLabels ~= classificationData.trainingLabels);
+    indexVG = find(svmValidatePredictedLabels == classificationData.validateLabels);
+    indexVR = find(svmValidatePredictedLabels ~= classificationData.validateLabels);
 end
 
 % Plot the training and test data.  We'll plot the distribution of responses for one cone
@@ -447,19 +338,19 @@ if (runtimeParams.DO_SIM_PLOTS)
         end
         sym = {'b.','g.','r.','c.','k.'};
         az = 65.5; el = 30;
-        plot3(trainingData(indexTG,1), ...
-            trainingData(indexTG,2), ...
-            trainingData(indexTG,3),'go','MarkerFaceColor','g');
-        plot3(trainingData(indexTR,1), ...
-            trainingData(indexTR,2), ...
-            trainingData(indexTR,3),'ro','MarkerFaceColor','r');
+        plot3(classificationData.trainingData(indexTG,1), ...
+            classificationData.trainingData(indexTG,2), ...
+            classificationData.trainingData(indexTG,3),'go','MarkerFaceColor','g');
+        plot3(classificationData.trainingData(indexTR,1), ...
+            classificationData.trainingData(indexTR,2), ...
+            classificationData.trainingData(indexTR,3),'ro','MarkerFaceColor','r');
         
-        plot3(validateData(indexVG,1), ...
-            validateData(indexVG,2), ...
-            validateData(indexVG,3),'go');
-        plot3(validateData(indexVR,1), ...
-            validateData(indexVR,2), ...
-            validateData(indexVR,3),'ro');
+        plot3(classificationData.validateData(indexVG,1), ...
+            classificationData.validateData(indexVG,2), ...
+            classificationData.validateData(indexVG,3),'go');
+        plot3(classificationData.validateData(indexVR,1), ...
+            classificationData.validateData(indexVR,2), ...
+            classificationData.validateData(indexVR,3),'ro');
         xlabel('L-absorptions'); ylabel('M-Absorptions'); zlabel('S-absorptions'); axis square; grid on
     end
 end

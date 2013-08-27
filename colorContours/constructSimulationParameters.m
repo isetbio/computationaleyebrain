@@ -5,6 +5,8 @@ function simParams = constructSimulationParameters(theParams,staticParams)
 % array of parameters, one entry of which will be used
 % in each (potentially parallel) simulation run.
 %
+% See also setParameters.  Changes here may require modifications there.
+%
 % 8/24/13  dhb  Pulled this out.
 
 %% Construct list of conditions
@@ -50,7 +52,7 @@ for os = 1:length(theParams.OBSERVER_STATES)
                     simParams(paramIndex).surroundSize = theParams.surroundSize;
                     simParams(paramIndex).surroundWeight = theParams.surroundWeight;
                     simParams(paramIndex).integrationArea = theParams.integrationArea;
-                    simParams(paramIndex).opponentLevelNoiseSd = theParams.opponentLevelNoiseSd;
+                    simParams(paramIndex).secondSiteFanoFactor = theParams.secondSiteFanoFactor;
                     
                     % Kluge for now to select subregion of total cones
                     simParams(paramIndex).fractionUse = 0.005;

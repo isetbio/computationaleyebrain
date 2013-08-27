@@ -20,6 +20,8 @@ function [theParams,staticParams] = setParameters(parameterPreset)
 %   'MacularPigmentVary'
 %   'QuickTest' [Default]
 %
+% See also constructSimulationParameters.  Changes here may require modifications there.
+%
 % 9/24/13  dhb  Pulled this out from main routine.
                             
 %% Parameter section
@@ -40,9 +42,11 @@ staticParams.coneApertureMeters = [sqrt(4.1) sqrt(4.1)]*1e-6;% Size of (rectangu
                                                              % and that is PTB's default.
                                                 
 % Stimulus related
-staticParams.monitorName = 'LCD-Apple';                      % Monitor spectrum comes from this file
-staticParams.backRGBValue = 0.5;                             % Define background for experment in monitor RGB
-staticParams.isetGammaValue = 2.2;
+staticParams.stimulus.type = 'rgb_uniform';                  % Set to allow different types of stimulus specification.
+staticParams.stimulus.monitorName = 'LCD-Apple';             % Monitor spectrum comes from this file
+staticParams.stimulus.backRGBValue = 0.5;                    % Define background for experment in monitor RGB
+staticParams.stimulus.isetGammaValue = 2.2;                  % Needed to deal with gamma correction done on image read by iset.
+staticParams.stimulus.coneNumbersToUse = [1 1 1];            % Numbers of each cone class to use in the classifier.
 
 staticParams.nColorDirections = 16;                          % Number of color directions for contour.
 staticParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
@@ -77,10 +81,10 @@ switch (parameterPreset)
         theParams.noiseType = 1;                                  % Type of photoreceptor noise.  1 -> Poisson.  0 -> none.
         theParams.surroundType = 'none';                          % Define type of surround calc to implement
         theParams.surroundSize = 0;                               % Parameter defining surround size.
-        theParams.surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
+        theParams.surroundWeight = 0;                             % Parameter defining surround weight.
         theParams.integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-        theParams.opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination, if any added.
-                                                                  % Expressed as a fraction Poisson sd to use.
+        theParams.secondSiteFanoFactor = 0;                       % Noise added after opponent recombination, if any added.
+                                                                  % Expressed as a fraction of Poisson variance to use.
  
     case 'BasicNoSurroundWithNoise'
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -88,11 +92,11 @@ switch (parameterPreset)
         theParams.macularPigmentDensityAdjustments = [0];         
         
         theParams.noiseType = 0;  
-        theParams.surroundType = 'determ';                          
+        theParams.surroundType = 'none';                          
         theParams.surroundSize = 0;                               
         theParams.surroundWeight = 0;                             
         theParams.integrationArea = 0;                            
-        theParams.opponentLevelNoiseSd = 1;                                                                        
+        theParams.secondSiteFanoFactor = 1;                                                                        
         staticParams.testContrastLengthMax = 1;
                                                        
     case 'BasicRDrawSurround'
@@ -101,11 +105,11 @@ switch (parameterPreset)
         theParams.macularPigmentDensityAdjustments = [0];
         
         theParams.noiseType = 1;
-        theParams.surroundType = 'rdraw';                         
+        theParams.surroundType = 'random_wiring';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
-        theParams.opponentLevelNoiseSd = 0;
+        theParams.secondSiteFanoFactor = 0;
         
     case 'BasicDetermSurround'
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -113,11 +117,11 @@ switch (parameterPreset)
         theParams.macularPigmentDensityAdjustments = [0]; 
         
         theParams.noiseType = 1;
-        theParams.surroundType = 'determ';                         
+        theParams.surroundType = 'cone_specific';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
-        theParams.opponentLevelNoiseSd = 0;
+        theParams.secondSiteFanoFactor = 0;
         
     case 'BasicDetermSurroundWithNoise'
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -125,11 +129,11 @@ switch (parameterPreset)
         theParams.macularPigmentDensityAdjustments = [0]; 
         
         theParams.noiseType = 0;
-        theParams.surroundType = 'determ';                         
+        theParams.surroundType = 'cone_specific';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
-        theParams.opponentLevelNoiseSd = 1;
+        theParams.secondSiteFanoFactor = 1;
         staticParams.testContrastLengthMax = 1;
 
     case 'MacularPigmentVary'
@@ -142,7 +146,7 @@ switch (parameterPreset)
         theParams.surroundSize = 0;                              
         theParams.surroundWeight = 0;                             
         theParams.integrationArea = 0;                           
-        theParams.opponentLevelNoiseSd = 0;
+        theParams.secondSiteFanoFactor = 0;
     
     case 'QuickTest'
         staticParams.nColorDirections = 4;
@@ -159,7 +163,7 @@ switch (parameterPreset)
         theParams.surroundSize = 0;                              
         theParams.surroundWeight = 0;                            
         theParams.integrationArea = 0;                         
-        theParams.opponentLevelNoiseSd = 0;                      
+        theParams.secondSiteFanoFactor = 0;                      
                                                        
     otherwise
         error('Unknown parameter presets');

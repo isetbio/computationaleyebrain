@@ -106,12 +106,12 @@ if (staticParams.dirAngleMax == 2*pi)
     runtimeParams.outputDir = sprintf('%s%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',...
         staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
         theParams.surroundType,round(100*theParams.surroundSize),round(100*theParams.surroundWeight),...
-        round(100*theParams.integrationArea),round(100*theParams.opponentLevelNoiseSd));
+        round(100*theParams.integrationArea),round(100*theParams.secondSiteFanoFactor));
 else
     runtimeParams.outputDir = sprintf('%s%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',...
         staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
         theParams.surroundType,round(100*theParams.surroundSize),round(100*theParams.surroundWeight),...
-        round(100*theParams.integrationArea),round(100*theParams.opponentLevelNoiseSd));
+        round(100*theParams.integrationArea),round(100*theParams.secondSiteFanoFactor));
 end
 
 %% Initialization for running n the cluster
@@ -156,13 +156,13 @@ try
         staticComputedValues.ranSeed = ClockRandSeed;
         
         %%  Get display spectra
-        d = displayCreate(staticParams.monitorName);
+        d = displayCreate(staticParams.stimulus.monitorName);
         staticComputedValues.displaySpd = displayGet(d,'spd');
         staticComputedValues.wavelengthsNm = displayGet(d,'wave');
         % vcNewGraphWin; plot(w,displaySpd)
         
         %% Set background spectrum
-        staticComputedValues.backRGB = [staticParams.backRGBValue staticParams.backRGBValue staticParams.backRGBValue]';
+        staticComputedValues.backRGB = [staticParams.stimulus.backRGBValue staticParams.stimulus.backRGBValue staticParams.stimulus.backRGBValue]';
         staticComputedValues.backSpd = staticComputedValues.displaySpd*staticComputedValues.backRGB;
 
         %% Create standard human polychromatic PSF
