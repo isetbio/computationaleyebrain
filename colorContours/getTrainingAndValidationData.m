@@ -39,7 +39,7 @@ switch (blankResponses.type)
         numberConesPerDraw = sum(coneNumbersToUse);
         
         numberOfCones = size(blankResponses.theVectors,1);
-        if (size(testResponses.theVectors,2) ~= numberOfCones)
+        if (size(testResponses.theVectors,1) ~= numberOfCones)
             error('Number of cones simulated differs between blank and test');
         end
         numberDraws = size(blankResponses.theVectors,2);
@@ -57,8 +57,8 @@ switch (blankResponses.type)
         startOutIndex = 1;
         
         % Allocate space
-        blankData = zeros(numberResponsesPerDraw,nDraws);
-        testData = zeros(numberResponsesPerDraw,nDraws);
+        blankData = zeros(numberConesPerDraw,numberDraws);
+        testData = zeros(numberConesPerDraw,numberDraws);
         
         % Select the right amount of data
         for c = nConeClasses
@@ -70,13 +70,13 @@ switch (blankResponses.type)
             end
             
             % Randomly select the right number of cones for this class
-            inIndicesToUse = Shuffle(startIndex:endIndex);
+            inIndicesToUse = Shuffle(startInIndex:endInIndex);
             inIndicesToUse = inIndicesToUse(1:coneNumbersToUse(c));
             
             % End index for output
             endOutIndex = startOutIndex+coneNumbersToUse(c)-1;
             blankData(startOutIndex:endOutIndex,:) = blankResponses.theVectors(inIndicesToUse,:);
-            testData(startOutIndex:endOutIndex,:) = testResponses.theVectors(inInidicesToUse,:);
+            testData(startOutIndex:endOutIndex,:) = testResponses.theVectors(inIndicesToUse,:);
         end
         
         
@@ -89,15 +89,15 @@ switch (blankResponses.type)
         classificationData.blankLabel = -1;
         classificationData.testLabel = 1;
         classificationData.fullData = [blankData' ; testData'];
-        classificationData.fullLabels = [blankLabel*ones(size(blankSecondSiteResponses.theVectors,1),1) ; testLabel*ones(size(testSecondSiteResponses.theVectors,1),1)];
-        fullDataN = size(fullData,1);
+        classificationData.fullLabels = [classificationData.blankLabel*ones(size(blankResponses.theVectors,1),1) ; classificationData.testLabel*ones(size(testResponses.theVectors,1),1)];
+        fullDataN = size(classificationData.fullData,1);
         trainingDataN = round(fullDataN/2);
         validateDataN = fullDataN-trainingDataN;
-        indices = Shuffle(1:size(fullData,1));
-        classificationData.trainingData = fullData(indices(1:trainingDataN),:);
-        classificationData.trainingLabels = fullLabels(indices(1:trainingDataN));
-        classificationData.validateData = fullData(indices(trainingDataN+1:end),:);
-        classificationData.validateLabels = fullLabels(indices(trainingDataN+1:end));
+        indices = Shuffle(1:size(classificationData.fullData,1));
+        classificationData.trainingData = classificationData.fullData(indices(1:trainingDataN),:);
+        classificationData.trainingLabels = classificationData.fullLabels(indices(1:trainingDataN));
+        classificationData.validateData = classificationData.fullData(indices(trainingDataN+1:end),:);
+        classificationData.validateLabels = classificationData.fullLabels(indices(trainingDataN+1:end));
         
     otherwise
         error('Unknown stimulus type specified');

@@ -91,7 +91,7 @@ switch (stimulus.type)
         
         % Get iset LMS quantal efficiences and wavelengths
         temp = sensorGet(theCSensorNF,'spectralqe')';
-        coneResponses.iseLMSQuantalEfficiencies = temp(staticParams.isetSensorConeSlots,:);
+        coneResponses.isetLMSQuantalEfficiencies = temp(staticParams.isetSensorConeSlots,:);
         coneResponses.isetLMSQuantalEfficiencyWavelengths = sensorGet(theCSensorNF,'wave');
         clear temp
         

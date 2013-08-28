@@ -83,7 +83,7 @@ ANALYZE = true;                                % Analyze
 % by how they are set here, rather than overridden
 % at analysis time by loading in the other saved
 % parameter structures.
-runtimeParams.DO_SIM_PLOTS = false;
+runtimeParams.DO_SIM_PLOTS = true;
 runtimeParams.SIM_QUIET = true;
 runtimeParams.DO_PSYCHO_PLOTS = true;
 runtimeParams.psychoPlotDir = 'psychometricFcnPlots';

@@ -125,7 +125,11 @@ results.testLMSGamut = testLMSGamut;
 %
 % PTB, conversion is pupilArea/(eyeLength^2).
 % pi /(1 + 4*fN^2*(1+abs(m))^2)
-if (runtimeParams.DO_SIM_PLOTS)
+%
+% [**] This plot is currently broken because backOiD is no longer
+% computed at this level.  
+%if (runtimeParams.DO_SIM_PLOTS)
+if (0)
     % Get background irradiance out of the optical image.
     %
     % [**] This currently works be using an ROI that was selected
@@ -202,9 +206,9 @@ if (runtimeParams.DO_SIM_PLOTS)
         classificationData.trainingData(index,2), ...
         classificationData.trainingData(index,3),'ko','MarkerFaceColor','k');
     index = find(classificationData.trainingLabels == classificationData.testLabel);
-    plot3(classificationData.classificationData.trainingData(index,1), ...
-        classificationData.classificationData.trainingData(index,2), ...
-        classificationData.classificationData.trainingData(index,3),'ro','MarkerFaceColor','r');
+    plot3(classificationData.trainingData(index,1), ...
+        classificationData.trainingData(index,2), ...
+        classificationData.trainingData(index,3),'ro','MarkerFaceColor','r');
     
     index = find(classificationData.validateLabels == classificationData.blankLabel);
     plot3(classificationData.validateData(index,1), ...
@@ -330,7 +334,7 @@ end
 % Some thought is required about how to make a useful plot for the TAFC case, skipping
 % it for now.
 if (runtimeParams.DO_SIM_PLOTS)
-    if (~theParams.theParams.DO_TAFC_CLASSIFIER)
+    if (~theParams.DO_TAFC_CLASSIFIER)
         if (~exist('f2','var'))
             f2 = vcNewGraphWin; hold on;
         else
