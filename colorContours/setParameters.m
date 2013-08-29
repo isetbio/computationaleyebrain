@@ -46,7 +46,6 @@ staticParams.stimulus.type = 'rgb_uniform';                  % Set to allow diff
 staticParams.stimulus.monitorName = 'LCD-Apple';             % Monitor spectrum comes from this file
 staticParams.stimulus.backRGBValue = 0.5;                    % Define background for experment in monitor RGB
 staticParams.stimulus.isetGammaValue = 2.2;                  % Needed to deal with gamma correction done on image read by iset.
-staticParams.stimulus.coneNumbersToUse = [1 1 1];            % Numbers of each cone class to use in the classifier.
 
 staticParams.nColorDirections = 16;                          % Number of color directions for contour.
 staticParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
@@ -73,6 +72,8 @@ end
 switch (parameterPreset)
                             
     case 'BasicNoSurround'
+        staticParams.stimulus.coneNumbersToUse = [1 1 1];         % Numbers of each cone class to use in the classifier.
+
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
         theParams.macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
@@ -87,6 +88,8 @@ switch (parameterPreset)
                                                                   % Expressed as a fraction of Poisson variance to use.
  
     case 'BasicNoSurroundWithNoise'
+        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0];         
@@ -100,6 +103,8 @@ switch (parameterPreset)
         staticParams.testContrastLengthMax = 1;
                                                        
     case 'BasicRDrawSurround'
+        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0];
@@ -112,6 +117,8 @@ switch (parameterPreset)
         theParams.secondSiteFanoFactor = 0;
         
     case 'BasicDetermSurround'
+        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0]; 
@@ -124,6 +131,8 @@ switch (parameterPreset)
         theParams.secondSiteFanoFactor = 0;
         
     case 'BasicDetermSurroundWithNoise'
+        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+               
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0]; 
@@ -137,6 +146,8 @@ switch (parameterPreset)
         staticParams.testContrastLengthMax = 1;
 
     case 'MacularPigmentVary'
+        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+
         theParams.OBSERVER_STATES = {'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [-0.3 0 0.3];
@@ -149,13 +160,15 @@ switch (parameterPreset)
         theParams.secondSiteFanoFactor = 0;
     
     case 'QuickTest'
+        staticParams.stimulus.coneNumbersToUse = [3 2 1]; 
+
         staticParams.nColorDirections = 4;
         staticParams.dirAngleMax = pi;
         staticParams.nTestLevels = 4;
         staticParams.nDrawsPerTestStimulus = 100;
         
         theParams.OBSERVER_STATES = {'LMandS'};
-        theParams.DO_TAFC_CLASSIFIER_STATES = [false];
+        theParams.DO_TAFC_CLASSIFIER_STATES = [true];
         theParams.macularPigmentDensityAdjustments = [0];
         
         theParams.noiseType = 1;

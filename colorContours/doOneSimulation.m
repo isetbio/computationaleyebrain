@@ -219,6 +219,7 @@ if (runtimeParams.DO_SIM_PLOTS)
         classificationData.validateData(index,2), ...
         classificationData.validateData(index,3),'ro');
     xlabel('L-absorptions'); ylabel('M-Absorptions'); zlabel('S-absorptions'); axis square; grid on
+    drawnow;
 end
 
 %% Build and test the SVM model
@@ -356,5 +357,6 @@ if (runtimeParams.DO_SIM_PLOTS)
             classificationData.validateData(indexVR,2), ...
             classificationData.validateData(indexVR,3),'ro');
         xlabel('L-absorptions'); ylabel('M-Absorptions'); zlabel('S-absorptions'); axis square; grid on
+        drawnow;
     end
 end

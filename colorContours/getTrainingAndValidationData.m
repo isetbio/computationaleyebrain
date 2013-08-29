@@ -61,10 +61,10 @@ switch (blankResponses.type)
         testData = zeros(numberConesPerDraw,numberDraws);
         
         % Select the right amount of data
-        for c = nConeClasses
+        for c = 1:nConeClasses
             % End index for input
             if (c < nConeClasses)
-                endInIndex = startIndex + oneConeEachClassStartIndices(c+1) - 1;
+                endInIndex = oneConeEachClassStartIndices(c+1) - 1;
             else
                 endInIndex = numberOfCones;
             end
@@ -77,6 +77,10 @@ switch (blankResponses.type)
             endOutIndex = startOutIndex+coneNumbersToUse(c)-1;
             blankData(startOutIndex:endOutIndex,:) = blankResponses.theVectors(inIndicesToUse,:);
             testData(startOutIndex:endOutIndex,:) = testResponses.theVectors(inIndicesToUse,:);
+            
+            % Bump start indices
+            startInIndex = endInIndex+1;
+            startOutIndex = endOutIndex+1;
         end
         
         
@@ -89,10 +93,10 @@ switch (blankResponses.type)
         classificationData.blankLabel = -1;
         classificationData.testLabel = 1;
         classificationData.fullData = [blankData' ; testData'];
-        classificationData.fullLabels = [classificationData.blankLabel*ones(size(blankResponses.theVectors,1),1) ; classificationData.testLabel*ones(size(testResponses.theVectors,1),1)];
         fullDataN = size(classificationData.fullData,1);
         trainingDataN = round(fullDataN/2);
         validateDataN = fullDataN-trainingDataN;
+        classificationData.fullLabels = [classificationData.blankLabel*ones(trainingDataN,1) ; classificationData.testLabel*ones(validateDataN,1)];
         indices = Shuffle(1:size(classificationData.fullData,1));
         classificationData.trainingData = classificationData.fullData(indices(1:trainingDataN),:);
         classificationData.trainingLabels = classificationData.fullLabels(indices(1:trainingDataN));
