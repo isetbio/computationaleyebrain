@@ -176,7 +176,7 @@ switch (parameterPreset)
         theParams.surroundSize = 0;                              
         theParams.surroundWeight = 0;                            
         theParams.integrationArea = 0;                         
-        theParams.secondSiteFanoFactor = 0;                      
+        theParams.secondSiteFanoFactor = 1;                      
                                                        
     otherwise
         error('Unknown parameter presets');

@@ -13,10 +13,13 @@ saveFlag = 0;
 %% Make sure we are in the right place
 cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
 
+%% Cell array of what to run
+thePresets = {  };
+
 %% Run 'em
 runBasicNoSurround;
 runBasicDetermSurround;
-runBasicNoSurroundWithNoise;
+runBasicNoSurroundWithNoise;  };
 runBasicDetermSurroundWithNoise;
 runBasicRDrawSurround;
 runMacularPigmentVary;
