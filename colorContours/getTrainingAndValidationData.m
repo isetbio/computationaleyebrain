@@ -92,16 +92,16 @@ switch (blankResponses.type)
         % the form that svm wants, so we might as well do it here.
         classificationData.blankLabel = -1;
         classificationData.testLabel = 1;
-        classificationData.fullData = [blankData' ; testData'];
-        fullDataN = size(classificationData.fullData,1);
+        fullData = [blankData' ; testData'];
+        fullDataN = size(fullData,1);
         trainingDataN = round(fullDataN/2);
         validateDataN = fullDataN-trainingDataN;
-        classificationData.fullLabels = [classificationData.blankLabel*ones(trainingDataN,1) ; classificationData.testLabel*ones(validateDataN,1)];
-        indices = Shuffle(1:size(classificationData.fullData,1));
-        classificationData.trainingData = classificationData.fullData(indices(1:trainingDataN),:);
-        classificationData.trainingLabels = classificationData.fullLabels(indices(1:trainingDataN));
-        classificationData.validateData = classificationData.fullData(indices(trainingDataN+1:end),:);
-        classificationData.validateLabels = classificationData.fullLabels(indices(trainingDataN+1:end));
+        fullLabels = [classificationData.blankLabel*ones(trainingDataN,1) ; classificationData.testLabel*ones(validateDataN,1)];
+        indices = Shuffle(1:size(fullData,1));
+        classificationData.trainingData = fullData(indices(1:trainingDataN),:);
+        classificationData.trainingLabels = fullLabels(indices(1:trainingDataN));
+        classificationData.validateData = fullData(indices(trainingDataN+1:end),:);
+        classificationData.validateLabels = fullLabels(indices(trainingDataN+1:end));
         
     otherwise
         error('Unknown stimulus type specified');

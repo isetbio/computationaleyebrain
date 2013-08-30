@@ -235,97 +235,30 @@ end
 %
 % Convert training and test data to TAFC form, if we want.
 if (theParams.DO_TAFC_CLASSIFIER)
-    % Build up a TAFC training and test set from the one interval data
-    oneIntervalDataDimension = size(classificationData.trainingData,2);
-    nTrainingData = 2*size(classificationData.trainingData,1);
-    trainingBlankIndices = find(classificationData.trainingLabels == classificationData.blankLabel);
-    trainingTestIndices = find(classificationData.trainingLabels == classificationData.testLabel);
-    validateBlankIndices = find(classificationData.validateLabels == classificationData.blankLabel);
-    validateTestIndices = find(classificationData.validateLabels == classificationData.testLabel);
-    tafcTrainingData = zeros(nTrainingData,2*oneIntervalDataDimension);
-    tafcTrainingLabels = zeros(nTrainingData,1);
-    tafcValidateData = zeros(nTrainingData,2*oneIntervalDataDimension);
-    tafcValidateLabels = zeros(nTrainingData,1);
-    for tt = 1:nTrainingData
-        % Training set
-        %
-        % Flip a coin to decide whether test is in first or second interval
-        if (CoinFlip(1,0.5))
-            temp1 = Shuffle(trainingTestIndices);
-            temp2 = Shuffle(trainingBlankIndices);
-            tafcTrainingLabels(tt) = classificationData.blankLabel;
-        else
-            temp1 = Shuffle(trainingBlankIndices);
-            temp2 = Shuffle(trainingTestIndices);
-            tafcTrainingLabels(tt) = classificationData.testLabel;
-        end
-        tafcTrainingData(tt,1:oneIntervalDataDimension) = classificationData.trainingData(temp1(1),:);
-        tafcTrainingData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = classificationData.trainingData(temp2(1),:);
-        
-        % Validation set
-        %
-        % Same logic
-        if (CoinFlip(1,0.5))
-            temp1 = Shuffle(validateTestIndices);
-            temp2 = Shuffle(validateBlankIndices);
-            tafcValidateLabels(tt) = classificationData.blankLabel;
-        else
-            temp1 = Shuffle(validateBlankIndices);
-            temp2 = Shuffle(validateTestIndices);
-            tafcValidateLabels(tt) = classificationData.testLabel;
-        end
-        tafcValidateData(tt,1:oneIntervalDataDimension) = classificationData.validateData(temp1(1),:);
-        tafcValidateData(tt,oneIntervalDataDimension+1:2*oneIntervalDataDimension) = classificationData.validateData(temp2(1),:);
-    end
-    
-    svmOpts = '-s 0 -t 0';
-    predictOpts = '';
-    if (runtimeParams.SIM_QUIET)
-        svmOpts =  [svmOpts ' -q'];
-        predictOpts = [predictOpts ' -q'];
-    end
-    svmModel = svmtrain(tafcTrainingLabels, tafcTrainingData, svmOpts);
-    [svmTrainingPredictedLabels] = svmpredict(tafcTrainingLabels, tafcTrainingData, svmModel, predictOpts);
-    [svmValidatePredictedLabels] = svmpredict(tafcValidateLabels, tafcValidateData, svmModel, predictOpts);
-    trainingFractionCorrect = length(find(svmTrainingPredictedLabels == tafcTrainingLabels))/length(tafcTrainingLabels);
-    validateFractionCorrect = length(find(svmValidatePredictedLabels == tafcValidateLabels))/length(tafcValidateLabels);
-    results.nCorrectResponses = length(find(svmValidatePredictedLabels == tafcValidateLabels));
-    results.nTotalResponses = length(tafcValidateLabels);
-    results.fractionCorrect = validateFractionCorrect;
-    if (~runtimeParams.SIM_QUIET)
-        fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
-    end
-    
-    % Indices for plots below
-    indexTG = find(svmTrainingPredictedLabels == tafcTrainingLabels);
-    indexTR = find(svmTrainingPredictedLabels ~= tafcTrainingLabels);
-    indexVG = find(svmValidatePredictedLabels == tafcValidateLabels);
-    indexVR = find(svmValidatePredictedLabels ~= tafcValidateLabels);
-else
-    % Just do the one interval analysis
-    svmOpts = '-s 0 -t 0';
-    predictOpts = '';
-    if (runtimeParams.SIM_QUIET)
-        svmOpts =  [svmOpts ' -q'];
-        predictOpts = [predictOpts ' -q'];
-    end
-    svmModel = svmtrain(classificationData.trainingLabels, classificationData.trainingData, svmOpts);
-    [svmTrainingPredictedLabels] = svmpredict(classificationData.trainingLabels, classificationData.trainingData, svmModel, predictOpts);
-    [svmValidatePredictedLabels] = svmpredict(classificationData.validateLabels, classificationData.validateData, svmModel, predictOpts);
-    trainingFractionCorrect = length(find(svmTrainingPredictedLabels == classificationData.trainingLabels))/length(classificationData.trainingLabels);
-    validateFractionCorrect = length(find(svmValidatePredictedLabels == classificationData.validateLabels))/length(classificationData.validateLabels);
-    results.nCorrectResponses = length(find(svmValidatePredictedLabels == classificationData.validateLabels));
-    results.nTotalResponses = length(classificationData.validateLabels);
-    results.fractionCorrect = validateFractionCorrect;
-    if (~runtimeParams.SIM_QUIET)
-        fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
-    end
-    
-    % Indices for plots below
-    indexTG = find(svmTrainingPredictedLabels == classificationData.trainingLabels);
-    indexTR = find(svmTrainingPredictedLabels ~= classificationData.trainingLabels);
-    indexVG = find(svmValidatePredictedLabels == classificationData.validateLabels);
-    indexVR = find(svmValidatePredictedLabels ~= classificationData.validateLabels);
+    classificationData = oneIntervalToTwoIntervalClassificationData(classificationData);
+end
+       
+%% Train and evaluate SVM
+%
+% Train on one part of the data, evaluate on the other.  
+svmOpts = '-s 0 -t 0';
+predictOpts = '';
+if (runtimeParams.SIM_QUIET)
+    svmOpts =  [svmOpts ' -q'];
+    predictOpts = [predictOpts ' -q'];
+end
+svmModel = svmtrain(classificationData.trainingLabels, classificationData.trainingData, svmOpts);
+[svmTrainingPredictedLabels] = svmpredict(classificationData.trainingLabels, classificationData.trainingData, svmModel, predictOpts);
+[svmValidatePredictedLabels] = svmpredict(classificationData.validateLabels, classificationData.validateData, svmModel, predictOpts);
+trainingFractionCorrect = length(find(svmTrainingPredictedLabels == classificationData.trainingLabels))/length(classificationData.trainingLabels);
+validateFractionCorrect = length(find(svmValidatePredictedLabels == classificationData.validateLabels))/length(classificationData.validateLabels);
+
+%% Store the results for return
+results.nCorrectResponses = length(find(svmValidatePredictedLabels == classificationData.validateLabels));
+results.nTotalResponses = length(classificationData.validateLabels);
+results.fractionCorrect = validateFractionCorrect;
+if (~runtimeParams.SIM_QUIET)
+    fprintf('\tClassifier percent correct: %d (training data), %d (validation data)\n',round(100*trainingFractionCorrect),round(100*validateFractionCorrect));
 end
 
 % Plot the training and test data.  We'll plot the distribution of responses for one cone
@@ -336,6 +269,12 @@ end
 % it for now.
 if (runtimeParams.DO_SIM_PLOTS)
     if (~theParams.DO_TAFC_CLASSIFIER)
+        % Indices for coloring the plot
+        indexTG = find(svmTrainingPredictedLabels == classificationData.trainingLabels);
+        indexTR = find(svmTrainingPredictedLabels ~= classificationData.trainingLabels);
+        indexVG = find(svmValidatePredictedLabels == classificationData.validateLabels);
+        indexVR = find(svmValidatePredictedLabels ~= classificationData.validateLabels);
+
         if (~exist('f2','var'))
             f2 = vcNewGraphWin; hold on;
         else
