@@ -36,14 +36,21 @@ function colorContours(parameterPreset)
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Think about how to add a real surround, and to control second site noise
-%    in a sensible fashion.  We want enough noise so that second site noise 
-%    is the limiting noise, but not so much as to make thresholds crazy. 
-%    And, how to equate noise for opponenent and non-opponent calcs?  (Maybe
-%    this isn't a sensible thing to try to do.)
-%  * Break this big long script into sensible subfunctions.
+%  * Think about how to add a real surround.
 %  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
 %  * I don't think the ellipse fitting enforces a center of zero.  It should.
+%
+% Known bugs:
+%  * Classification performance is above chance for no stimulus when the
+%    second site calculations are used.  I have beat my head against this
+%    for a little while but don't see how it is possible.  Keep thinking.
+%  * Classification performance is above chance for some dichromatic conditions
+%    where it shouldn't be.  This does require out of gamut contrast, and could
+%    be a numerical issue, with isolation not quite being isolation.  But it
+%    is bugging me.
+%  * Need to look at code that excludes out of gamut contrasts (or not) in
+%    the psychometric function calculations.  I've rewritten enough other stuff
+%    that this may not be correct any more.
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -84,7 +91,7 @@ ANALYZE = true;                                % Analyze
 % at analysis time by loading in the other saved
 % parameter structures.
 runtimeParams.DO_SIM_PLOTS = false;
-runtimeParams.SIM_QUIET = true;
+runtimeParams.SIM_QUIET = false;
 runtimeParams.DO_PSYCHO_PLOTS = true;
 runtimeParams.psychoPlotDir = 'psychometricFcnPlots';
 

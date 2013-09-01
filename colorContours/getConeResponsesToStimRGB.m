@@ -86,7 +86,7 @@ switch (stimulus.type)
         % We pick the max to avoid the edge effects in the sensor image.
         for ii = 1:staticParams.nSensorClasses
             theSensorValsNF{ii} = sensorGet(theCSensorNF,'electrons',staticParams.isetSensorConeSlots(ii));
-            coneResponses.iseLMSIsomerizations(ii) = round(max(theSensorValsNF{ii}));
+            coneResponses.isetLMSIsomerizations(ii) = round(max(theSensorValsNF{ii}));
         end
         
         % Get iset LMS quantal efficiences and wavelengths
@@ -123,12 +123,15 @@ switch (stimulus.type)
         
         %% We want to control the integration area.
         %
-        % Here we'll do this by specifying the fraction of
-        % the total mosaic to use.
+        % Here we'll do this by specifying the number of cones
+        % of each type to use.
         %
         % First figure out length of sample vector
+        if (staticParams.nSensorClasses ~= length(staticParams.stimulus.coneNumbersToUse))
+            error('Mismatch in number of sensor classes as specified in different ways in the parameters');
+        end
         for ii = 1:staticParams.nSensorClasses
-            nUse(ii) = length(theSensorVals{1,ii});
+            nUse(ii) = staticParams.stimulus.coneNumbersToUse(ii);
         end
         nUseAll = sum(nUse);
         
@@ -136,34 +139,40 @@ switch (stimulus.type)
         coneResponses.theVectors = zeros(nUseAll,staticParams.nDrawsPerTestStimulus);
         typeVec = zeros(nUseAll,1);
         coneResponses.oneConeEachClassStartIndices = zeros(staticParams.nSensorClasses,1);
-        for k = 1:staticParams.nDrawsPerTestStimulus
-            if (rem(k,10) == 0)
-                if (~runtimeParams.SIM_QUIET)
-                    fprintf('\tGetting cone catches for draw %d of %d\n',k,staticParams.nDrawsPerTestStimulus);
-                end
-            end
+        
+        startIndex = 1;
+        for ii = 1:staticParams.nSensorClasses
+            % Pull out a set of randomly chosen responses for this sensor class
+            % and tuck it into the response vector, for both background and test.
+            % Also store the sensor class index for each stored response.
+            endIndex = startIndex + nUse(ii) - 1;
             
-            startIndex = 1;
-            for ii = 1:staticParams.nSensorClasses
-                % Pull out a set of randomly chosen responses for this sensor class
-                % and tuck it into the response vector, for both background and test.
-                % Also store the sensor class index for each stored response.
-                endIndex = startIndex + nUse(ii) - 1;
+            % Currently, this shufles the responses of each class before
+            % pulling out the requisite number of responses, to try in general
+            % to avoid any weird edge effects.  The shuffling is constant across
+            % draws, so we use the same set of cones for each draw.  
+            %
+            % Different cones will be used for different calls into this routine,
+            % for different simulations, but that should not matter much.
+            %
+            % [** Better will be to fix this up to be more spatially realistic.]
+            ranIndex = Shuffle(1:length(theSensorVals{1,ii}));
+            
+            for k = 1:staticParams.nDrawsPerTestStimulus
+                if (rem(k,10) == 0)
+                    if (~runtimeParams.SIM_QUIET)
+                        fprintf('\tGetting cone catches for draw %d of %d\n',k,staticParams.nDrawsPerTestStimulus);
+                    end
+                end
                 
-                % Currently, this shufles the responses of each class before
-                % pulling out the requisite number of responses, for some reason.
-                % It shouldn't have any
-                %
-                % [** Better will be to fix this up to be more realistic.]
-                temp = Shuffle(theSensorVals{k,ii});
-                coneResponses.theVectors(startIndex:endIndex,k) = temp(1:nUse(ii));
+                coneResponses.theVectors(startIndex:endIndex,k) = theSensorVals{k,ii}(ranIndex(1:nUse(ii)));
                 if (k == 1)
                     typeVec(startIndex:endIndex) = ii;
                     coneResponses.oneConeEachClassStartIndices(ii) = startIndex;
                 end
-                
-                startIndex = endIndex+1;
             end
+            
+            startIndex = endIndex+1;
         end
         
     otherwise

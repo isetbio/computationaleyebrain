@@ -49,7 +49,7 @@ staticParams.stimulus.isetGammaValue = 2.2;                  % Needed to deal wi
 
 staticParams.nColorDirections = 16;                          % Number of color directions for contour.
 staticParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
-staticParams.nTestLevels = 10;                                % Number of test levels to simulate for each test direction psychometric function.
+staticParams.nTestLevels = 10;                               % Number of test levels to simulate for each test direction psychometric function.
 staticParams.nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus
 staticParams.criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 
