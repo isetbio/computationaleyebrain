@@ -14,12 +14,16 @@ saveFlag = 0;
 cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
 
 %% Cell array of what to run
-thePresets = {  };
+thePresets = {'NoSurroundNoSecondSiteNoise' 'NoSurroundWithSecondSiteNoise' ...
+    'RandomSurroundNoSecondSiteNoise' 'RandomSurroundWithSecondSiteNoise' ...
+    'SelectiveSurroundNoSecondSiteNoise' 'SelectiveSurroundWithSecondSiteNoise' ...
+    'MacularPigmentVary'};
+
+thePresets = {'NoSurroundNoSecondSiteNoise'};
 
 %% Run 'em
-runBasicNoSurround;
-runBasicDetermSurround;
-runBasicNoSurroundWithNoise;  };
-runBasicDetermSurroundWithNoise;
-runBasicRDrawSurround;
-runMacularPigmentVary;
+for p = 1:length(thePresets)
+    colorContours(thePresets{p});
+end
+
+

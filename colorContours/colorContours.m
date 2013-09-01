@@ -83,7 +83,7 @@ ANALYZE = true;                                % Analyze
 % by how they are set here, rather than overridden
 % at analysis time by loading in the other saved
 % parameter structures.
-runtimeParams.DO_SIM_PLOTS = true;
+runtimeParams.DO_SIM_PLOTS = false;
 runtimeParams.SIM_QUIET = true;
 runtimeParams.DO_PSYCHO_PLOTS = true;
 runtimeParams.psychoPlotDir = 'psychometricFcnPlots';
@@ -211,8 +211,9 @@ try
                 fprintf(fid,'\tTAFC state %d\n',simParams(p).DO_TAFC_CLASSIFIER);
                 fprintf(fid,'\tMacular pigment density adjust %0.2f\n',simParams(p).macularPigmentDensityAdjust);
                 fprintf(fid,'\tColor direction %0.3f\n',simParams(p).cdAngle);
-                fprintf(fid,'\tTest level %0.3f\n',simParams(p).testLevel);
-                fprintf(fid,'\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
+                for k = 1:length(simResults(p).fractionCorrect)
+                    fprintf(fid,'\t\tTest level %0.3f, fraction correct %0.2f\n',simResults(p).testLevels(k),simResults(p).fractionCorrect(k));
+                end
                 fclose(fid);
             end
         else
@@ -222,10 +223,12 @@ try
                 fprintf('\tTAFC state %d\n',simParams(p).DO_TAFC_CLASSIFIER);
                 fprintf('\tMacular pigment density adjust %0.2f\n',simParams(p).macularPigmentDensityAdjust);
                 fprintf('\tColor direction %0.3f\n',simParams(p).cdAngle);
-                fprintf('\tTest level %0.3f\n',simParams(p).testLevel);
                 
                 simResults(p) = doOneSimulation(simParams(p),staticParams,runtimeParams,staticComputedValues);
-                fprintf('\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
+                
+                for k = 1:length(simResults(p).fractionCorrect)
+                    fprintf('\t\tTest level %0.3f, fraction correct %0.2f\n',simResults(p).testLevels(k),simResults(p).fractionCorrect(k));
+                end
             end
         end
         
@@ -291,19 +294,29 @@ try
                     for cdi = 1:length(the_cdAngles);
                         cdAngle = the_cdAngles(cdi);
                         index1 = find(cdAngle == cdAngles_List);
+                        if (length(index1) ~= 1)
+                            error('We only expect result for each angle for each condition');
+                        end
                         useParams1 = useParams0(index1);
                         useResults1 = useResults0(index1);
-                        testLevels_List = [useParams1.testLevel];
-                        the_testLevels = unique(testLevels_List);
                         
-                        for t = 1:length(the_testLevels)
-                            the_fractionCorrects(t) = useResults1(t).fractionCorrect;
-                            the_nCorrectResponses(t) = useResults1(t).nCorrectResponses;
-                            the_nTotalResponses(t) = useResults1(t).nTotalResponses;
-                            the_testLMSContrast(:,t) = useResults1(t).testLMSContrast;
-                            the_backLMS(:,t) = useResults1(t).backgroundLMS;
-                            the_testLMSGamut(:,t) = useResults1(t).testLMSGamut;
+                        for t = 1:length(useResults1.testLevels)
+                            the_testLevels(t) = useResults1.testLevels(t);
+                            the_fractionCorrects(t) = useResults1.fractionCorrect(t);
+                            the_nCorrectResponses(t) = useResults1.nCorrectResponses(t);
+                            the_nTotalResponses(t) = useResults1.nTotalResponses(t);
+                            the_testLMSContrast(:,t) = useResults1.testLMSContrast;
+                            the_backLMS(:,t) = useResults1.backgroundLMS;
+                            the_testLMSGamut(:,t) = useResults1.testLMSGamut;
                         end
+                        [nil,sindex] = sort(the_testLevels);
+                        the_testLevels = the_testLevels(sindex);
+                        the_fractionCorrects = the_fractionCorrects(sindex);
+                        the_nCorrectResponses = the_nCorrectResponses(sindex);
+                        the_nTotalResponses = the_nTotalResponses(sindex);
+                        the_testLMSContrast = the_testLMSContrast(:,sindex);
+                        the_backLMS = the_backLMS(:,sindex);
+                        the_testLMSGamut = the_testLMSGamut(:,sindex);
                         
                         % Plot data
                         if (runtimeParams.DO_PSYCHO_PLOTS)
@@ -320,7 +333,7 @@ try
                         % Be setting USE_PALAMEDES to 1, you can use the Palamedes toolbox routines
                         % to do the fitting.  But, you'll need to install the Palamedes toolbox to
                         % do so.  By default, we use fitting routines in the Psychtoolbox.
-                        testLevelsInterp = linspace(the_testLevels(1),the_testLevels(end),100);
+                        testLevelsInterp = linspace(0,the_testLevels(end),100);
                         USE_PALAMEDES = 0;
                         if (USE_PALAMEDES)
                             % Palamedes toolbox (for fitting psychometric functions)
@@ -360,7 +373,7 @@ try
                             plot(testLevelsInterp,probCorrInterp,'r');
                             plot([thresholdEst thresholdEst],[0.5 theData.staticParams.criterionCorrect],'g');
                             plot([the_testLevels(1) thresholdEst],[theData.staticParams.criterionCorrect theData.staticParams.criterionCorrect],'g');
-                            xlim([0 1]);
+                            xlim([0 2]);
                             ylim([0.5 1]);
                             drawnow;
                             

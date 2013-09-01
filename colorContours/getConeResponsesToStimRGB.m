@@ -43,8 +43,8 @@ coneResponses.coneNumbersToUse = stimulus.coneNumbersToUse;
 switch (stimulus.type)
     case 'rgb_uniform'
         %% Filename unique to calling condition and time now, to prevent stepping on ourselves from parfor loop
-        imageFileName = sprintf('tmp_%s_%d_%d_%d_%d_%d.png',theParams.OBSERVER_STATE,theParams.DO_TAFC_CLASSIFIER,round(100*theParams.macularPigmentDensityAdjust),...
-            round(1000*theParams.cdAngle),round(1000*theParams.testLevel),now);
+        imageFileName = sprintf('tmp_%s_%d_%d_%d_%d.png',theParams.OBSERVER_STATE,theParams.DO_TAFC_CLASSIFIER,round(100*theParams.macularPigmentDensityAdjust),...
+            round(1000*theParams.cdAngle),now);
         
         %% Create a scene with the background spectrum
         %

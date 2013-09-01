@@ -49,12 +49,9 @@ staticParams.stimulus.isetGammaValue = 2.2;                  % Needed to deal wi
 
 staticParams.nColorDirections = 16;                          % Number of color directions for contour.
 staticParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
-staticParams.nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
-staticParams.nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
+staticParams.nTestLevels = 10;                                % Number of test levels to simulate for each test direction psychometric function.
+staticParams.nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus
 staticParams.criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-staticParams.testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
-                                                             % Setting this helps make the sampling of the psychometric functions more efficient.
-                                                             % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
 
 % Data management parameters
 staticParams.theContourPlotLim = 0.5;                        % Axis limit for contour plots.
@@ -71,8 +68,8 @@ if (nargin < 1 || isempty(parameterPreset))
 end
 switch (parameterPreset)
                             
-    case 'BasicNoSurround'
-        staticParams.stimulus.coneNumbersToUse = [1 1 1];         % Numbers of each cone class to use in the classifier.
+    case 'NoSurroundNoSecondSiteNoise'
+        staticParams.stimulus.coneNumbersToUse = [4 2 1];         % Numbers of each cone class to use in the classifier.
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
@@ -87,23 +84,22 @@ switch (parameterPreset)
         theParams.secondSiteFanoFactor = 0;                       % Noise added after opponent recombination, if any added.
                                                                   % Expressed as a fraction of Poisson variance to use.
  
-    case 'BasicNoSurroundWithNoise'
-        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+    case 'NoSurroundWithSecondSiteNoise'
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0];         
         
-        theParams.noiseType = 0;  
+        theParams.noiseType = 1;  
         theParams.surroundType = 'none';                          
         theParams.surroundSize = 0;                               
         theParams.surroundWeight = 0;                             
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 1;                                                                        
-        staticParams.testContrastLengthMax = 1;
                                                        
-    case 'BasicRDrawSurround'
-        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+    case 'RandomSurroundNoSecondSiteNoise'
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
@@ -116,39 +112,52 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 0;
         
-    case 'BasicDetermSurround'
-        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+    case 'RandomSurroundWithSecondSiteNoise'
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0]; 
         
         theParams.noiseType = 1;
-        theParams.surroundType = 'cone_specific';                         
+        theParams.surroundType = 'random_wiring';                         
+        theParams.surroundSize = 10;                             
+        theParams.surroundWeight = 0.7;                        
+        theParams.integrationArea = 0;                            
+        theParams.secondSiteFanoFactor = 1;
+        
+     case 'SelectiveSurroundNoSecondSiteNoise'
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
+
+        theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
+        theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
+        theParams.macularPigmentDensityAdjustments = [0];
+        
+        theParams.noiseType = 1;
+        theParams.surroundType = 'cone_selective';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 0;
         
-    case 'BasicDetermSurroundWithNoise'
-        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
-               
+    case 'SelectiveSurroundWithSecondSiteNoise'
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
+
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0]; 
         
-        theParams.noiseType = 0;
-        theParams.surroundType = 'cone_specific';                         
+        theParams.noiseType = 1;
+        theParams.surroundType = 'cone_selective';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 1;
-        staticParams.testContrastLengthMax = 1;
 
     case 'MacularPigmentVary'
-        staticParams.stimulus.coneNumbersToUse = [1 1 1]; 
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
-        theParams.OBSERVER_STATES = {'MSonly' 'LSonly'}; 
+        theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
         theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [-0.3 0 0.3];
         
@@ -160,7 +169,7 @@ switch (parameterPreset)
         theParams.secondSiteFanoFactor = 0;
     
     case 'QuickTest'
-        staticParams.stimulus.coneNumbersToUse = [3 2 1]; 
+        staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         staticParams.nColorDirections = 4;
         staticParams.dirAngleMax = pi;
