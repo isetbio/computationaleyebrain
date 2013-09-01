@@ -19,7 +19,7 @@ thePresets = {'NoSurroundNoSecondSiteNoise' 'NoSurroundWithSecondSiteNoise' ...
     'SelectiveSurroundNoSecondSiteNoise' 'SelectiveSurroundWithSecondSiteNoise' ...
     'MacularPigmentVary'};
 
-%thePresets = {'NoSurroundNoSecondSiteNoise'};
+thePresets = {'RandomSurroundNoSecondSiteNoise'};
 
 %% Run 'em
 for p = 1:length(thePresets)

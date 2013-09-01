@@ -1,5 +1,5 @@
 function secondSiteResponses = getSecondSiteResponsesFromConeResponses(coneResponses,theParams,staticParams,runtimeParams,staticComptutedValues)
-% theSecondSiteResponses = getSecondSiteResponsesFromConeResponses(theConeResponses,theParams,staticParams,runtimeParams,staticComptutedValues)
+% theSecondSiteResponses = getSecondSiteResponsesFromConeResponses(coneResponses,theParams,staticParams,runtimeParams,staticComptutedValues)
 %
 % Get a set of second site responses from the cone responses.  How the second
 % site responses are computed depends both on the type of the coneResponses
@@ -35,11 +35,11 @@ switch(secondSiteResponses.type)
                 % number that are averaged.
                 if (theParams.surroundSize > 0 && theParams.surroundWeight > 0)
                     for k = 1:staticParams.nDrawsPerTestStimulus
-                        for j = 1:oneConeEachClassStartIndices(3)-1  
+                        for j = 1:secondSiteResponses.oneConeEachClassStartIndices(3)-1  
                             centerConeVal = secondSiteResponses.theVectors(j,k);
-                            otherConesIndex = Shuffle(1:theConeResponses.oneConeEachClassStartIndices(3)-1);
-                            surroundConeVals = theConeResponses.theVectors(otherConesIndex(1:theParams.surroundSize),k);
-                            secondSiteResponses.theVectors(j,k) = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
+                            otherConesIndex = Shuffle(1:secondSiteResponses.oneConeEachClassStartIndices(3)-1);
+                            surroundConeVals = coneResponses.theVectors(otherConesIndex(1:theParams.surroundSize),k);
+                            secondSiteResponses.theVectors(j,k) = centerConeVal - theParams.surroundWeight*sum(surroundConeVals)/theParams.surroundSize;
                         end
                     end
                 end
@@ -49,19 +49,19 @@ switch(secondSiteResponses.type)
                 if (theParams.surroundWeight > 0)
                     for k = 1:staticParams.nDrawsPerTestStimulus
                         % Do each L cone
-                        for j = 1:oneConeEachClassStartIndices(2)-1
+                        for j = 1:secondSiteResponses.oneConeEachClassStartIndices(2)-1
                             centerConeVal = secondSiteResponses.theVectors(j,k);
-                            otherConesIndex = Shuffle(oneConeEachClassStartIndices(2):theConeResponses.oneConeEachClassStartIndices(3)-1);
-                            surroundConeVals = theConeResponses.theVectors(otherConesIndex(1:theParams.surroundSize),k);
-                            secondSiteResponses.theVectors(j,k) = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
+                            otherConesIndex = Shuffle(secondSiteResponses.oneConeEachClassStartIndices(2):secondSiteResponses.oneConeEachClassStartIndices(3)-1);
+                            surroundConeVals = coneResponses.theVectors(otherConesIndex(1:theParams.surroundSize),k);
+                            secondSiteResponses.theVectors(j,k) = centerConeVal - theParams.surroundWeight*sum(surroundConeVals)/theParams.surroundSize;
                         end
                         
                         % Do each M cone
-                        for j = oneConeEachClassStartIndices(2):oneConeEachClassStartIndices(3)-1
+                        for j = secondSiteResponses.oneConeEachClassStartIndices(2):secondSiteResponses.oneConeEachClassStartIndices(3)-1
                             centerConeVal = secondSiteResponses.theVectors(j,k);
-                            otherConesIndex = Shuffle(1:theConeResponses.oneConeEachClassStartIndices(2)-1);
-                            surroundConeVals = theConeResponses.theVectors(otherConesIndex(1:theParams.surroundSize),k);
-                            secondSiteResponses.theVectors(j,k) = LCenterVal - theParams.surroundWeight*sum(MSurroundVals)/theParams.surroundSize;
+                            otherConesIndex = Shuffle(1:secondSiteResponses.oneConeEachClassStartIndices(2)-1);
+                            surroundConeVals = coneResponses.theVectors(otherConesIndex(1:theParams.surroundSize),k);
+                            secondSiteResponses.theVectors(j,k) = centerConeVal - theParams.surroundWeight*sum(surroundConeVals)/theParams.surroundSize;
                         end
                     end
                 end
