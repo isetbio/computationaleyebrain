@@ -64,7 +64,7 @@ switch (stimulus.type)
         clear tmp
         imwrite(theImg,imageFileName,'png');
         theScene = sceneFromFile(imageFileName,'rgb',[],[staticParams.stimulus.monitorName '.mat'],staticComputedValues.wavelengthsNm);
-        theScene = sceneSet(theScene,'name','background');
+        theScene = sceneSet(theScene,'name','temp');
         theScene = sceneSet(theScene,'fov',staticParams.fieldOfViewDegrees);
         unix(['rm ' imageFileName]);
         %vcAddAndSelectObject(sceneB);
@@ -75,7 +75,7 @@ switch (stimulus.type)
         vcAddAndSelectObject(theOiD);
         %oiWindow;
         
-        %% Compute noise free background sensor image
+        %% Compute noise free sensor image
         theCSensorNF = sensorComputeNoiseFree(cSensor,theOiD);
         %vcAddAndSelectObject(theCSensorNF);
         %sensorWindow;

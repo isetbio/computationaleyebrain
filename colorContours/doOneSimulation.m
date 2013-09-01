@@ -149,11 +149,12 @@ previousDirection = 'down';
 for t = 1:theParams.nTestLevels;
     
     %% Get noisy sensor values for both blank (background) and test intervals.
+    clear blankStimulus testStimulus blankConeResponses testConeResponses blankSecondSiteResponses testSecondSiteResponses classificationData
     switch (staticParams.stimulus.type)
         case 'rgb_uniform'
-            backStimulus = staticParams.stimulus;
-            backStimulus.rgbVector = staticComputedValues.backRGB;
-            blankConeResponses = getConeResponsesToStimRGB(cSensor,backStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
+            blankStimulus = staticParams.stimulus;
+            blankStimulus.rgbVector = staticComputedValues.backRGB;
+            blankConeResponses = getConeResponsesToStimRGB(cSensor,blankStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
             
             testStimulus = staticParams.stimulus;
             testStimulus.rgbVector = (staticComputedValues.backRGB + currentTestLevel*testRGBGamut);
@@ -185,6 +186,12 @@ for t = 1:theParams.nTestLevels;
     
     %% Get the data in a form to use with the classifier
     classificationData = getTrainingAndValidationData(blankSecondSiteResponses,testSecondSiteResponses);
+    
+    %% This damn well ought to make performance end up at chance, which it does
+    if (0)
+        classificationData.trainingLabels = Shuffle(classificationData.trainingLabels);
+        classificaitonData.validateLabels = Shuffle(classificationData.validateLabels);
+    end
     
     %% Plot the training and test data.  We'll plot the distribution of responses for one cone
     if (runtimeParams.DO_SIM_PLOTS)

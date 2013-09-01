@@ -102,7 +102,7 @@ switch (parameterPreset)
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
+        theParams.DO_TAFC_CLASSIFIER_STATES = [false];             
         theParams.macularPigmentDensityAdjustments = [0];
         
         theParams.noiseType = 1;
