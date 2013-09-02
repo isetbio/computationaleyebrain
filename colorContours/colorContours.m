@@ -50,11 +50,6 @@ function colorContours(parameterPreset)
 %    be a numerical issue, with nominal isolation not quite being isolation.  But it
 %    is bugging me, a little.  I set up the contour plots so they don't plot out
 %    of gamut data, but you can see this effect in the saved psychometric functions.
-%  * I would expect a bit more dichromat advantage than I see, when SVM is at the cones,
-%    simply because the dichromat has more cones for the cone class it has.  We see
-%    an appropriate effect for deuteranopes but not for protanopes in the 4:2:1 case.
-%    See presentations/EarlyResultsSeptember2013.pptx.  This might just be a law of
-%    small numbers or visualization thing.  Could be explored by varying cone numbers used.
 %  * The dichromatic sensitivity for cone-specific and cone random dichromats looked like
 %    it comes out a bit differently (again see presentations/EarlyResultsSeptember2013.pptx.)
 %    I think this is for a known reason in the way dichromats are implemented: we replace
