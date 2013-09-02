@@ -73,7 +73,7 @@ function colorContours(parameterPreset)
 %
 % Generally do both unless analysis changes without need
 % to do the long recompute.
-COMPUTE = false;                                % Compute?
+COMPUTE = true;                                % Compute?
 ANALYZE = true;                                % Analyze
 
 %% Control diagnostics
