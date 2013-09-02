@@ -41,16 +41,10 @@ function colorContours(parameterPreset)
 %  * I don't think the ellipse fitting enforces a center of zero.  It should.
 %
 % Known bugs:
-%  * Classification performance is above chance for no stimulus when the
-%    second site calculations are used.  I have beat my head against this
-%    for a little while but don't see how it is possible.  Keep thinking.
 %  * Classification performance is above chance for some dichromatic conditions
 %    where it shouldn't be.  This does require out of gamut contrast, and could
-%    be a numerical issue, with isolation not quite being isolation.  But it
-%    is bugging me.
-%  * Need to look at code that excludes out of gamut contrasts (or not) in
-%    the psychometric function calculations.  I've rewritten enough other stuff
-%    that this may not be correct any more.
+%    be a numerical issue, with nominal isolation not quite being isolation.  But it
+%    is bugging me, a little.
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -91,7 +85,7 @@ ANALYZE = true;                                % Analyze
 % at analysis time by loading in the other saved
 % parameter structures.
 runtimeParams.DO_SIM_PLOTS = false;
-runtimeParams.SIM_QUIET = false;
+runtimeParams.SIM_QUIET = true;
 runtimeParams.DO_PSYCHO_PLOTS = true;
 runtimeParams.psychoPlotDir = 'psychometricFcnPlots';
 
@@ -379,7 +373,7 @@ try
                         if (runtimeParams.DO_PSYCHO_PLOTS)
                             plot(testLevelsInterp,probCorrInterp,'r');
                             plot([thresholdEst thresholdEst],[0.5 theData.staticParams.criterionCorrect],'g');
-                            plot([the_testLevels(1) thresholdEst],[theData.staticParams.criterionCorrect theData.staticParams.criterionCorrect],'g');
+                            plot([0 thresholdEst],[theData.staticParams.criterionCorrect theData.staticParams.criterionCorrect],'g');
                             xlim([0 2]);
                             ylim([0.5 1]);
                             drawnow;
@@ -405,11 +399,12 @@ try
                     
                     % Collect up thresholds for fitting.
                     %
-                    % Only take those where threshold was inside of measured range
+                    % Only take those where threshold was inside of gamut
+                    % This is always defined as a level of 1.
                     LContourPoints = [];
                     MContourPoints = [];
                     for cdi = 1:theData.staticParams.nColorDirections
-                        if (contourThreshResults(cdi).thresholdLevel < contourThreshResults(cdi).maxTestLevel)
+                        if (contourThreshResults(cdi).thresholdLevel < 1)
                             LContourPoints = [LContourPoints ; contourThreshResults(cdi).thresholdLMSContrast(1)];
                             MContourPoints = [MContourPoints ; contourThreshResults(cdi).thresholdLMSContrast(2)];
                         end

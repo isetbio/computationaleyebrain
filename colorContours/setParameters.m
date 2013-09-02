@@ -50,7 +50,7 @@ staticParams.stimulus.isetGammaValue = 2.2;                  % Needed to deal wi
 staticParams.nColorDirections = 16;                          % Number of color directions for contour.
 staticParams.dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
 staticParams.nTestLevels = 10;                               % Number of test levels to simulate for each test direction psychometric function.
-staticParams.nDrawsPerTestStimulus = 100;                    % Number of noise draws used in the simulations, per test stimulus
+staticParams.nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
 staticParams.criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 
 % Data management parameters
@@ -102,7 +102,7 @@ switch (parameterPreset)
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        theParams.DO_TAFC_CLASSIFIER_STATES = [false];             
+        theParams.DO_TAFC_CLASSIFIER_STATES = [true];             
         theParams.macularPigmentDensityAdjustments = [0];
         
         theParams.noiseType = 1;
@@ -134,7 +134,7 @@ switch (parameterPreset)
         theParams.macularPigmentDensityAdjustments = [0];
         
         theParams.noiseType = 1;
-        theParams.surroundType = 'cone_selective';                         
+        theParams.surroundType = 'cone_specific';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
@@ -148,7 +148,7 @@ switch (parameterPreset)
         theParams.macularPigmentDensityAdjustments = [0]; 
         
         theParams.noiseType = 1;
-        theParams.surroundType = 'cone_selective';                         
+        theParams.surroundType = 'cone_specific';                         
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            

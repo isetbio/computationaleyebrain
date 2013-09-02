@@ -144,8 +144,8 @@ end
 %% Here we loop over test levels, trying to be sensibly adaptive about choosing
 % them, staircase style.
 currentTestLevel = 1;
-currentTestLevelFraction = 0.5;
-previousDirection = 'down';
+currentTestLevelStep = 0.5;
+previousStepDirection = 'down';
 for t = 1:theParams.nTestLevels;
     
     %% Get noisy sensor values for both blank (background) and test intervals.
@@ -180,14 +180,46 @@ for t = 1:theParams.nTestLevels;
             error('Unknown stimulus type specified');
     end
     
+    %% Debugging.  Do classification on cone responses
+    %
+    % When currentTestLevel is 0, this is and should be near chance.
+    if (0)
+        classificationDataCones = getTrainingAndValidationData(blankConeResponses,testConeResponses);
+        if (theParams.DO_TAFC_CLASSIFIER)
+            classificationDataCones = oneIntervalToTwoIntervalClassificationData(classificationDataCones);
+        end
+        
+        % Train and evaluate SVM
+        %
+        % Train on one part of the data, evaluate on the other.
+        svmOpts = '-s 0 -t 0';
+        predictOpts = '';
+        if (runtimeParams.SIM_QUIET)
+            svmOpts =  [svmOpts ' -q'];
+            predictOpts = [predictOpts ' -q'];
+        end
+        svmModelCones = svmtrain(classificationDataCones.trainingLabels, classificationDataCones.trainingData, svmOpts);
+        [svmTrainingPredictedLabelsCones] = svmpredict(classificationDataCones.trainingLabels, classificationDataCones.trainingData, svmModelCones, predictOpts);
+        [svmValidatePredictedLabelsCones] = svmpredict(classificationDataCones.validateLabels, classificationDataCones.validateData, svmModelCones, predictOpts);
+        trainingFractionCorrectCones = length(find(svmTrainingPredictedLabelsCones == classificationDataCones.trainingLabels))/length(classificationDataCones.trainingLabels);
+        validateFractionCorrectCones = length(find(svmValidatePredictedLabelsCones == classificationDataCones.validateLabels))/length(classificationDataCones.validateLabels);
+        if (~runtimeParams.SIM_QUIET)
+            fprintf('\tTest level %g, classifier one cones percent correct: %d (training data), %d (validation data)\n',currentTestLevel,round(100*trainingFractionCorrectCones),round(100*validateFractionCorrectCones));
+        end
+        clear ClassificationDataCones
+    end
+    
+    
     %% Compute second site responses
-    blankSecondSiteResponses = getSecondSiteResponsesFromConeResponses(blankConeResponses,theParams,staticParams,runtimeParams,staticComputedValues);
-    testSecondSiteResponses = getSecondSiteResponsesFromConeResponses(testConeResponses,theParams,staticParams,runtimeParams,staticComputedValues);
+    [blankSecondSiteResponses,testSecondSiteResponses] = getSecondSiteResponsesFromConeResponses(blankConeResponses,testConeResponses,theParams);
     
     %% Get the data in a form to use with the classifier
     classificationData = getTrainingAndValidationData(blankSecondSiteResponses,testSecondSiteResponses);
     
-    %% This damn well ought to make performance end up at chance, which it does
+    %% Shuffle labels, as a debugging option.
+    % This ought to make performance end up at chance, which it does
+    %
+    % Left option here for future debugging, if necessary.
     if (0)
         classificationData.trainingLabels = Shuffle(classificationData.trainingLabels);
         classificaitonData.validateLabels = Shuffle(classificationData.validateLabels);
@@ -310,17 +342,17 @@ for t = 1:theParams.nTestLevels;
 
     %% Update level and direction
     if (validateFractionCorrect > staticParams.criterionCorrect)
-        if (strcmp(previousDirection,'up'))
-            currentTestLevelFraction = currentTestLevelFraction/2;
-            previousDirection = 'down';
+        if (strcmp(previousStepDirection,'up'))
+            currentTestLevelStep = currentTestLevelStep/2;
+            previousStepDirection = 'down';
         end
-        currentTestLevel = currentTestLevel-currentTestLevelFraction;
+        currentTestLevel = currentTestLevel-currentTestLevelStep;
     else
-        if (strcmp(previousDirection,'down'))
-            currentTestLevelFraction = currentTestLevelFraction/2;
-            previousDirection = 'up';
+        if (strcmp(previousStepDirection,'down'))
+            currentTestLevelStep = currentTestLevelStep/2;
+            previousStepDirection = 'up';
         end
-        currentTestLevel = currentTestLevel+currentTestLevelFraction;
+        currentTestLevel = currentTestLevel+currentTestLevelStep;
     end
     if (currentTestLevel < 0)
         currentTestLevel = 0;

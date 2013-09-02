@@ -1,23 +1,52 @@
-function secondSiteResponses = getSecondSiteResponsesFromConeResponses(coneResponses,theParams,staticParams,runtimeParams,staticComptutedValues)
-% theSecondSiteResponses = getSecondSiteResponsesFromConeResponses(coneResponses,theParams,staticParams,runtimeParams,staticComptutedValues)
+function [blankSecondSiteResponses,testSecondSiteResponses] = getSecondSiteResponsesFromConeResponses(blankConeResponses,testConeResponses,theParams)
+% [blankSecondSiteResponses,testSecondSiteResponses] = getSecondSiteResponsesFromConeResponses(blankConeResponses,testConeResponses,theParams)
 %
 % Get a set of second site responses from the cone responses.  How the second
 % site responses are computed depends both on the type of the coneResponses
 % structure, and on variables specified in the fields of theParams.
 %
+% We do both blank and test in same routine, so that the spatial draw of cones is the 
+% same for each.  This is important.  Using different cones after the Poisson noise
+% at the first stage can impose enough structure on the output that an svm can
+% tell test from blank even with zero signal!  [We learned this the hard  way.]
+%
 % 8/27/13  dhb  Pulled this out on its own.  Modularize, modularize, modularize.
 
-%% Initialize output structure
-secondSiteResponses.type = coneResponses.type;
-secondSiteResponses.surroundType = theParams.surroundType;
-secondSiteResponses.theVectors = coneResponses.theVectors;
-secondSiteResponses.coneNumbersToUse = coneResponses.coneNumbersToUse;
-secondSiteResponses.oneConeEachClassStartIndices = coneResponses.oneConeEachClassStartIndices;
+%% Consistency checks
+if (~strcmp(blankConeResponses.type,testConeResponses.type))
+    error('Different type for passed blank and test structures.  Nope.');
+end
+if (length(blankConeResponses.coneNumbersToUse) ~= length(testConeResponses.coneNumbersToUse))
+    error('Different length coneNumbersToUse fields passed blank and test structures.  Nope.');
+end
+if (any(blankConeResponses.coneNumbersToUse ~= testConeResponses.coneNumbersToUse))
+    error('Different coneNumbersToUse fields passed blank and test structures.  Nope.');
+end
+if (length(blankConeResponses.oneConeEachClassStartIndices) ~= length(testConeResponses.oneConeEachClassStartIndices))
+    error('Different length oneConeEachClassStartIndices fields passed blank and test structures.  Nope.');
+end
+if (any(blankConeResponses.oneConeEachClassStartIndices ~= testConeResponses.oneConeEachClassStartIndices))
+    error('Different oneConeEachClassStartIndices fields passed blank and test structures.  Nope.');
+end
+
+
+%% Initialize output structures
+blankSecondSiteResponses.type = blankConeResponses.type;
+blankSecondSiteResponses.surroundType = theParams.surroundType;
+blankSecondSiteResponses.theVectors = blankConeResponses.theVectors;
+blankSecondSiteResponses.coneNumbersToUse = blankConeResponses.coneNumbersToUse;
+blankSecondSiteResponses.oneConeEachClassStartIndices = blankConeResponses.oneConeEachClassStartIndices;
+
+testSecondSiteResponses.type = testConeResponses.type;
+testSecondSiteResponses.surroundType = theParams.surroundType;
+testSecondSiteResponses.theVectors = testConeResponses.theVectors;
+testSecondSiteResponses.coneNumbersToUse = testConeResponses.coneNumbersToUse;
+testSecondSiteResponses.oneConeEachClassStartIndices = testConeResponses.oneConeEachClassStartIndices;
 
 %% Do the second site calculations
-switch(secondSiteResponses.type)
+switch(blankSecondSiteResponses.type)
     case 'rgb_uniform'
-        switch (secondSiteResponses.surroundType)
+        switch (blankSecondSiteResponses.surroundType)
             case 'none'
                 % No surround. Do nothing here.
                 
@@ -36,19 +65,32 @@ switch(secondSiteResponses.type)
                 %
                 % I learned the hard way that some care is needed to make sure this is fast.
                 if (theParams.surroundSize > 0 && theParams.surroundWeight > 0)
-                    centerIndices = 1:secondSiteResponses.oneConeEachClassStartIndices(3)-1;
-                    surroundIndices = 1:secondSiteResponses.oneConeEachClassStartIndices(3)-1;
+                    centerIndices = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
+                    surroundIndices = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
                     
                     % Each time through the surround size loop, radomize the order of the LM cones and
                     % subtract one weighted surround cone from the center.
+                    %
+                    % Blank.  Compute identity of each surround cone in this loop, and store.  Use
+                    % same identities in the test loop below.
+                    theOutVectors = blankSecondSiteResponses.theVectors;
                     for s = 1:theParams.surroundSize
                         % These two lines do the shuffle, and keep the dimensions matched for the subtract
-                        % even when there are differnt numbers of center and surround cones.
+                        % even when there are different numbers of center and surround cones.
                         otherConesIndicesIndices = Ranint(length(centerIndices),length(surroundIndices));
-                        otherConesIndices = surroundIndices(otherConesIndicesIndices);
-                        secondSiteResponses.theVectors(centerIndices,:) = secondSiteResponses.theVectors(centerIndices,:) - ...
-                            (theParams.surroundWeight/theParams.surroundSize)*secondSiteResponses.theVectors(otherConesIndices,:);          
+                        otherConesIndices{s} = surroundIndices(otherConesIndicesIndices);
+                        theOutVectors(centerIndices,:) = theOutVectors(centerIndices,:) - ...
+                            (theParams.surroundWeight/theParams.surroundSize)*blankSecondSiteResponses.theVectors(otherConesIndices{s},:);          
                     end
+                    blankSecondSiteResponses.theVectors = theOutVectors;
+                    
+                    % Test
+                    theOutVectors = testSecondSiteResponses.theVectors;
+                    for s = 1:theParams.surroundSize
+                        theOutVectors(centerIndices,:) = theOutVectors(centerIndices,:) - ...
+                            (theParams.surroundWeight/theParams.surroundSize)*testSecondSiteResponses.theVectors(otherConesIndices{s},:);          
+                    end
+                    testSecondSiteResponses.theVectors = theOutVectors;
                 end
                 
             case 'cone_specific'
@@ -56,26 +98,45 @@ switch(secondSiteResponses.type)
                 % same as above, but done twice, once for L centers and once for M centers.
                 if (theParams.surroundWeight > 0)
                     
-                    % L cone centers
-                    centerIndices = 1:secondSiteResponses.oneConeEachClassStartIndices(2)-1;
-                    surroundIndices = secondSiteResponses.oneConeEachClassStartIndices(2):secondSiteResponses.oneConeEachClassStartIndices(3)-1;
+                    % L cone centers, blank
+                    centerIndices = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(2)-1;
+                    surroundIndices = blankSecondSiteResponses.oneConeEachClassStartIndices(2):blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
+                    theOutVectors = blankSecondSiteResponses.theVectors;
                     for s = 1:theParams.surroundSize
                         otherConesIndicesIndices = Ranint(length(centerIndices),length(surroundIndices));
-                        otherConesIndices = surroundIndices(otherConesIndicesIndices);
-                        secondSiteResponses.theVectors(centerIndices,:) = secondSiteResponses.theVectors(centerIndices,:) - ...
-                            (theParams.surroundWeight/theParams.surroundSize)*secondSiteResponses.theVectors(otherConesIndices,:);          
+                        otherConesIndices{s} = surroundIndices(otherConesIndicesIndices);
+                        theOutVectors(centerIndices,:) = theOutVectors(centerIndices,:) - ...
+                            (theParams.surroundWeight/theParams.surroundSize)*blankSecondSiteResponses.theVectors(otherConesIndices{s},:);          
                     end
+                    blankSecondSiteResponses.theVectors = theOutVectors;
                     
-                    % M cone centers
-                    centerIndices = secondSiteResponses.oneConeEachClassStartIndices(2):secondSiteResponses.oneConeEachClassStartIndices(3)-1;
-                    surroundIndices = 1:secondSiteResponses.oneConeEachClassStartIndices(2)-1;
+                    % L cone centers, test
+                    theOutVectors = testSecondSiteResponses.theVectors;
+                    for s = 1:theParams.surroundSize
+                        theOutVectors(centerIndices,:) = theOutVectors(centerIndices,:) - ...
+                            (theParams.surroundWeight/theParams.surroundSize)*testSecondSiteResponses.theVectors(otherConesIndices{s},:);          
+                    end
+                    testSecondSiteResponses.theVectors = theOutVectors;
+
+                    % M cone centers, blank
+                    centerIndices = blankSecondSiteResponses.oneConeEachClassStartIndices(2):blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
+                    surroundIndices = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(2)-1;
+                    theOutVectors = blankSecondSiteResponses.theVectors;
                     for s = 1:theParams.surroundSize
                         otherConesIndicesIndices = Ranint(length(centerIndices),length(surroundIndices));
-                        otherConesIndices = surroundIndices(otherConesIndicesIndices);
-                        secondSiteResponses.theVectors(centerIndices,:) = secondSiteResponses.theVectors(centerIndices,:) - ...
-                            (theParams.surroundWeight/theParams.surroundSize)*secondSiteResponses.theVectors(otherConesIndices,:);          
+                        otherConesIndices{s} = surroundIndices(otherConesIndicesIndices);
+                        theOutVectors(centerIndices,:) = theOutVectors(centerIndices,:) - ...
+                            (theParams.surroundWeight/theParams.surroundSize)*blankSecondSiteResponses.theVectors(otherConesIndices{s},:);
                     end
+                    blankSecondSiteResponses.theVectors = theOutVectors;
                     
+                    % M cone centers, test
+                    theOutVectors = testSecondSiteResponses.theVectors;
+                    for s = 1:theParams.surroundSize
+                        theOutVectors(centerIndices,:) = theOutVectors(centerIndices,:) - ...
+                            (theParams.surroundWeight/theParams.surroundSize)*testSecondSiteResponses.theVectors(otherConesIndices{s},:);
+                    end
+                    testSecondSiteResponses.theVectors = theOutVectors;
                 end
                 
             otherwise
@@ -90,9 +151,13 @@ switch(secondSiteResponses.type)
         % That is mostly a matter of convenience, and perhaps
         % not unreasonable biophysically in any case (I'm not sure).
         if (theParams.secondSiteFanoFactor > 0)
-            theVarMat = theParams.secondSiteFanoFactor*abs(secondSiteResponses.theVectors);
+            theVarMat = theParams.secondSiteFanoFactor*abs(blankSecondSiteResponses.theVectors);
             theSdMat = sqrt(theVarMat);
-            secondSiteResponses.theVectors = secondSiteResponses.theVectors + theSdMat.*randn(size(secondSiteResponses.theVectors));
+            blankSecondSiteResponses.theVectors = blankSecondSiteResponses.theVectors + theSdMat.*randn(size(blankSecondSiteResponses.theVectors));
+            
+            theVarMat = theParams.secondSiteFanoFactor*abs(testSecondSiteResponses.theVectors);
+            theSdMat = sqrt(theVarMat);
+            testSecondSiteResponses.theVectors = testSecondSiteResponses.theVectors + theSdMat.*randn(size(testSecondSiteResponses.theVectors));
         end
         
     otherwise

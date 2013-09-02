@@ -19,8 +19,6 @@ thePresets = {'NoSurroundNoSecondSiteNoise' 'NoSurroundWithSecondSiteNoise' ...
     'SelectiveSurroundNoSecondSiteNoise' 'SelectiveSurroundWithSecondSiteNoise' ...
     'MacularPigmentVary'};
 
-thePresets = {'RandomSurroundNoSecondSiteNoise'};
-
 %% Run 'em
 for p = 1:length(thePresets)
     colorContours(thePresets{p});
