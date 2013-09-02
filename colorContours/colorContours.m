@@ -73,7 +73,7 @@ function colorContours(parameterPreset)
 %
 % Generally do both unless analysis changes without need
 % to do the long recompute.
-COMPUTE = true;                                % Compute?
+COMPUTE = false;                                % Compute?
 ANALYZE = true;                                % Analyze
 
 %% Control diagnostics
@@ -88,6 +88,8 @@ runtimeParams.DO_SIM_PLOTS = false;
 runtimeParams.SIM_QUIET = true;
 runtimeParams.DO_PSYCHO_PLOTS = true;
 runtimeParams.psychoPlotDir = 'psychometricFcnPlots';
+runtimeParams.theContourPlotLim = 0.2;
+runtimeParams.plotEllipses = false;
 
 %% Set up parameters
 if (nargin < 1 || isempty(parameterPreset))
@@ -426,15 +428,18 @@ try
                         % the program from crashing out.
                         try
                             [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
-                            plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+                            if (runtimeParams.plotEllipses)
+                                plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+                            end
                         catch
                             fprintf('Ellipse fit failed, skipping and moving on\n');
                         end
                     end
-                    plot([-theData.staticParams.theContourPlotLim theData.staticParams.theContourPlotLim],[0 0],'k:');
-                    plot([0 0],[-theData.staticParams.theContourPlotLim theData.staticParams.theContourPlotLim],'k:');
-                    xlim([-theData.staticParams.theContourPlotLim theData.staticParams.theContourPlotLim]);
-                    ylim([-theData.staticParams.theContourPlotLim theData.staticParams.theContourPlotLim]);
+                  
+                    plot([-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim],[0 0],'k:');
+                    plot([0 0],[-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim],'k:');
+                    xlim([-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim]);
+                    ylim([-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim]);
                     axis('square');
                     xlabel('Nominal L cone contrast');
                     ylabel('Nominal M cone contrast');

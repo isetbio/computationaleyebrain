@@ -54,7 +54,6 @@ staticParams.nDrawsPerTestStimulus = 400;                    % Number of noise d
 staticParams.criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
 
 % Data management parameters
-staticParams.theContourPlotLim = 0.5;                        % Axis limit for contour plots.
 staticParams.outputRoot = 'out';                             % Plots get dumped a directory with this root name, but with additional
                                                              % characters to identify parameters of the run tacked on below.
 staticParams.parameterPreset = parameterPreset;              % Name of preset used to determine entries of theParams.
@@ -124,7 +123,7 @@ switch (parameterPreset)
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
-        theParams.secondSiteFanoFactor = 1;
+        theParams.secondSiteFanoFactor = 4;
         
      case 'SelectiveSurroundNoSecondSiteNoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
@@ -152,7 +151,7 @@ switch (parameterPreset)
         theParams.surroundSize = 10;                             
         theParams.surroundWeight = 0.7;                        
         theParams.integrationArea = 0;                            
-        theParams.secondSiteFanoFactor = 1;
+        theParams.secondSiteFanoFactor = 4;
 
     case 'MacularPigmentVary'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
