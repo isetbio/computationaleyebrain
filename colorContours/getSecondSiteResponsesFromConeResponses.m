@@ -10,6 +10,10 @@ function [blankSecondSiteResponses,testSecondSiteResponses] = getSecondSiteRespo
 % at the first stage can impose enough structure on the output that an svm can
 % tell test from blank even with zero signal!  [We learned this the hard  way.]
 %
+% In the longer run, this needs to take the spatial structure of the mosaic into
+% account.  The implementation does not make sense for stimuli that are not spatially
+% uniform.
+%
 % 8/27/13  dhb  Pulled this out on its own.  Modularize, modularize, modularize.
 
 %% Consistency checks

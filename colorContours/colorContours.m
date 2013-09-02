@@ -36,15 +36,35 @@ function colorContours(parameterPreset)
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Think about how to add a real surround.
-%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
-%  * I don't think the ellipse fitting enforces a center of zero.  It should.
+%  * Think about how to add a real surround. The current implementation is a hack
+%    that works (sort of, see below) for uniform fields but will not be right
+%    for stimuli with spatial structure.
+%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.  And 
+%    I don't think the ellipse fitting enforces a center of zero.  It should.
+%    At present I just turned the ellipse plotting off, because I found the
+%    ellipses fit to the dichromats distracting.
 %
-% Known bugs:
+% Known bugs and mysteries:
 %  * Classification performance is above chance for some dichromatic conditions
 %    where it shouldn't be.  This does require out of gamut contrast, and could
 %    be a numerical issue, with nominal isolation not quite being isolation.  But it
-%    is bugging me, a little.
+%    is bugging me, a little.  I set up the contour plots so they don't plot out
+%    of gamut data, but you can see this effect in the saved psychometric functions.
+%  * I would expect a bit more dichromat advantage than I see, when SVM is at the cones,
+%    simply because the dichromat has more cones for the cone class it has.  We see
+%    an appropriate effect for deuteranopes but not for protanopes in the 4:2:1 case.
+%    See presentations/EarlyResultsSeptember2013.pptx.  This might just be a law of
+%    small numbers or visualization thing.  Could be explored by varying cone numbers used.
+%  * The dichromatic sensitivity for cone-specific and cone random dichromats looked like
+%    it comes out a bit differently (again see presentations/EarlyResultsSeptember2013.pptx.)
+%    I think this is for a known reason in the way dichromats are implemented: we replace
+%    the spectral sensitivity of the missing cone by that of the present cone class, but keep
+%    the nominal cone labels.  Thus the surrounds for cone random and cone specific surrounds
+%    are drawn from pools of different sizes, and in the present implementation those pools
+%    are rather small.  So there could be differences in noise averaging properties for the
+%    two types of surround.  I think this issue will go away when we implement real surrounds
+%    that follow the spatial structure of the mosaic, rather than the current special case
+%    that only makes sense for uniform fields.
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -68,6 +88,7 @@ function colorContours(parameterPreset)
 % 8/18/13 dhb    I think cluster stuff is working now.
 %         dhb    Surround, second site noise support.
 % 8/24/13 dhb    Don't fit/plot thresholds beyond max test level measured.
+% 9/2/13  dhb    This is now in pretty good shape.  Good enough that we might learn things from it.
 
 %% Can compute only, analyze only, or do both
 %
