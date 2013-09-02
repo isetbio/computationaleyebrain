@@ -154,11 +154,16 @@ for t = 1:theParams.nTestLevels;
         case 'rgb_uniform'
             blankStimulus = staticParams.stimulus;
             blankStimulus.rgbVector = staticComputedValues.backRGB;
-            blankConeResponses = getConeResponsesToStimRGB(cSensor,blankStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
+            [blankConeResponses,coneRanIndex] = getConeResponsesToStimRGB(cSensor,blankStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
             
             testStimulus = staticParams.stimulus;
             testStimulus.rgbVector = (staticComputedValues.backRGB + currentTestLevel*testRGBGamut);
-            testConeResponses = getConeResponsesToStimRGB(cSensor,testStimulus,theParams,staticParams,runtimeParams,staticComputedValues);
+            [testConeResponses,coneRanIndexCheck] = getConeResponsesToStimRGB(cSensor,testStimulus,theParams,staticParams,runtimeParams,staticComputedValues,coneRanIndex);
+            for ll = 1:length(coneRanIndex)
+                if (any(coneRanIndex{ll} ~= coneRanIndexCheck{ll}))
+                    error('We didn''t manage to freeze the cone indexing used, between blank and test');
+                end
+            end
             
             % Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
             if (runtimeParams.DO_SIM_PLOTS)

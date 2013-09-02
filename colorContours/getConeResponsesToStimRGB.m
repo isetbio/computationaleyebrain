@@ -1,5 +1,5 @@
-function coneResponses = getConeResponsesToStimRGB(cSensor,stimulus,theParams,staticParams,runtimeParams,staticComputedValues)
-% coneResponses = getConeResponsesToStimRGB(cSensor,stimulus,theParams,staticParams,runtimeParams,staticComputedValues)
+function [coneResponses,ranIndex] = getConeResponsesToStimRGB(cSensor,stimulus,theParams,staticParams,runtimeParams,staticComputedValues,ranIndex)
+% [coneResponses,ranIndex] = getConeResponsesToStimRGB(cSensor,stimulus,theParams,staticParams,runtimeParams,staticComputedValues,ranIndex)
 %
 % Get sensor values for use in classification.  Returns a structure that contains the resonses
 % as well as auxilliary values.
@@ -9,6 +9,12 @@ function coneResponses = getConeResponsesToStimRGB(cSensor,stimulus,theParams,st
 % stimuli and response formats in the future.
 %
 % Noise is added (or not) depending on the value of theParams.noiseType
+%
+% If ranIndex is not passed, any randomization associated with which cones to sample is done,
+% and the result is returned in this variable.  If it is passed, the passed values are used.
+% This allows the same cones to be sampled on multiple calls to this routine.  This can matter,
+% because svm's can potentially use differences in noise across cones to do classificaiton, and
+% we don't want that.
 %
 % Implemented types
 %   'rgb_uniform' - Responses to a uniform field, specified as linear rgb values for a particular monitor.
@@ -39,6 +45,13 @@ function coneResponses = getConeResponsesToStimRGB(cSensor,stimulus,theParams,st
 % Then process according to type
 coneResponses.type = stimulus.type;
 coneResponses.coneNumbersToUse = stimulus.coneNumbersToUse;
+
+%% Generate the random index, or use passed value
+if (nargin < 7 || isempty(ranIndex))
+    generateRanIndex = true;
+else
+    generateRanIndex = false;
+end
 
 switch (stimulus.type)
     case 'rgb_uniform'
@@ -156,7 +169,9 @@ switch (stimulus.type)
             % for different simulations, but that should not matter much.
             %
             % [** Better will be to fix this up to be more spatially realistic.]
-            ranIndex = Shuffle(1:length(theSensorVals{1,ii}));
+            if (generateRanIndex)
+                ranIndex{ii} = Shuffle(1:length(theSensorVals{1,ii}));
+            end
             
             for k = 1:staticParams.nDrawsPerTestStimulus
                 if (rem(k,10) == 0)
@@ -165,7 +180,7 @@ switch (stimulus.type)
                     end
                 end
                 
-                coneResponses.theVectors(startIndex:endIndex,k) = theSensorVals{k,ii}(ranIndex(1:nUse(ii)));
+                coneResponses.theVectors(startIndex:endIndex,k) = theSensorVals{k,ii}(ranIndex{ii}(1:nUse(ii)));
                 if (k == 1)
                     typeVec(startIndex:endIndex) = ii;
                     coneResponses.oneConeEachClassStartIndices(ii) = startIndex;
