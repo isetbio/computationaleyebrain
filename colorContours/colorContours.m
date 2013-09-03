@@ -36,14 +36,30 @@ function colorContours(parameterPreset)
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Think about how to add a real surround, and to control second site noise
-%    in a sensible fashion.  We want enough noise so that second site noise 
-%    is the limiting noise, but not so much as to make thresholds crazy. 
-%    And, how to equate noise for opponenent and non-opponent calcs?  (Maybe
-%    this isn't a sensible thing to try to do.)
-%  * Break this big long script into sensible subfunctions.
-%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
-%  * I don't think the ellipse fitting enforces a center of zero.  It should.
+%  * Think about how to add a real surround. The current implementation is a hack
+%    that works (sort of, see below) for uniform fields but will not be right
+%    for stimuli with spatial structure.
+%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.  And 
+%    I don't think the ellipse fitting enforces a center of zero.  It should.
+%    At present I just turned the ellipse plotting off, because I found the
+%    ellipses fit to the dichromats distracting.
+%
+% Known bugs and mysteries:
+%  * Classification performance is above chance for some dichromatic conditions
+%    where it shouldn't be.  This does require out of gamut contrast, and could
+%    be a numerical issue, with nominal isolation not quite being isolation.  But it
+%    is bugging me, a little.  I set up the contour plots so they don't plot out
+%    of gamut data, but you can see this effect in the saved psychometric functions.
+%  * The dichromatic sensitivity for cone-specific and cone random dichromats looked like
+%    it comes out a bit differently (again see presentations/EarlyResultsSeptember2013.pptx.)
+%    I think this is for a known reason in the way dichromats are implemented: we replace
+%    the spectral sensitivity of the missing cone by that of the present cone class, but keep
+%    the nominal cone labels.  Thus the surrounds for cone random and cone specific surrounds
+%    are drawn from pools of different sizes, and in the present implementation those pools
+%    are rather small.  So there could be differences in noise averaging properties for the
+%    two types of surround.  I think this issue will go away when we implement real surrounds
+%    that follow the spatial structure of the mosaic, rather than the current special case
+%    that only makes sense for uniform fields.
 %
 %  Some specific and minor things to patch up are indicated with comments
 %  starting with [**] below, where they apply.
@@ -66,178 +82,73 @@ function colorContours(parameterPreset)
 % 8/16/13 dhb    Working on parallization.  In a broken state right now but gotta run.
 % 8/18/13 dhb    I think cluster stuff is working now.
 %         dhb    Surround, second site noise support.
-
+% 8/24/13 dhb    Don't fit/plot thresholds beyond max test level measured.
+% 9/2/13  dhb    This is now in pretty good shape.  Good enough that we might learn things from it.
 
 %% Can compute only, analyze only, or do both
 %
 % Generally do both unless analysis changes without need
 % to do the long recompute.
-COMPUTE = false;                                % Compute?
-ANALYZE = true;                                 % Analyze
+COMPUTE = true;                                % Compute?
+ANALYZE = true;                                % Analyze
 
 %% Control diagnostics
 %
 % These are useful when debugging but messy
-% when running in parallel.  We probably don't
-% need this fine level of control.
-PLOT_COMPARE_IRRADIANCE = false;
-PLOT_TRAINING_TEST = false;
-PLOT_COMPARE_CONEQE = false;
-PRINT_OUT_PHOTORECEPTORS = false;
-VERBOSE = false;
-SVM_QUIET = true;
-DO_PSYCHO_PLOTS = true;
-                            
-%% Parameter section
+% when things are working.  These are set
+% in their own structure so they are controlled
+% by how they are set here, rather than overridden
+% at analysis time by loading in the other saved
+% parameter structures.
+runtimeParams.DO_SIM_PLOTS = false;
+runtimeParams.SIM_QUIET = true;
+runtimeParams.DO_PSYCHO_PLOTS = true;
+runtimeParams.psychoPlotDir = 'psychometricFcnPlots';
+runtimeParams.theContourPlotLim = 0.2;
+runtimeParams.plotEllipses = false;
 
-integrationTimeSecs = 0.050;                    % Temporal integration time for detecting mechanisms.
-fieldOfViewDegrees = 2;                         % Field of view specified for the scenes.
-scenePixels = 64;                               % Size of scenes in pixels
-
-monitorName = 'LCD-Apple';                      % Monitor spectrum comes from this file
-backRGBValue = 0.5;                             % Define background for experment in monitor RGB
-
-pupilDiameterMm = 3;                            % Pupil diameter.  Used explicitly in the PSF calc.
-                                                % [** Need to check that this is carried through to 
-                                                % the absorption calculations.  We might be using an isetbio
-                                                % default rather than the value set here.]
-
-coneProportions = [0.1 .6 .2 .1];               % Proportions of cone types in the mosaic, order: empty, L,M,S
-coneApertureMeters = [sqrt(4.1) sqrt(4.1)]*1e-6;% Size of (rectangular) cone apertures, in meters.
-                                                % The choice of 4.1 matches the area of a 2.3 micron diameter IS diameter,
-                                                % and that is PTB's default.
-                                                
-isetSensorConeSlots = [2 3 4];                  % Indices for LMS cones in iset sensor returns.   These run 2-4 because
-                                                % of the empty pixels
-nSensorClasses = length(isetSensorConeSlots);   % For convenience, specify the number of sensor classes.
-
-nColorDirections = 16;                          % Number of color directions for contour.
-dirAngleMax = 2*pi;                             % Use pi for sampling directions from hemicircle, 2*pi for whole circle
-nTestLevels = 8;                                % Number of test levels to simulate for each test direction psychometric function.
-nDrawsPerTestStimulus = 400;                    % Number of noise draws used in the simulations, per test stimulus
-noiseType = 1;                                  % Noise type passed to isetbio routines.  1 -> Poisson.
-criterionCorrect = 0.82;                        % Fraction correct for definition of threshold in TAFC simulations.
-testContrastLengthMax = 0.5;                    % Default maximum contrast lenght of test color vectors used in each color direction.
-                                                % Setting this helps make the sampling of the psychometric functions more efficient.
-                                                % This value can be overridden in a switch statement on OBSERVER_STATE in a loop below.
-                                                
-theContourPlotLim = 0.5;                        % Axis limit for contour plots.
-
-
-outputRoot = 'out';                             % Plots get dumped a directory with this root name, but with additional
-                                                % characters to identify parameters of the run tacked on below.
-psychoPlotDir = 'psychometricFcnPlots';         % Subdir for dumping psychometric function plots.
-
-% Preset parameters, vary wit name.
-% 
-% Options are:
-%   'BasicNoSurround'
-%   'BasicRDrawSurround'
-%   'BasicDetermSurround'
-%   'BasicDetermSurroundWithNoise'
-%   'MacularPigmentVary'
-%   'QuickTest'
+%% Set up parameters
 if (nargin < 1 || isempty(parameterPreset))
-    parameterPreset = 'BasicNoSurround';
+    parameterPreset = 'QuickTest';
 end
-switch (parameterPreset)
-                            
-    case 'BasicNoSurround'
-        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
-        DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
-        macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
-                                                        % Note that stimuli are computed for a nominal (no adjustment) observer.
-        
-        surroundType = 'none';                          % Define type of surround calc to implement
-        surroundSize = 0;                               % Parameter defining surround size.
-        surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
-        integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-        opponentLevelNoiseSd = 0;                       % Noise added after opponent recombination.
-                                                        % Expressed as a fraction of the background Poisson sd
- 
-    case 'BasicNoSurroundWithNoise'
-        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
-        DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
-        macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
-                                                        % Note that stimuli are computed for a nominal (no adjustment) observer.
-        
-        surroundType = 'none';                          % Define type of surround calc to implement
-        surroundSize = 0;                               % Parameter defining surround size.
-        surroundWeight = 0;                             % Parameter defining surround weight.  NOT YET IMPLEMENTED.
-        integrationArea = 0;                            % Stimulus integration area.  NOT YET IMPLEMENTED.
-        opponentLevelNoiseSd = 1;                       % Noise added after opponent recombination.
-                                                        % Expressed as a fraction of the background Poisson sd
-        testContrastLengthMax = 1;
+[theParams,staticParams] = setParameters(parameterPreset);
 
-                                                       
-    case 'BasicRDrawSurround'
-        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [0];         
-        surroundType = 'rdraw';                         
-        surroundSize = 10;                             
-        surroundWeight = 0.7;                        
-        integrationArea = 0;                            
-        opponentLevelNoiseSd = 0;
-        
-    case 'BasicDetermSurround'
-        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [0];         
-        surroundType = 'determ';                         
-        surroundSize = 10;                             
-        surroundWeight = 0.7;                        
-        integrationArea = 0;                            
-        opponentLevelNoiseSd = 0;
-        
-    case 'BasicDetermSurroundWithNoise'
-        OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [0];         
-        surroundType = 'determ';                         
-        surroundSize = 10;                             
-        surroundWeight = 0.7;                        
-        integrationArea = 0;                            
-        opponentLevelNoiseSd = 1;
-        testContrastLengthMax = 1;
-
-    case 'MacularPigmentVary'
-        OBSERVER_STATES = {'MSonly' 'LSonly'}; 
-        DO_TAFC_CLASSIFIER_STATES = [true];             
-        macularPigmentDensityAdjustments = [-0.3 0 0.3];
-        
-        surroundType = 'none';                          
-        surroundSize = 0;                              
-        surroundWeight = 0;                             
-        integrationArea = 0;                           
-        opponentLevelNoiseSd = 0;
-    
-    case 'QuickTest'
-        nColorDirections = 4;
-        dirAngleMax = pi;
-        nTestLevels = 4;
-        nDrawsPerTestStimulus = 100;
-        
-        OBSERVER_STATES = {'LMandS'};
-        DO_TAFC_CLASSIFIER_STATES = [false];
-        macularPigmentDensityAdjustments = [0];
-        surroundType = 'none';                          
-        surroundSize = 0;                               
-        surroundWeight = 0;                            
-        integrationArea = 0;     otherwise
-        error('Unknown parameter presets');
-end
-
-%% Initialization for running on the cluster
+%% Set up output directory name.
 %
-% Make sure we are in our directory.  This does not
-% happen automatically when launched on the cluster.
+% Try to make name tell us a lot about conditions,
+% so that we can keep separate what happened in different runs.
+%
+% This needs to be set here so that we can load in computed parameters
+% from the right file, once we've run a big calculation and just want
+% to analyze the saved data.
+if (staticParams.dirAngleMax == 2*pi)
+    runtimeParams.outputDir = sprintf('%s%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',...
+        staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
+        theParams.surroundType,round(100*theParams.surroundSize),round(100*theParams.surroundWeight),...
+        round(100*theParams.integrationArea),round(100*theParams.secondSiteFanoFactor));
+else
+    runtimeParams.outputDir = sprintf('%s%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',...
+        staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
+        theParams.surroundType,round(100*theParams.surroundSize),round(100*theParams.surroundWeight),...
+        round(100*theParams.integrationArea),round(100*theParams.secondSiteFanoFactor));
+end
+
+%% Initialization for running n the cluster
+%
+% The whole program is in a big try/catch conditional, so we
+% can close up the matlabpool on error as necessary.
 try
+    %% Make sure we are in our directory.  This does not
+    % happen automatically when launched on the cluster.
     cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
     
-    % Open Matlab pool if it hasn't been opened for us.
+    %% Open Matlab pool if it hasn't been opened for us.
     %
-    % If we didn't open it, we don't close it.
+    % If we didn't open it, we don't close it.  You need
+    % to have a function called IsCluster on your path
+    % when you're running on the cluster and have it return
+    % true to let this program know it is running on a DCE
+    % cluster.
     if (COMPUTE & exist('IsCluster','file') && IsCluster && exist('matlabpool','file') && matlabpool('size') == 0)
         desiredPoolSize = 15;
         matlabpool(desiredPoolSize);
@@ -245,21 +156,6 @@ try
     else
         NEEDTOCLOSEPOOL = 0;
     end
-    
-    %% Make output directories if they doesn't exist.
-    %
-    % Try to make name tell us a lot about static conditions,
-    % so that we can keep separate what happened in different runs.
-    if (dirAngleMax == 2*pi)
-        outputDir = sprintf('%s%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',outputRoot,parameterPreset,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
-            surroundType,round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
-    else
-        outputDir = sprintf('%s%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',outputRoot,parameterPreset,nColorDirections,nTestLevels,nDrawsPerTestStimulus,...
-            surroundType,round(100*surroundSize),round(100*surroundWeight),round(100*integrationArea),round(100*opponentLevelNoiseSd));
-    end
-    
-    %% Make sure random number generator seed is different each run.
-    ClockRandSeed;
     
     %% Get stats path off of the path, temporarily.
     %
@@ -275,178 +171,83 @@ try
     %% **************
     if (COMPUTE)
         
+        %% Make sure random number generator seed is different each run.
+        staticComputedValues.ranSeed = ClockRandSeed;
+        
         %%  Get display spectra
-        d = displayCreate(monitorName);
-        displaySpd = displayGet(d,'spd');
-        wavelengthsNm = displayGet(d,'wave');
+        d = displayCreate(staticParams.stimulus.monitorName);
+        staticComputedValues.displaySpd = displayGet(d,'spd');
+        staticComputedValues.wavelengthsNm = displayGet(d,'wave');
         % vcNewGraphWin; plot(w,displaySpd)
         
-        %% Set background
-        backRGB = [backRGBValue backRGBValue backRGBValue]';
-        backSpd = displaySpd*backRGB;
-        
-        %% Create a scene with the background spectrum
-        %
-        % To patch into scene creation routines, we create an image
-        % on disk with spatially uniform RGB values.  These are then treated
-        % as frame buffer values, and will be raised to the 2.2 (gamma uncorrected)
-        % by the scene creation routine.
-        %
-        % [**] May want to find a way to do this (and the corresponding version
-        % for the test) that does not involve writing an image to disk and
-        % that skips the gamma correction stuff.
-        gammaValue = 2.2;
-        backImg = ones(scenePixels,scenePixels,3)*(backRGBValue)^(1/gammaValue);
-        imwrite(backImg,'backFile.png','png');
-        sceneB = sceneFromFile('backFile.png','rgb',[],'LCD-Apple.mat',wavelengthsNm);
-        sceneB = sceneSet(sceneB,'name','background');
-        sceneB = sceneSet(sceneB,'fov',fieldOfViewDegrees);
-        vcAddAndSelectObject(sceneB);
-        %sceneWindow;
-        
+        %% Set background spectrum
+        staticComputedValues.backRGB = [staticParams.stimulus.backRGBValue staticParams.stimulus.backRGBValue staticParams.stimulus.backRGBValue]';
+        staticComputedValues.backSpd = staticComputedValues.displaySpd*staticComputedValues.backRGB;
+
         %% Create standard human polychromatic PSF
         % using wavefront tools, and make it an
         % iset OI thingy.
-        wvf = wvfCreate('wave',wavelengthsNm);
-        sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
+        wvf = wvfCreate('wave',staticComputedValues.wavelengthsNm);
+        sample_mean = wvfLoadThibosVirtualEyes(staticParams.pupilDiameterMm);
         wvf = wvfSet(wvf,'zcoeffs',sample_mean);
         wvf = wvfComputePSF(wvf);
         oiD = wvf2oi(wvf,'shift invariant');
         optics = oiGet(oiD,'optics');
-        focalLengthMm = opticsGet(optics,'focal length','mm');
+        staticComputedValues.focalLengthMm = opticsGet(optics,'focal length','mm');
         vcAddAndSelectObject(oiD);
         clear wvf
         % oiWindow;
         % vcNewGraphWin; plotOI(oiD,'psf')
         
-        %% Construct list of conditions
-        %
-        % These are strung out so that we can chunk through
-        % them in a big parfor loop below.
-        cdAngles = linspace(0,dirAngleMax,nColorDirections+1);
-        cdAngles = cdAngles(1:end-1);
-        testLevels = linspace(0,1,nTestLevels);
-        paramIndex = 1;
-        for os = 1:length(OBSERVER_STATES)
-            for ct = 1:length(DO_TAFC_CLASSIFIER_STATES)
-                for m = 1:length(macularPigmentDensityAdjustments)
-                    for cdi = 1:nColorDirections
-                        for t = 1:length(testLevels)
-                            params(paramIndex).OBSERVER_STATE = OBSERVER_STATES{os};
-                            params(paramIndex).DO_TAFC_CLASSIFIER = DO_TAFC_CLASSIFIER_STATES(ct);
-                            params(paramIndex).macularPigmentDensityAdjust = macularPigmentDensityAdjustments(m);
-                            params(paramIndex).cdAngle = cdAngles(cdi);
-                            params(paramIndex).testLevel = testLevels(t);
-                            
-                            % Set test contrast maximum length.
-                            %
-                            % The best values depend on observer state
-                            % and are currently set manually based on
-                            % experience.
-                            switch (params(paramIndex).OBSERVER_STATE)
-                                case 'LMandS'
-                                    params(paramIndex).testContrastLengthMax = 0.3;
-                                case 'LSonly'
-                                    params(paramIndex).testContrastLengthMax = 1;
-                                case 'MSonly'
-                                    params(paramIndex).testContrastLengthMax = 1;
-                                otherwise
-                                    error('Unknown dichromat/trichromat type specified');
-                            end
-                            
-                            % Nuisance parameters
-                            
-                            % Set fixed params.  These can be made variable by
-                            % adding a loop here.
-                            params(paramIndex).gammaValue = gammaValue;
-                            params(paramIndex).wavelengthsNm = wavelengthsNm;
-                            params(paramIndex).backSpd = backSpd;
-                            params(paramIndex).displaySpd = displaySpd;
-                            params(paramIndex).pupilDiameterMm = pupilDiameterMm;
-                            params(paramIndex).focalLengthMm = focalLengthMm;
-                            params(paramIndex).integrationTimeSecs = integrationTimeSecs;
-                            params(paramIndex).coneProportions = coneProportions;
-                            params(paramIndex).coneApertureMeters = coneApertureMeters;
-                            params(paramIndex).fieldOfViewDegrees = fieldOfViewDegrees;
-                            params(paramIndex).backRGB = backRGB;
-                            params(paramIndex).isetSensorConeSlots = isetSensorConeSlots;
-                            params(paramIndex).nSensorClasses = nSensorClasses;
-                            params(paramIndex).scenePixels = scenePixels;
-                            params(paramIndex).nDrawsPerTestStimulus = nDrawsPerTestStimulus;
-                            params(paramIndex).noiseType = noiseType;
-                            params(paramIndex).surroundType = surroundType;
-                            params(paramIndex).surroundSize = surroundSize;
-                            params(paramIndex).surroundWeight = surroundWeight;
-                            params(paramIndex).integrationArea = integrationArea;
-                            params(paramIndex).opponentLevelNoiseSd = opponentLevelNoiseSd;
-                            
-                            % Kluge for now to select subregion of total cones
-                            params(paramIndex).fractionUse = 0.005;
-                            
-                            % Control diagnostics
-                            params(paramIndex).PLOT_COMPARE_IRRADIANCE = PLOT_COMPARE_IRRADIANCE;
-                            params(paramIndex).PLOT_TRAINING_TEST = PLOT_TRAINING_TEST;
-                            params(paramIndex).PLOT_COMPARE_CONEQE = PLOT_COMPARE_CONEQE;
-                            params(paramIndex).PRINT_OUT_PHOTORECEPTORS = PRINT_OUT_PHOTORECEPTORS;
-                            params(paramIndex).VERBOSE = VERBOSE;
-                            params(paramIndex).SVM_QUIET = SVM_QUIET;
-                            params(paramIndex).DO_PSYCHO_PLOTS = DO_PSYCHO_PLOTS;
-                            
-                            
-                            % Bump counter
-                            paramIndex = paramIndex+1;
-                        end
-                        
-                    end
-                end
-            end
-        end
-        nParams = length(params);
-        
-        %% Static params
+        %% Store just what we need
         %
         % We only keep one copy of these, because they are big
-        staticParams.oiD = oiD;
-        staticParams.sceneB = sceneB;
-        clear sceneB optics oiD
+        staticComputedValues.oiD = oiD;
+        clear optics oiD
+        
+        simParams = constructSimulationParameters(theParams,staticParams);
+        nParams = length(simParams);  
         
         %% Make/clear output directory
-        if (~exist(outputDir,'dir'))
-            mkdir(outputDir);
+        if (~exist(runtimeParams.outputDir,'dir'))
+            mkdir(runtimeParams.outputDir);
         else
-            unix(['rm -rf ' fullfile(outputDir,'*') ';']);
+            unix(['rm -rf ' fullfile(runtimeParams.outputDir,'*') ';']);
         end
         
         %% Loop over all the simulations in one big parfor loop.
         %
         % This is the long slow part.
         if (exist('IsCluster','file') && IsCluster)
-            mkdir(fullfile(outputDir,'clusterLogFiles',''));
+            mkdir(fullfile(runtimeParams.outputDir,'clusterLogFiles',''));
             parfor p = 1:nParams
-                simResults(p) = DoOneSimulation(params(p),staticParams);
+                simResults(p) = doOneSimulation(simParams(p),staticParams,runtimeParams,staticComputedValues);
                 
                 % Write a little log file so we can track what's happening from afar
-                fid = fopen(fullfile(outputDir,'clusterLogFiles',['done.' num2str(p) '_' num2str(nParams)]),'wt');
+                fid = fopen(fullfile(runtimeParams.outputDir,'clusterLogFiles',['done.' num2str(p) '_' num2str(nParams)]),'wt');
                 fprintf(fid,'\tSimulation %d of %d\n',p,nParams);
-                fprintf(fid,'\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
-                fprintf(fid,'\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
-                fprintf(fid,'\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);
-                fprintf(fid,'\tColor direction %0.3f\n',params(p).cdAngle);
-                fprintf(fid,'\tTest level %0.3f\n',params(p).testLevel);
-                fprintf(fid,'\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
+                fprintf(fid,'\tCalculations for observer state %s\n',simParams(p).OBSERVER_STATE);
+                fprintf(fid,'\tTAFC state %d\n',simParams(p).DO_TAFC_CLASSIFIER);
+                fprintf(fid,'\tMacular pigment density adjust %0.2f\n',simParams(p).macularPigmentDensityAdjust);
+                fprintf(fid,'\tColor direction %0.3f\n',simParams(p).cdAngle);
+                for k = 1:length(simResults(p).fractionCorrect)
+                    fprintf(fid,'\t\tTest level %0.3f, fraction correct %0.2f\n',simResults(p).testLevels(k),simResults(p).fractionCorrect(k));
+                end
                 fclose(fid);
             end
         else
             for p = 1:nParams
                 fprintf('\n\tSimulation %d of %d\n',p,nParams);
-                fprintf('\tCalculations for observer state %s\n',params(p).OBSERVER_STATE);
-                fprintf('\tTAFC state %d\n',params(p).DO_TAFC_CLASSIFIER);
-                fprintf('\tMacular pigment density adjust %0.2f\n',params(p).macularPigmentDensityAdjust);
-                fprintf('\tColor direction %0.3f\n',params(p).cdAngle);
-                fprintf('\tTest level %0.3f\n',params(p).testLevel);
+                fprintf('\tCalculations for observer state %s\n',simParams(p).OBSERVER_STATE);
+                fprintf('\tTAFC state %d\n',simParams(p).DO_TAFC_CLASSIFIER);
+                fprintf('\tMacular pigment density adjust %0.2f\n',simParams(p).macularPigmentDensityAdjust);
+                fprintf('\tColor direction %0.3f\n',simParams(p).cdAngle);
                 
-                simResults(p) = DoOneSimulation(params(p),staticParams);
-                fprintf('\tFraction correct %0.2f\n',simResults(p).fractionCorrect);
+                simResults(p) = doOneSimulation(simParams(p),staticParams,runtimeParams,staticComputedValues);
+                
+                for k = 1:length(simResults(p).fractionCorrect)
+                    fprintf('\t\tTest level %0.3f, fraction correct %0.2f\n',simResults(p).testLevels(k),simResults(p).fractionCorrect(k));
+                end
             end
         end
         
@@ -454,7 +255,7 @@ try
         %
         % This lets us reload
         % and analyze/plot away from the cluster.
-        save(fullfile(outputDir,'simResults.mat'),'params','simResults');
+        save(fullfile(runtimeParams.outputDir,'simResults.mat'),'theParams','staticParams','staticComputedValues','simParams','simResults');
     end
     
     %% **************
@@ -462,27 +263,34 @@ try
     %% **************
     if (ANALYZE)
         %% Load
-        theData = load(fullfile(outputDir,'simResults'),'params','simResults');
+        theData = load(fullfile(runtimeParams.outputDir,'simResults'),'theParams','staticParams','staticComputedValues','simParams','simResults');
         
+        %% Compare what we load with what was set at the top, to make sure we are analyzing what we think we are.
+        %
+        % [**] The checks go here, when we get around to writing them.
+        
+        % Then clear to make sure we are analyzing the data we loaded  
+        clear theParams staticParams staticComputedValues simParams simResults
+
+  
         %% Figure out what was run
         %
         % If all is working right, we already have this from the parameters
         % at the top, but it seems wise to recreate from the data.
         %
-        % [** Could implement a check that these match what is listed at the top.]
-        OBSERVER_STATES_LIST = {theData.params.OBSERVER_STATE};
+        % [**] Could implement a check that these match what we think they should
+        % be, given what is in the loaded structure theParams.
+        OBSERVER_STATES_LIST = {theData.simParams.OBSERVER_STATE};
         THE_OBSERVER_STATES = unique(OBSERVER_STATES_LIST);
-        DO_TAFC_CLASSIFIER_STATES_LIST = [theData.params.DO_TAFC_CLASSIFIER];
+        DO_TAFC_CLASSIFIER_STATES_LIST = [theData.simParams.DO_TAFC_CLASSIFIER];
         THE_DO_TAFC_CLASSIFIER_STATES = unique(DO_TAFC_CLASSIFIER_STATES_LIST);
-        macularPigmentDensityAdjustments_List = [theData.params.macularPigmentDensityAdjust];
+        macularPigmentDensityAdjustments_List = [theData.simParams.macularPigmentDensityAdjust];
         the_macularPigmentDensityAdjustments = unique(macularPigmentDensityAdjustments_List);
-        DO_PSYCHO_PLOTS = any([theData.params.DO_PSYCHO_PLOTS]);
-        VERBOSE = any([theData.params.VERBOSE]);
         
         %% Make psychometric function output dir, if necessary
-        if (DO_PSYCHO_PLOTS)
-            if (~exist(fullfile(outputDir,psychoPlotDir,''),'file'))
-                mkdir(fullfile(outputDir,psychoPlotDir,''));
+        if (runtimeParams.DO_PSYCHO_PLOTS)
+            if (~exist(fullfile(runtimeParams.outputDir,runtimeParams.psychoPlotDir,''),'file'))
+                mkdir(fullfile(runtimeParams.outputDir,runtimeParams.psychoPlotDir,''));
             end
         end
         
@@ -497,7 +305,7 @@ try
                     index0 = find(strcmp(OBSERVER_STATE,OBSERVER_STATES_LIST)  & ...
                         DO_TAFC_CLASSIFIER_STATE == DO_TAFC_CLASSIFIER_STATES_LIST & ...
                         macularPigmentDensityAdjust == macularPigmentDensityAdjustments_List);
-                    useParams0 = theData.params(index0);
+                    useParams0 = theData.simParams(index0);
                     useResults0 = theData.simResults(index0);
                     
                     cdAngles_List = [useParams0.cdAngle];
@@ -505,22 +313,32 @@ try
                     for cdi = 1:length(the_cdAngles);
                         cdAngle = the_cdAngles(cdi);
                         index1 = find(cdAngle == cdAngles_List);
+                        if (length(index1) ~= 1)
+                            error('We only expect result for each angle for each condition');
+                        end
                         useParams1 = useParams0(index1);
                         useResults1 = useResults0(index1);
-                        testLevels_List = [useParams1.testLevel];
-                        the_testLevels = unique(testLevels_List);
                         
-                        for t = 1:length(the_testLevels)
-                            the_fractionCorrects(t) = useResults1(t).fractionCorrect;
-                            the_nCorrectResponses(t) = useResults1(t).nCorrectResponses;
-                            the_nTotalResponses(t) = useResults1(t).nTotalResponses;
-                            the_testLMSContrast(:,t) = useResults1(t).testLMSContrast;
-                            the_backLMS(:,t) = useResults1(t).backgroundLMS;
-                            the_testLMSGamut(:,t) = useResults1(t).testLMSGamut;
+                        for t = 1:length(useResults1.testLevels)
+                            the_testLevels(t) = useResults1.testLevels(t);
+                            the_fractionCorrects(t) = useResults1.fractionCorrect(t);
+                            the_nCorrectResponses(t) = useResults1.nCorrectResponses(t);
+                            the_nTotalResponses(t) = useResults1.nTotalResponses(t);
+                            the_testLMSContrast(:,t) = useResults1.testLMSContrast;
+                            the_backLMS(:,t) = useResults1.backgroundLMS;
+                            the_testLMSGamut(:,t) = useResults1.testLMSGamut;
                         end
+                        [nil,sindex] = sort(the_testLevels);
+                        the_testLevels = the_testLevels(sindex);
+                        the_fractionCorrects = the_fractionCorrects(sindex);
+                        the_nCorrectResponses = the_nCorrectResponses(sindex);
+                        the_nTotalResponses = the_nTotalResponses(sindex);
+                        the_testLMSContrast = the_testLMSContrast(:,sindex);
+                        the_backLMS = the_backLMS(:,sindex);
+                        the_testLMSGamut = the_testLMSGamut(:,sindex);
                         
                         % Plot data
-                        if (DO_PSYCHO_PLOTS)
+                        if (runtimeParams.DO_PSYCHO_PLOTS)
                             if (~exist('psychoFig','var'))
                                 psychoFig = figure; clf; hold on
                             else
@@ -534,7 +352,7 @@ try
                         % Be setting USE_PALAMEDES to 1, you can use the Palamedes toolbox routines
                         % to do the fitting.  But, you'll need to install the Palamedes toolbox to
                         % do so.  By default, we use fitting routines in the Psychtoolbox.
-                        testLevelsInterp = linspace(the_testLevels(1),the_testLevels(end),100);
+                        testLevelsInterp = linspace(0,the_testLevels(end),100);
                         USE_PALAMEDES = 0;
                         if (USE_PALAMEDES)
                             % Palamedes toolbox (for fitting psychometric functions)
@@ -557,24 +375,24 @@ try
                                 paramsValues0,paramsFree,PF,'searchOptions',options, ...
                                 'lapseLimits',lapseLimits);
                             probCorrInterp = PF(paramsValues,testLevelsInterp);
-                            thresholdEst = PFI(paramsValues,criterionCorrect);
+                            thresholdEst = PFI(paramsValues,theData.staticParams.criterionCorrect);
                         else
                             [alpha,beta] = FitWeibTAFC(the_testLevels,the_nCorrectResponses,the_nTotalResponses-the_nCorrectResponses,[],1/2);
-                            thresholdEst = FindThreshWeibTAFC(criterionCorrect,alpha,beta);
+                            thresholdEst = FindThreshWeibTAFC(theData.staticParams.criterionCorrect,alpha,beta);
                             probCorrInterp = ComputeWeibTAFC(testLevelsInterp,alpha,beta);
                         end
                         
                         % Print threshold
-                        if (VERBOSE)
-                            fprintf('%d%% correct threshold is %0.1f\n',round(100*criterionCorrect),thresholdEst);
+                        if (~runtimeParams.SIM_QUIET)
+                            fprintf('%d%% correct threshold is %0.1f\n',round(100*theData.staticParams.criterionCorrect),thresholdEst);
                         end
                         
                         % Finish plot
-                        if (DO_PSYCHO_PLOTS)
+                        if (runtimeParams.DO_PSYCHO_PLOTS)
                             plot(testLevelsInterp,probCorrInterp,'r');
-                            plot([thresholdEst thresholdEst],[0.5 criterionCorrect],'g');
-                            plot([the_testLevels(1) thresholdEst],[criterionCorrect criterionCorrect],'g');
-                            xlim([0 1]);
+                            plot([thresholdEst thresholdEst],[0.5 theData.staticParams.criterionCorrect],'g');
+                            plot([0 thresholdEst],[theData.staticParams.criterionCorrect theData.staticParams.criterionCorrect],'g');
+                            xlim([0 2]);
                             ylim([0.5 1]);
                             drawnow;
                             
@@ -585,10 +403,11 @@ try
                                 outName = sprintf('psychoFig_%s_YN_%d_%d',OBSERVER_STATE,round(100*macularPigmentDensityAdjust),round(1000*cdAngle));
                             end
                             set(gca,'LooseInset',get(gca,'TightInset'));
-                            saveas(psychoFig,fullfile(outputDir,psychoPlotDir,outName),'png');
+                            saveas(psychoFig,fullfile(runtimeParams.outputDir,runtimeParams.psychoPlotDir,outName),'png');
                         end
                         
                         % Store results for this color direction
+                        contourThreshResults(cdi).maxTestLevel = max(the_testLevels);
                         contourThreshResults(cdi).thresholdLevel = thresholdEst;
                         contourThreshResults(cdi).testLMSContrast = the_testLMSContrast;
                         contourThreshResults(cdi).thresholdLMSContrast = thresholdEst*the_testLMSContrast;
@@ -597,14 +416,20 @@ try
                     end
                     
                     % Collect up thresholds for fitting.
-                    nColorDirections = length(contourThreshResults);
-                    LContourPoints = zeros(nColorDirections,1);
-                    MContourPoints = zeros(nColorDirections,1);
-                    for cdi = 1:nColorDirections
-                        LContourPoints(cdi) = contourThreshResults(cdi).thresholdLMSContrast(1);
-                        MContourPoints(cdi) = contourThreshResults(cdi).thresholdLMSContrast(2);
+                    %
+                    % Only take those where threshold was inside of gamut
+                    % This is always defined as a level of 1.
+                    LContourPoints = [];
+                    MContourPoints = [];
+                    for cdi = 1:theData.staticParams.nColorDirections
+                        if (contourThreshResults(cdi).thresholdLevel < 1)
+                            LContourPoints = [LContourPoints ; contourThreshResults(cdi).thresholdLMSContrast(1)];
+                            MContourPoints = [MContourPoints ; contourThreshResults(cdi).thresholdLMSContrast(2)];
+                        end
                     end
-                    if (dirAngleMax == pi)
+                    
+                    % Reflect around origin if directions only sampled around hemicircle
+                    if (theData.staticParams.dirAngleMax == pi)
                         LContourPoints = [LContourPoints ; -LContourPoints];
                         MContourPoints = [MContourPoints ; -MContourPoints];
                     end
@@ -619,15 +444,18 @@ try
                         % the program from crashing out.
                         try
                             [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
-                            plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+                            if (runtimeParams.plotEllipses)
+                                plotellipse(ellipseZ,ellipseA,ellipseB,ellipseAlpha,'r');
+                            end
                         catch
                             fprintf('Ellipse fit failed, skipping and moving on\n');
                         end
                     end
-                    plot([-theContourPlotLim theContourPlotLim],[0 0],'k:');
-                    plot([0 0],[-theContourPlotLim theContourPlotLim],'k:');
-                    xlim([-theContourPlotLim theContourPlotLim]);
-                    ylim([-theContourPlotLim theContourPlotLim]);
+                  
+                    plot([-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim],[0 0],'k:');
+                    plot([0 0],[-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim],'k:');
+                    xlim([-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim]);
+                    ylim([-runtimeParams.theContourPlotLim runtimeParams.theContourPlotLim]);
                     axis('square');
                     xlabel('Nominal L cone contrast');
                     ylabel('Nominal M cone contrast');
@@ -641,7 +469,7 @@ try
                     end
                     drawnow;
                     set(gca,'LooseInset',get(gca,'TightInset'));
-                    saveas(contourFig,fullfile(outputDir,outName),'png');
+                    saveas(contourFig,fullfile(runtimeParams.outputDir,outName),'png');
                     
                     %% Close windows
                     %
