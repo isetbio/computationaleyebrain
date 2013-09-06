@@ -92,7 +92,7 @@ function colorContours(parameterPreset)
 COMPUTE = true;                                % Compute?
 ANALYZE = true;                                % Analyze
 
-%% Control diagnostics
+%% Control diagnostics and parameters
 %
 % These are useful when debugging but messy
 % when things are working.  These are set
@@ -100,35 +100,35 @@ ANALYZE = true;                                % Analyze
 % by how they are set here, rather than overridden
 % at analysis time by loading in the other saved
 % parameter structures.
-runtimeParams.DO_SIM_PLOTS = false;
-runtimeParams.SIM_QUIET = true;
-runtimeParams.DO_PSYCHO_PLOTS = true;
-runtimeParams.psychoPlotDir = 'psychometricFcnPlots';
-runtimeParams.theContourPlotLim = 0.2;
-runtimeParams.plotEllipses = false;
+if ieNotDefined('parameterPreset'),  parameterPreset = 'QuickTest'; end
 
-%% Set up parameters
-if (nargin < 1 || isempty(parameterPreset))
-    parameterPreset = 'QuickTest';
-end
+runtimeParams.DO_SIM_PLOTS    = false;
+runtimeParams.SIM_QUIET       = true;
+runtimeParams.DO_PSYCHO_PLOTS = true;
+runtimeParams.psychoPlotDir   = 'psychometricFcnPlots';
+runtimeParams.theContourPlotLim = 0.2;
+runtimeParams.plotEllipses    = false;
+
 [theParams,staticParams] = setParameters(parameterPreset);
 
 %% Set up output directory name.
 %
-% Try to make name tell us a lot about conditions,
-% so that we can keep separate what happened in different runs.
+% Try to make name tell us a lot about conditions, so that we can keep
+% separate what happened in different runs.
 %
-% This needs to be set here so that we can load in computed parameters
-% from the right file, once we've run a big calculation and just want
-% to analyze the saved data.
+% This needs to be set here so that we can load in computed parameters from
+% the right file, once we've run a big calculation and just want to analyze
+% the saved data.
 if (staticParams.dirAngleMax == 2*pi)
     runtimeParams.outputDir = sprintf('%s%s_fullCircle_%d_%d_%d_%s_%d_%d_%d_%d',...
-        staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
+        staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,...
+        staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
         theParams.surroundType,round(100*theParams.surroundSize),round(100*theParams.surroundWeight),...
         round(100*theParams.integrationArea),round(100*theParams.secondSiteFanoFactor));
 else
     runtimeParams.outputDir = sprintf('%s%s_halfCircle_%d_%d_%d__%s_%d_%d_%d_%d',...
-        staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
+        staticParams.outputRoot,staticParams.parameterPreset,staticParams.nColorDirections,...
+        staticParams.nTestLevels,staticParams.nDrawsPerTestStimulus,...
         theParams.surroundType,round(100*theParams.surroundSize),round(100*theParams.surroundWeight),...
         round(100*theParams.integrationArea),round(100*theParams.secondSiteFanoFactor));
 end
@@ -149,7 +149,7 @@ try
     % when you're running on the cluster and have it return
     % true to let this program know it is running on a DCE
     % cluster.
-    if (COMPUTE & exist('IsCluster','file') && IsCluster && exist('matlabpool','file') && matlabpool('size') == 0)
+    if (COMPUTE && exist('IsCluster','file') && IsCluster && exist('matlabpool','file') && matlabpool('size') == 0)
         desiredPoolSize = 15;
         matlabpool(desiredPoolSize);
         NEEDTOCLOSEPOOL = 1;

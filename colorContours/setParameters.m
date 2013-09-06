@@ -1,30 +1,36 @@
 function [theParams,staticParams] = setParameters(parameterPreset)
-%  [theParams,staticParams] = setParameters([parameterPreset])
+% [theParams, staticParams] = setParameters([parameterPreset])
 %
-% Manage simulation parameters, return as two structs.  One (theParams)
-% is variables that do or might someday vary within a simulation,
-% the other (staticParams) is variables that remain constant throughout a single
+% Manage simulation parameters, return as two structs.  One (theParams) is
+% variables that do or might someday vary within a simulation, the other
+% (staticParams) is variables that remain constant throughout a single
 % simulation.
 %
-% The division between theParams and staticParams is not completely rational,
-% and carries some inertia from before this split was set up.  The split is
-% important because some variables that get passed around are really big and
-% we don't want multiple copies.
+% The division between theParams and staticParams is not completely
+% rational, and carries some inertia from before this split was set up.
+% The split is important because some variables that get passed around are
+% really big and we don't want multiple copies. (But maybe Matlab doesn't
+% create the extra copy unless you touch it ... we will see).
 %
-% Sets of parameters may be defined and invoked by the
-% passed name.  Preset options are:
-%   'BasicNoSurround'
-%   'BasicRDrawSurround'
-%   'BasicDetermSurround'
-%   'BasicDetermSurroundWithNoise'
-%   'MacularPigmentVary'
-%   'QuickTest' [Default]
+% Sets of parameters may be defined and invoked by the passed name.  Preset
+% options are (you can have spaces and upper lower.  Everything squeezed by
+% ieParamFormat)
 %
-% See also constructSimulationParameters.  Changes here may require modifications there.
+%   'Basic No Surround'
+%   'Basic RDraw Surround'
+%   'Basic Determ Surround'
+%   'Basic Determ Surround With Noise'
+%   'Macular Pigment Vary'
+%   'Quick Test' [Default]
+%
+% See also constructSimulationParameters.  Changes here may require
+% modifications there.
 %
 % 9/24/13  dhb  Pulled this out from main routine.
                             
-%% Parameter section
+%% Parameter initialization
+
+if ieNotDefined('parameterPreset'), parameterPreset = 'Quick Test'; end 
 
 % Visual system related
 staticParams.integrationTimeSecs = 0.050;                    % Temporal integration time for detecting mechanisms.
@@ -60,14 +66,12 @@ staticParams.parameterPreset = parameterPreset;              % Name of preset us
 
 % Convenience parameters
 staticParams.nSensorClasses = length(staticParams.isetSensorConeSlots);
-  
-% Preset parameters, vary with preset name.
-if (nargin < 1 || isempty(parameterPreset))
-    parameterPreset = 'QuickTest';
-end
+
+%%
+parameterPreset = ieParamFormat(parameterPreset);
 switch (parameterPreset)
                             
-    case 'NoSurroundNoSecondSiteNoise'
+    case 'nosurroundnosecondsitenoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1];         % Numbers of each cone class to use in the classifier.
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
@@ -83,7 +87,7 @@ switch (parameterPreset)
         theParams.secondSiteFanoFactor = 0;                       % Noise added after opponent recombination, if any added.
                                                                   % Expressed as a fraction of Poisson variance to use.
  
-    case 'NoSurroundWithSecondSiteNoise'
+    case 'nosurroundwithsecondsitenoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -97,7 +101,7 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 1;                                                                        
                                                        
-    case 'RandomSurroundNoSecondSiteNoise'
+    case 'randomsurroundnosecondsitenoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -111,7 +115,7 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 0;
         
-    case 'RandomSurroundWithSecondSiteNoise'
+    case 'randomsurroundwithsecondsitenoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -125,7 +129,7 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 4;
         
-     case 'SelectiveSurroundNoSecondSiteNoise'
+     case 'selectivesurroundnosecondsitenoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -139,7 +143,7 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 0;
         
-    case 'SelectiveSurroundWithSecondSiteNoise'
+    case 'selectivesurroundwithsecondsitenoise'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -153,7 +157,7 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                            
         theParams.secondSiteFanoFactor = 4;
 
-    case 'MacularPigmentVary'
+    case 'macularpigmentvary'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         theParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
@@ -167,7 +171,7 @@ switch (parameterPreset)
         theParams.integrationArea = 0;                           
         theParams.secondSiteFanoFactor = 0;
     
-    case 'QuickTest'
+    case 'quicktest'
         staticParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         staticParams.nColorDirections = 4;
@@ -190,3 +194,4 @@ switch (parameterPreset)
         error('Unknown parameter presets');
 end
 
+end

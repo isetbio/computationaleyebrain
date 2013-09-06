@@ -11,8 +11,8 @@ function simParams = constructSimulationParameters(theParams,staticParams)
 
 %% Construct list of conditions
 %
-% These are strung out so that we can chunk through
-% them in a big parfor loop below.
+% These are strung out so that we can chunk through them in a big parfor
+% loop below.
 cdAngles = linspace(0,staticParams.dirAngleMax,staticParams.nColorDirections+1);
 cdAngles = cdAngles(1:end-1);
 testLevels = linspace(0,1,staticParams.nTestLevels);
@@ -45,4 +45,6 @@ for os = 1:length(theParams.OBSERVER_STATES)
             end
         end
     end
+end
+
 end

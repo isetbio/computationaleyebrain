@@ -1,4 +1,4 @@
-function [LMSQuanta, LMSEnergyFunc] = ieReadHumanQE(inertP, melanopsinflag)
+function [LMSQuanta, LMSEnergyFunc] = humanConeQE(inertP, melanopsinflag)
 % [cFilters, LMSEnergyFunc] = ieReadHumanQE(inertP)
 % 
 % Input
