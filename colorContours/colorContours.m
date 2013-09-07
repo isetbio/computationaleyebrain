@@ -1,11 +1,16 @@
 function colorContours(parameterPreset)
 % colorContours([parameterPreset])
 %
-% This script will eventually compute predicted ideal observer
-% isodetection contours for various psychophyiscal discrimination
-% experiments.
+% This script will eventually compute predicted ideal observer isodetection
+% contours for various psychophyiscal discrimination experiments.
 %
-% At present, this is Phase 1 (in which Doris gets her oats).
+% Requires:
+%   isetbio
+%     - Available on gitHub as https://github.com/isetbio/isetbio.git
+%   PsychophysicsToolbox
+%     - Available on gitHub as https://github.com/Psychtoolbox-3/Psychtoolbox-3.git
+%
+% This is Phase 1 (in which Doris gets her oats).
 %
 % Steps currently implemented:
 %  * Create isetbio scenes based on realistic display primaries.
@@ -36,40 +41,45 @@ function colorContours(parameterPreset)
 %     - Neither set of code incorporates Stiles-Crawford effect.
 %  * Add more sensible code to control spatial integration area.
 %  * Add eye movements.
-%  * Think about how to add a real surround. The current implementation is a hack
-%    that works (sort of, see below) for uniform fields but will not be right
-%    for stimuli with spatial structure.
-%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.  And 
-%    I don't think the ellipse fitting enforces a center of zero.  It should.
-%    At present I just turned the ellipse plotting off, because I found the
-%    ellipses fit to the dichromats distracting.
+%  * Think about how to add a real surround. The current implementation is
+%     a hack that works (sort of, see below) for uniform fields but will
+%     not be right for stimuli with spatial structure.
+%  * Shouldn't fit ellipses to dichromatic data -- want pairs of lines.
+%    and I don't think the ellipse fitting enforces a center of zero.  It
+%    should. At present I just turned the ellipse plotting off, because I
+%    found the ellipses fit to the dichromats distracting.
 %
 % Known bugs and mysteries:
-%  * Classification performance is above chance for some dichromatic conditions
-%    where it shouldn't be.  This does require out of gamut contrast, and could
-%    be a numerical issue, with nominal isolation not quite being isolation.  But it
-%    is bugging me, a little.  I set up the contour plots so they don't plot out
-%    of gamut data, but you can see this effect in the saved psychometric functions.
-%  * The dichromatic sensitivity for cone-specific and cone random dichromats looked like
-%    it comes out a bit differently (again see presentations/EarlyResultsSeptember2013.pptx.)
-%    I think this is for a known reason in the way dichromats are implemented: we replace
-%    the spectral sensitivity of the missing cone by that of the present cone class, but keep
-%    the nominal cone labels.  Thus the surrounds for cone random and cone specific surrounds
-%    are drawn from pools of different sizes, and in the present implementation those pools
-%    are rather small.  So there could be differences in noise averaging properties for the
-%    two types of surround.  I think this issue will go away when we implement real surrounds
-%    that follow the spatial structure of the mosaic, rather than the current special case
-%    that only makes sense for uniform fields.
+%  * Classification performance is above chance for some dichromatic
+%    conditions where it shouldn't be.  This does require out of gamut
+%    contrast, and could be a numerical issue, with nominal isolation not
+%    quite being isolation.  But it is bugging me, a little.  I set up the
+%    contour plots so they don't plot out of gamut data, but you can see
+%    this effect in the saved psychometric functions.
+
+%  * The dichromatic sensitivity for cone-specific and cone random
+%    dichromats looked like it comes out a bit differently (again see
+%    presentations/EarlyResultsSeptember2013.pptx.) I think this is for a
+%    known reason in the way dichromats are implemented: we replace the
+%    spectral sensitivity of the missing cone by that of the present cone
+%    class, but keep the nominal cone labels.  Thus the surrounds for cone
+%    random and cone specific surrounds are drawn from pools of different
+%    sizes, and in the present implementation those pools are rather small.
+%    So there could be differences in noise averaging properties for the
+%    two types of surround.  I think this issue will go away when we
+%    implement real surrounds that follow the spatial structure of the
+%    mosaic, rather than the current special case that only makes sense for
+%    uniform fields.
 %
-%  Some specific and minor things to patch up are indicated with comments
-%  starting with [**] below, where they apply.
+%    Some specific and minor things to patch up are indicated with comments
+%    starting with [**] below, where they apply.
 %
-% Requires:
-%   isetbio
-%     - Available on gitHub as https://github.com/wandell/isetbio.git
-%   PsychophysicsToolbox
-%     - Available on gitHub as https://github.com/Psychtoolbox-3/Psychtoolbox-3.git
 %
+% Example:
+%   parameterPreset = 'quick test';
+%   colorContours(parameterPreset);
+%
+% Notes:
 % 8/2/13  dhb/bw Our excellent adventure commences.
 % 8/3/13  dhb/bw Tune up and add classifier.
 % 8/4/13  dhb/bw Check irradiance calcs between ISET and PTB.
@@ -140,7 +150,7 @@ end
 try
     %% Make sure we are in our directory.  This does not
     % happen automatically when launched on the cluster.
-    cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
+    % cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
     
     %% Open Matlab pool if it hasn't been opened for us.
     %
@@ -178,8 +188,10 @@ try
         d = displayCreate(staticParams.stimulus.monitorName);
         staticComputedValues.displaySpd = displayGet(d,'spd');
         staticComputedValues.wavelengthsNm = displayGet(d,'wave');
-        % vcNewGraphWin; plot(w,displaySpd)
+        % vcNewGraphWin; plot(staticComputedValues.wavelengthsNm,staticComputedValues.displaySpd)
         
+        %
+        %
         %% Set background spectrum
         staticComputedValues.backRGB = [staticParams.stimulus.backRGBValue staticParams.stimulus.backRGBValue staticParams.stimulus.backRGBValue]';
         staticComputedValues.backSpd = staticComputedValues.displaySpd*staticComputedValues.backRGB;
@@ -194,9 +206,8 @@ try
         oiD = wvf2oi(wvf,'shift invariant');
         optics = oiGet(oiD,'optics');
         staticComputedValues.focalLengthMm = opticsGet(optics,'focal length','mm');
-        vcAddAndSelectObject(oiD);
+        % vcAddAndSelectObject(oiD); oiWindow;
         clear wvf
-        % oiWindow;
         % vcNewGraphWin; plotOI(oiD,'psf')
         
         %% Store just what we need
@@ -212,7 +223,9 @@ try
         if (~exist(runtimeParams.outputDir,'dir'))
             mkdir(runtimeParams.outputDir);
         else
-            unix(['rm -rf ' fullfile(runtimeParams.outputDir,'*') ';']);
+            % Remove it and remake it
+            rmdir(runtimeParams.outputDir,'s');
+            mkdir(runtimeParams.outputDir);
         end
         
         %% Loop over all the simulations in one big parfor loop.
@@ -442,6 +455,9 @@ try
                         % to an ellipse.  We could diagnose this more, but it generally happens only for cases
                         % where the number of parameters is set small to test something, and the try/catch keeps
                         % the program from crashing out.
+                        %   nSD = 1.5;
+                        %   [eVec,h,ptsAndCrv] = covEllipsoid([LContourPoints(:), MContourPoints(:)],nSD, vcNewGraphWin)
+                        %
                         try
                             [ellipseZ, ellipseA, ellipseB, ellipseAlpha] = fitellipse([LContourPoints' ; MContourPoints']);
                             if (runtimeParams.plotEllipses)

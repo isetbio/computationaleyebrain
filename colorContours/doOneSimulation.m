@@ -2,14 +2,14 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 % results = doOneSimulation(theParams,staticParams,runtimeParams,staticComputedValues)
 %
 % Do one inner level of the simulations for colorContour.  Written so that
-% it can be called in parallel.  See colorContours for comments about
-% what this does.
+% it can be called in parallel.  See colorContours for comments about what
+% this does.
 %
 % Returns a results structure with everything we want to know and save.
 %
 % TODO:
-%  * Have not tested recently that something inside of various conditionals that control diagnostic plots/prints
-%    is not broken.
+%  * Have not tested recently that something inside of various conditionals
+%  that control diagnostic plots/prints is not broken.
 %
 % 8/16/13  dhb  Working on this.
 % 8/18/13  dhb  Opponency and second site noise.
@@ -17,12 +17,12 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 
 %% Use PTB to compute cone quantal sensitivities.
 %
-% We will use these in the isetbio scene structures and calculations.
-% We compute two versions, one nominal and one with adjusted macular
-% pigment densities.  The latter is used to compute the actual
-% cone responses, the former to compute spectra for each nominal color
-% direction.  This means that our plot in the end can simulate an observer
-% with an adjusted macular pigment density.
+% We will use these in the isetbio scene structures and calculations. We
+% compute two versions, one nominal and one with adjusted macular pigment
+% densities.  The latter is used to compute the actual cone responses, the
+% former to compute spectra for each nominal color direction.  This means
+% that our plot in the end can simulate an observer with an adjusted
+% macular pigment density.
 %
 % We also convert to sensivities in energy units.  The conversion
 % to energy reads counter-intuitively -- the routine EnergyToQuanta
@@ -30,13 +30,15 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 % sensitivities.
 
 % First nominal sensitivities
-[ptbNominalBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbNominalPhotorceptorsStruct,ptbNominalIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
+[ptbNominalBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbNominalPhotorceptorsStruct,ptbNominalIrradianceWattsPerM2] = ...
+    ptbConeIsomerizationsFromSpectra(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
     staticParams.pupilDiameterMm,staticComputedValues.focalLengthMm,staticParams.integrationTimeSecs,0);
 ptbNominalBackLMSIsomerizations = round(ptbNominalBackLMSIsomerizations);
 ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorbtance;
 ptbNominalLMSEnergySensitivities = ptbNominalPhotorceptorsStruct.energyFundamentals;
 
-[ptbAdjustedBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ptbConeIsomerizationsFromSpectra(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
+[ptbAdjustedBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ...
+    ptbConeIsomerizationsFromSpectra(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
     staticParams.pupilDiameterMm,staticComputedValues.focalLengthMm,staticParams.integrationTimeSecs,theParams.macularPigmentDensityAdjust);
 ptbAdjustedBackLMSIsomerizations = round(ptbAdjustedBackLMSIsomerizations);
 ptbAdjustedLMSQuantalEfficiency = ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance;

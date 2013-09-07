@@ -1,7 +1,7 @@
 function [eVec,h,ptsAndCrv] = covEllipsoid(xyData,nSD,h, nSamp)
 % Caclculate the covariance ellipse for an xy-data set
 %
-%    [eVec,h,ptsAndCrv] = covEllipsoid(xyData,nSD,h, nSamp)
+%    [eVec,h,ptsAndCrv] = covEllipsoid(xyData,nSD,[h],[nSamp])
 %
 % eVec: Function returns a set of vectors that define the ellipsoid (eVec).
 %       These are plotted if no return is requested.  The data can be 2 or
@@ -25,9 +25,9 @@ function [eVec,h,ptsAndCrv] = covEllipsoid(xyData,nSD,h, nSamp)
 % TODO:  This is covEllipse, not covEllipsoid, as things stand.
 % We should handle the 3D case.
 
-if notDefined('xyData'), error('xyData required'); end
-if notDefined('nSD'), nSD = 1; end
-if notDefined('nSamp'), nSamp = 20; end
+if ieNotDefined('xyData'), error('xyData required'); end
+if ieNotDefined('nSD'), nSD = 1; end
+if ieNotDefined('nSamp'), nSamp = 20; end
 
 dimensionality = size(xyData,2);
 
@@ -58,7 +58,7 @@ for ii=1:size(uVec,1)
 end
 
 % Plot on return, or not
-if notDefined('h'), return;  % No figure handle
+if ieNotDefined('h'), return;  % No figure handle
 else
     figure(h); clf
     switch dimensionality

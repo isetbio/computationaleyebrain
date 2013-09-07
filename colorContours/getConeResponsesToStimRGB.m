@@ -79,7 +79,7 @@ switch (stimulus.type)
         theScene = sceneFromFile(imageFileName,'rgb',[],[staticParams.stimulus.monitorName '.mat'],staticComputedValues.wavelengthsNm);
         theScene = sceneSet(theScene,'name','temp');
         theScene = sceneSet(theScene,'fov',staticParams.fieldOfViewDegrees);
-        unix(['rm ' imageFileName]);
+        delete(imageFileName);
         %vcAddAndSelectObject(sceneB);
         %sceneWindow;
         

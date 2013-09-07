@@ -7,7 +7,7 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeI
 % code is demonstrated and (sort of) documented in PTB routine IsomerizationsInEyeDemo.
 %
 % The other key thing is that after the call to FillInPhotoreceptors, the field
-% isomerizationAbsorbtance of the photoreceptors struct contains the spectral 
+% isomerizationAbsorbtance of the photoreceptors struct contains the spectral
 % sensitivities of the LMS cones.  These are in quantal units (probability of
 % an isomerization).
 %
@@ -16,7 +16,7 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeI
 % 8/4/13  dhb  Wrote it.
 
 %% Set up PTB photoreceptors structure
-% 
+%
 % We'll do the computations at the wavelength
 % spacing passed in for the spectrum of interest.
 whatCalc = 'CIE2Deg';
@@ -29,15 +29,16 @@ if (nargin > 5 && ~isempty(macularPigmentDensityAdjustment))
 end
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
-% Convert units to power per wlband rather than power per nm.
-% Units of power per nm is the PTB way, for better or worse.
+% Convert units to power per wlband rather than power per nm. Units of
+% power per nm is the PTB way, for better or worse.
 radianceWattsPerM2Sr = spd_input*S(2);
-		
+
 % Find pupil area, needed to get retinal irradiance, if not passed.
 %
 % In that case, pupil area based on the luminance of stimulus according
 % to the algorithm specified in the photoreceptors structure.
 load T_xyz1931
+
 T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
 theXYZ = T_xyz*radianceWattsPerM2Sr; theLuminance = theXYZ(2);
 if (nargin < 3 || isempty(pupilDiamMm))
@@ -57,4 +58,8 @@ irradianceWattsPerM2 = 1e12*irradianceWattsPerUm2/S(2);
 %% Do the work in toolbox function
 [isoPerConeSec,absPerConeSec,photoreceptors] = ...
     RetIrradianceToIsoRecSec(irradianceWattsPerUm2,S,photoreceptors);
+
 isoPerCone = isoPerConeSec*integrationTimeSec;
+
+
+end
