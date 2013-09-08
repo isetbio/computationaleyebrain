@@ -1,20 +1,23 @@
 %% v_PTBISETBIOIrradiance
 %
-% Compare iset and ptb irradiance calculations
+% Compare isetbio and ptb irradiance calculations
 %
+% Conclusion: They are extremely close.  But there is a small range where
+% they differ slightly (2%). 
 %
-% PTB, conversion is pupilArea/(eyeLength^2). (pi /(1 + 4*fN^2*(1+abs(m))^2)
+% The slight difference seems to be because they use slightly different
+% formulae for transforming radiance to irradiance. These differ slightly.
+% A discussion on the topic is in the header of the ISETBIO function
+% oiCalculateIrradiance.
 %
-% [**] This plot is currently broken because backOiD is no longer
-% computed at this level.
-%if (runtimeParams.DO_SIM_PLOTS)
+% DHB/BW (c) ISETBIO Team, 2013
 
-%% 
+%% Main parameters
 s_initISET
 
 monitorName = 'LCD-Apple.mat';
 wave   = 380:4:780;
-bLevel = 0.5;    % Linear value of display primary
+bLevel = 0.5;             % Linear value of display primaries
 
 %% Create human optics with standard wave front aberrations
 
@@ -35,9 +38,12 @@ oiB    = wvf2oi(wvf,'shift invariant');
 
 d       = displayCreate(monitorName);
 gTable  = displayGet(d,'gamma table');  % plot(gTable)
-igTable = ieLUTInvert(gTable);        % Maps linear values to DAC
-bDAC    = ieLUTLinear([0.5,0.5,0.5],igTable)/size(gTable,1);
+igTable = ieLUTInvert(gTable);          % Maps linear values to DAC
 
+% It would be much better if somehow we didn't need to divide by size()
+bDAC    = ieLUTLinear(repmat(bLevel,1,3),igTable)/size(gTable,1);
+
+%% Write out the image of the background.  Then read it.
 bImage = ones(128,128,3);
 for ii=1:3
     bImage(:,:,ii) = bImage(:,:,ii)*bDAC(ii);
@@ -46,20 +52,17 @@ end
 bFile = fullfile(isetbioRootPath,'tmp','bFile.png');
 imwrite(bImage,bFile);
 
-% Build the scene from the image file
+% Build the scene from the image file.  It would be nice if we could send
+% in the data rather than the filename.
 bScene = sceneFromFile(bFile,'rgb',[],monitorName,wave);
 vcAddAndSelectObject(bScene); sceneWindow;
 
-% % Create a scene with a background of [0.5,0.5,0.5]
-% scene = sceneFromFile('backFile.png','rgb',[],'LCD-Apple');
-% vcAddAndSelectObject(scene); sceneWindow;
-
-%% ISETBIO path for creating an irradiance
+%% ISETBIO path for creating an irradiance image from the radiance
 
 oiB    = oiCompute(oiB,bScene);
 vcAddAndSelectObject(oiB); oiWindow;
 
-%%
+% Plot the irradiance
 sz = oiGet(oiB,'size');
 rect = [sz(2)/2,sz(1)/2,5,5];
 roiLocs = ieRoi2Locs(rect);
@@ -69,47 +72,35 @@ ibIrradiance = vcGetROIData(oiB,roiLocs,'energy');
 ibIrradiance = mean(ibIrradiance,1);
 vcNewGraphWin; plot(wave,ibIrradiance); grid on; title('ISET irradiance')
 
-%% PTB computes the ptbIrradiance w/m2
+%% PTB path for computing the irradance
+
 d       = displayCreate(monitorName);
 wave    = displayGet(d,'wave');
 
-backRGB = [0.5, 0.5, 0.5]';                    % Define background for experment in monitor RGB
+% These are the linear RGB background values
+backRGB = repmat(bLevel,3,1);  
 backSpd = displayGet(d,'spd')*backRGB;
 
+% Make sure we have the same focal length and pupil diameter as ISETBIO
 optics = oiGet(oiB,'optics');
 focalLengthMm   = opticsGet(optics,'focal length','mm');
 pupilDiameterMm = opticsGet(optics,'pupil diameter','mm');
 integrationTimeSec = 0.05;  % Irrelevant for irradiance
 
+% The PTB call
 [~,~,ptbPhotoreceptors,ptbIrradiance] = ...
     ptbConeIsomerizationsFromSpectra(backSpd,wave,...
     pupilDiameterMm,focalLengthMm,integrationTimeSec,0);
 
-vcNewGraphWin; plot(wave,ptbIrradiance); grid on; title('PTB irradiance')
+%% Actually, a little puzzling.  Close, but not precisely interpretable.
+vcNewGraphWin([],'tall'); 
 
-%% Compare
-% The difference is because of the magnification difference between ISET
-% and PTB.  See note in doOneSimulation.  Document it here better.
-vcNewGraphWin; plot(ibIrradiance,ptbIrradiance,'.')
-identityLine;
-grid on
+% There is a little difference in certain intensity levels.  Why?
+subplot(2,1,1)
+semilogy(wave,ptbIrradiance,'r--',wave,ibIrradiance,'k:');
+legend('PTB','ISETBIO'); grid on; 
+subplot(2,1,2)
+plot(ibIrradiance,ptbIrradiance,'.')
+identityLine; grid on
 
-%%
-if (0)
-    % Get background irradiance out of the optical image.
-    %
-    % [**] This currently works be using an ROI that was selected
-    % by hand an then stored in a .mat file.  May want to
-    % make this more programmatic.  But, we get this just
-    temp = load('roiLocs');
-    backUdata = plotOI(backOiD,'irradiance energy roi',temp.roiLocs);
-    isetIrradianceWattsPerM2 = backUdata.y';
-    
-    % Make a new plot of PTB and iset irradiance.  Not quite
-    % sure why we don't just add this to the window that
-    % comes up in the call to PlotOI above.
-    figure; hold on
-    plot(staticComputedValues.wavelengthsNm,isetIrradianceWattsPerM2,'r');
-    plot(staticComputedValues.wavelengthsNm,ptbAdjustedIrradianceWattsPerM2,'k');
-    theRatio = isetIrradianceWattsPerM2 ./ ptbAdjustedIrradianceWattsPerM2;
-end
+%% END

@@ -1,10 +1,10 @@
 %% s_ccQuickTest(parameterPreset)
 %
-% An illustration of the steps in producing a color threshold contour using
+% Illustrate the steps in producing a color threshold contour using
 % ISETBIO.
 %
 % Requires:
-%   isetbio
+%   ISETBIO
 %     - Available on gitHub as https://github.com/isetbio/isetbio.git
 %   PsychophysicsToolbox-3
 %     - Available on gitHub as https://github.com/Psychtoolbox-3/Psychtoolbox-3.git
@@ -22,51 +22,37 @@
 %%
 s_initISET
 
-%% Control diagnostics and parameters
-%
-% These are useful when debugging but messy
-% when things are working.  These are set
-% in their own structure so they are controlled
-% by how they are set here, rather than overridden
-% at analysis time by loading in the other saved
-% parameter structures.
-if ieNotDefined('parameterPreset'),  parameterPreset = 'QuickTest'; end
+%% Main parameters for background
+monitorName = 'LCD-Apple.mat';
+wave   = 380:4:780;
+bLevel = 0.5;             % Linear value of display primaries
 
-runtimeParams.DO_SIM_PLOTS    = false;
-runtimeParams.SIM_QUIET       = true;
-runtimeParams.DO_PSYCHO_PLOTS = true;
-runtimeParams.psychoPlotDir   = 'psychometricFcnPlots';
-runtimeParams.theContourPlotLim = 0.2;
-runtimeParams.plotEllipses    = false;
-
-[theParams,staticParams] = setParameters(parameterPreset);
-
-%% Make the background
-
-% Write an image file
-bLevel = 0.5;
-bImage = ones(128,128,3)*bLevel;
+%% Make the background file
+d       = displayCreate(monitorName);
+gTable  = displayGet(d,'gamma table');  % plot(gTable)
+igTable = ieLUTInvert(gTable);          % Maps linear values to DAC
+bDAC    = ieLUTLinear(repmat(bLevel,1,3),igTable)/size(gTable,1);
+bImage = ones(128,128,3);
+for ii=1:3
+    bImage(:,:,ii) = bImage(:,:,ii)*bDAC(ii);
+end
 bFile = fullfile(isetbioRootPath,'tmp','bFile.png');
 imwrite(bImage,bFile);
 
-% Build the scene from the image file
-monitorName = 'LCD-Apple.mat';
-bScene = sceneFromFile(bFile,'rgb',[],monitorName);
-vcAddAndSelectObject(bScene); sceneWindow;
-
-%% Create standard human polychromatic PSF and irradiance
-pupilDiameterMm = 3;
-wave = 380:4:780;
-wvf = wvfCreate('wave',wave);
+%% Initiate the human optics
+wvf    = wvfCreate('wave',wave);
+pupilDiameterMm = 3;   
 sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf = wvfSet(wvf,'zcoeffs',sample_mean);
-wvf = wvfComputePSF(wvf);
-oiB = wvf2oi(wvf,'shift invariant');
+wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
+wvf    = wvfComputePSF(wvf);
+oiB    = wvf2oi(wvf,'shift invariant');
 
-% clear wvf
+%% Build the background scene and oi from the image file.
+bScene = sceneFromFile(bFile,'rgb',[],monitorName,wave);
+oiB    = oiCompute(oiB,bScene);
 
-vcAddAndSelectObject(oiB); oiWindow;
-vcNewGraphWin; plotOI(oiB,'psf')
+% vcAddAndSelectObject(oiB); oiWindow;
+% vcNewGraphWin; plotOI(oiB,'psf')
 
 %% Run for one test light
 
