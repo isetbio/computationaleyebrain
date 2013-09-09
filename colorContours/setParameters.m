@@ -75,8 +75,8 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1];         % Numbers of each cone class to use in the classifier.
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; % Simulate various tri and dichromats
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             % Can be true, false, or [true false]
-        tParams.macularPigmentDensityAdjustments = [0];         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             % Can be true, false, or [true false]
+        tParams.macularPigmentDensityAdjustments = 0;         % Amount to adjust macular pigment density for cone fundamentals of simulated observer.
                                                                   % Note that stimuli are computed for a nominal (no adjustment) observer.
                                                         
         tParams.noiseType = 1;                                  % Type of photoreceptor noise.  1 -> Poisson.  0 -> none.
@@ -91,8 +91,8 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             
-        tParams.macularPigmentDensityAdjustments = [0];         
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             
+        tParams.macularPigmentDensityAdjustments = 0;         
         
         tParams.noiseType = 1;  
         tParams.surroundType = 'none';                          
@@ -105,8 +105,8 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             
-        tParams.macularPigmentDensityAdjustments = [0];
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             
+        tParams.macularPigmentDensityAdjustments = 0;
         
         tParams.noiseType = 1;
         tParams.surroundType = 'random_wiring';                         
@@ -119,8 +119,8 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             
-        tParams.macularPigmentDensityAdjustments = [0]; 
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             
+        tParams.macularPigmentDensityAdjustments = 0; 
         
         tParams.noiseType = 1;
         tParams.surroundType = 'random_wiring';                         
@@ -133,8 +133,8 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             
-        tParams.macularPigmentDensityAdjustments = [0];
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             
+        tParams.macularPigmentDensityAdjustments = 0;
         
         tParams.noiseType = 1;
         tParams.surroundType = 'cone_specific';                         
@@ -147,8 +147,8 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             
-        tParams.macularPigmentDensityAdjustments = [0]; 
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             
+        tParams.macularPigmentDensityAdjustments = 0; 
         
         tParams.noiseType = 1;
         tParams.surroundType = 'cone_specific';                         
@@ -161,7 +161,7 @@ switch (parameterPreset)
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
         tParams.OBSERVER_STATES = {'LMandS' 'MSonly' 'LSonly'}; 
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];             
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;             
         tParams.macularPigmentDensityAdjustments = [-0.3 0 0.3];
         
         tParams.noiseType = 1;
@@ -180,8 +180,8 @@ switch (parameterPreset)
         sParams.nDrawsPerTestStimulus = 100;
         
         tParams.OBSERVER_STATES = {'LMandS'};
-        tParams.DO_TAFC_CLASSIFIER_STATES = [true];
-        tParams.macularPigmentDensityAdjustments = [0];
+        tParams.DO_TAFC_CLASSIFIER_STATES = true;
+        tParams.macularPigmentDensityAdjustments = 0;
         
         tParams.noiseType = 1;
         tParams.surroundType = 'none';                        
