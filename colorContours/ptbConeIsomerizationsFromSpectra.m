@@ -1,37 +1,63 @@
-function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ptbConeIsomerizationsFromSpectralRadiance(spd_input,wls_input,pupilDiamMm,focalLengthMm,integrationTimeSec,macularPigmentDensityAdjustment)
-% [isoPerCone,pupilDiamMm,photoreceptors] = ptbConeIsomerizationsFromSpectralRadiance(spd_input,wls_input,pupilDiamMm,focalLengthMm,integrationTimeSec,[macularPigmentDensityAdjustment])
+function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ...
+    ptbConeIsomerizationsFromSpectralRadiance(radiance,wave,pupilDiamMm, ...
+    focalLengthMm,integrationTimeSec,mPigmentAdjustment)
+% [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ...
+%   ptbConeIsomerizationsFromSpectralRadiance(radiance,wave,pupilDiamMm,...
+%    focalLengthMm,integrationTimeSec,[mPigmentAdjustment])
 %
-% Compute LMS human cone isomerizations from spectral radiance in Watts/[m2-sr-nm].
+% Compute LMS human cone isomerizations from scene spectral radiance in
+% Watts/[m2-sr-nm].  
 %
-% This routine is set up for a quick commparison to isetbio calculations.  The underlying
-% code is demonstrated and (sort of) documented in PTB routine IsomerizationsInEyeDemo.
+% radiance:            The scene radiance (watts/sr/m2/nm)
+% wave:                The wavelength samples (nm)
+% pupilDiamMm:         Pupil diameter in millimeters
+% focalLengthMm:       Focal length in millimeters
+% integrationTimeSec:  
+% mPigmentAdjustment:  Macular pigment density adjustment. 0 means
+%                      standard amount (which is XXX).
 %
-% The other key thing is that after the call to FillInPhotoreceptors, the field
-% isomerizationAbsorbtance of the photoreceptors struct contains the spectral
-% sensitivities of the LMS cones.  These are in quantal units (probability of
-% an isomerization).
+%Returns:
+% isoPerCone:            Isomerizations per cone
+% pupilDiamMm:
+% photoreceptors:        Structure with information about sensors
+% irradianceWattsPerM2:  Irradiance derived from 
 %
-% If the macularPigmentDensityAdjustment argument is passed, it is added to the default.
+% This routine is set up for a quick commparison to isetbio calculations.
+% The underlying code is demonstrated and (sort of) documented in PTB
+% routine IsomerizationsInEyeDemo.
+%
+% The other key thing is that after the call to FillInPhotoreceptors, the
+% field isomerizationAbsorbtance of the photoreceptors struct contains the
+% spectral sensitivities of the LMS cones.  These are in quantal units
+% (probability of an isomerization).
+%
+% If the macularPigmentDensityAdjustment argument is passed, it is added to
+% the default.
 %
 % 8/4/13  dhb  Wrote it.
+%
+% DHB/BW ISETBIO Team, 2013
+
 
 %% Set up PTB photoreceptors structure
-%
-% We'll do the computations at the wavelength
-% spacing passed in for the spectrum of interest.
+
+error('Call ptbConeIsomerizationsFromRadiance')
+
+% We'll do the computations at the wavelength spacing passed in for the
+% spectrum of interest.
 whatCalc = 'CIE2Deg';
 photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors.eyeLengthMM.source = num2str(focalLengthMm);
-photoreceptors.nomogram.S = WlsToS(wls_input);
+photoreceptors.nomogram.S = WlsToS(wave);
 S = photoreceptors.nomogram.S;
-if (nargin > 5 && ~isempty(macularPigmentDensityAdjustment))
-    photoreceptors.macularPigmentDensity.adjustDen = macularPigmentDensityAdjustment;
+if (nargin > 5 && ~isempty(mPigmentAdjustment))
+    photoreceptors.macularPigmentDensity.adjustDen = mPigmentAdjustment;
 end
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
 % Convert units to power per wlband rather than power per nm. Units of
 % power per nm is the PTB way, for better or worse.
-radianceWattsPerM2Sr = spd_input*S(2);
+radianceWattsPerM2Sr = radiance*S(2);
 
 % Find pupil area, needed to get retinal irradiance, if not passed.
 %
