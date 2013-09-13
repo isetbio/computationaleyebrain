@@ -76,15 +76,14 @@ end
 
 %  sensor for Thibos calculation
 oi     = oiCompute(oi,scene);
-sensor = sensorSetSizeToFOV(sensor,sceneGet(scene,'hfov'),scene,oi);
+sensor = sensorSetSizeToFOV(sensor, sceneGet(scene,'hfov'),scene,oi);
 sensor = sensorCompute(sensor,oi);
 
 %% Compute sensor image samples
 %  If needed, eye-movement should be set up here
 %  Now, we set it with no eye-movement
-sensor = sensorSet(sensor,'sensor positions x', 0);
-sensor = sensorGet(sensor,'sensor positions y', 0);
-sensor =  sensorGet(sensor,'frames per position', nSamples);
+sensor = sensorSet(sensor,'movement positions', [0 0]);
+sensor =  sensorSet(sensor,'frames per position', nSamples);
 
 %  Compute photon cone absorptions
 sensor = coneAbsorptions(sensor,oi);

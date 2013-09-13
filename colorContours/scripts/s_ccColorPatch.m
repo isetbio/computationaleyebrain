@@ -30,14 +30,15 @@ s_initISET
 %% Main parameters for background
 monitorName = 'LCD-Apple.mat';
 wave        = 380:4:780;
-staticValues.refColor    = [0.5 0.5 0.5];
+refColor    = [0.5 0.5 0.5];
+staticValues.refColor = refColor;
 
 %% Create reference color patch
 %  Assume that display has been linearized before experiment
 staticValues.display = displayCreate(monitorName);
 refImage = ones(128,128,3);
-for ii=1:3
-    refImage(:,:,ii) = refImage(:,:,ii) * staticValues.refColor(ii);
+for ii = 1 : 3
+    refImage(:,:,ii) = refImage(:,:,ii) * refColor(ii);
 end
 refFile = fullfile(isetbioRootPath,'tmp','refFile.png');
 imwrite(refImage,refFile);
@@ -51,23 +52,37 @@ wvf    = wvfComputePSF(wvf);
 staticValues.refOI    = wvf2oi(wvf,'shift invariant');
 
 %% Build the background scene and oi from the image file.
-refscene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
-staticValues.refScene = refscene;
-staticValues.refOI = oiCompute(refOI, refscene);
+refScene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
+staticValues.refScene = refScene;
+staticValues.refOI = oiCompute(staticValues.refOI, refScene);
+
+%% Create human sensor
+coneDensity = [.1 .6 .2 .1];
+sensor = sensorCreate('human');
+sensor = sensorSet(sensor,'exp time',0.05);
+[sensor,xy,coneType] = sensorCreateConeMosaic(sensor, [], coneDensity);
+sensor = sensorSetSizeToFOV(sensor,sceneGet(refScene,'hfov'), ...
+    refScene, staticValues.refOI);
+sensor = sensorCompute(sensor,staticValues.refOI);
+staticValues.sensor = sensor;
 
 %% Create simulation parameters
-[theParams,staticParams] = setParameters('QuickTest');
-simParams = constructSimulationParameters(theParams,staticParams);
+[theParams, staticParams] = setParameters('QuickTest');
+simParams = constructSimulationParameters(theParams, staticParams);
 
 %% Simulate under each conditions
 %  Try open matlabpool
-
+% matlabpool open 4
 %  Loop over and compute classification accuracy
 for curSim = 1 : length(simParams)
     % Compute match value
-    staticComputedValues;
+    params     = simParams(curSim);
+    matchColor = refColor + params.DO_TAFC_CLASSIFIER .* ...
+                                            params.cdAngle;
     % Do simulation
-    simResults(curSim) = ccAccuracy(simParams, staticValues);
+    simResults(curSim) = ccAccuracy(params, staticValues);
 end
 
+%  Close matlabpool
+% matlabpool close
 %% Plot Result
