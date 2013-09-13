@@ -30,14 +30,14 @@ s_initISET
 %% Main parameters for background
 monitorName = 'LCD-Apple.mat';
 wave        = 380:4:780;
-refColor    = 0.5;             % Linear value of display primaries
+staticValues.refColor    = [0.5 0.5 0.5];
 
 %% Create reference color patch
 %  Assume that display has been linearized before experiment
-d      = displayCreate(monitorName);
+staticValues.display = displayCreate(monitorName);
 refImage = ones(128,128,3);
 for ii=1:3
-    refImage(:,:,ii) = refImage(:,:,ii) * refColor(ii);
+    refImage(:,:,ii) = refImage(:,:,ii) * staticValues.refColor(ii);
 end
 refFile = fullfile(isetbioRootPath,'tmp','refFile.png');
 imwrite(refImage,refFile);
@@ -48,12 +48,12 @@ pupilDiameterMm = 3;
 sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
 wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
 wvf    = wvfComputePSF(wvf);
-oiB    = wvf2oi(wvf,'shift invariant');
+staticValues.refOI    = wvf2oi(wvf,'shift invariant');
 
 %% Build the background scene and oi from the image file.
-bScene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
-oiB    = oiCompute(oiB,bScene);
-% vcAddAndSelectObject(oiB); oiWindow;
+refscene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
+staticValues.refScene = refscene;
+staticValues.refOI = oiCompute(refOI, refscene);
 
 %% Create simulation parameters
 [theParams,staticParams] = setParameters('QuickTest');
@@ -61,12 +61,13 @@ simParams = constructSimulationParameters(theParams,staticParams);
 
 %% Simulate under each conditions
 %  Try open matlabpool
+
+%  Loop over and compute classification accuracy
 for curSim = 1 : length(simParams)
     % Compute match value
     staticComputedValues;
     % Do simulation
-    simResults(curSim) = doOneSimulation(simParams(curSim),staticParams, ...
-        runtimeParams,staticComputedValues);
+    simResults(curSim) = ccAccuracy(simParams, staticValues);
 end
 
 %% Plot Result

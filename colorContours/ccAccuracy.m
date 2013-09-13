@@ -45,19 +45,36 @@ if nargin < 2, error('static values structure required'); end
 %% Compute photon images for reference image
 %  if scene for reference color is not set, create it
 if ~isfield(staticValues, 'refScene')
+    refImg   = ones([staticValues.scenePixels 3]);
+    for i = 1 : 3
+        refImg(:,:,i) = simParams.matchRGB(i);
+    end
+    refImgName = fullfile(isetbioRootPath,'tmp',['refImg_' ...
+                        num2str(randi(1e6)) '.png']);
+    staticValues.refScene = sceneFromFile(refImgName, 'rgb', ...
+                                          [], staticValues.display);
+    delete(refImgName);
 end
 
 %  if refOI is not computed, create and compute it
 if ~isfield(staticValues, 'refOI')
+    wave   = 380 : 4 : 780;
+    wvf    = wvfCreate('wave',wave);
+    pupilDiameterMm = 3;
+    sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
+    wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
+    wvf    = wvfComputePSF(wvf);
+    staticValues.refOI = wvf2oi(wvf,'shift invariant');
 end
 
 %  if photon images is not computed, compute and store it
 if ~isfield(staticValues, 'isRefVoltsImgComputed') || ...
         ~staticValues.isRefVoltsImgComputed
+    staticValues.sensor = coneSamples(staticValues.refScene, 1000, ...
+        staticValues.sensor, staticValues.refOI);
 end
 
 % get photon images from sensor
-refSensor  = staticValues.sensor; % store current state for return value
 refPhotons = sensorGet(staticValues.sensor,'photons');
 
 %% Compute photon images for match image
@@ -90,13 +107,13 @@ matchScene = sceneFromFile(matchImgName, 'rgb', [], staticValues.display);
 delete(matchImgName);
 
 %  Compute cone samples
-matchPhotons = coneSamples(matchScene, 10, staticValues.sensor, ...
+sensor = coneSamples(matchScene, 1000, staticValues.sensor, ...
     staticValues.refOI);
+matchPhotons = sensorGet(sensor, 'photons');
 %% Classification
-[acc, err] = getClassificationAccuray(refPhotons, matchPhotons);
+[acc, err] = getSVMAccuray(refPhotons, matchPhotons);
 
 %% Set values for output
 staticValues.isRefVoltsImgComputed = true;
-staticValues.sensor = refSensor;
 
 end
