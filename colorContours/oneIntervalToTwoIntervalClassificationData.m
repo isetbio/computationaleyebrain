@@ -1,8 +1,12 @@
 function classificationData = oneIntervalToTwoIntervalClassificationData(classificationData)
 % classificationData = oneIntervalToTwoIntervalClassificationData(classificationData)
 %
-% Use the data in the classification structure, set up for a one-interval experiment and
-% convert it into a form for TAFC.
+% Use the data in the classification structure, set up for a one-interval
+% experiment and convert it into a form for TAFC.
+%
+% Each trial is basically A,B or B,A and a label for which type it is.
+% We build a training data set and a testing data set.  We think training
+% is called training and testing is called validation in this routine.
 %
 % 8/29/13  dhb  Pulled this out into its own routine.
 
@@ -17,6 +21,7 @@ tafcTrainingData = zeros(nTrainingData,2*oneIntervalDataDimension);
 tafcTrainingLabels = zeros(nTrainingData,1);
 tafcValidateData = zeros(nTrainingData,2*oneIntervalDataDimension);
 tafcValidateLabels = zeros(nTrainingData,1);
+
 for tt = 1:nTrainingData
     % Training set
     %
@@ -54,4 +59,6 @@ classificationData.trainingData = tafcTrainingData;
 classificationData.trainingLabels = tafcTrainingLabels;
 classificationData.validateData = tafcValidateData;
 classificationData.validateLabels = tafcValidateLabels;
+
+end
 

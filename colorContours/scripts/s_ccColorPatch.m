@@ -53,8 +53,10 @@ staticValues.refOI    = wvf2oi(wvf,'shift invariant');
 
 %% Build the background scene and oi from the image file.
 refScene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
+refScene = sceneSet(refScene,'h fov',2);
 staticValues.refScene = refScene;
 staticValues.refOI = oiCompute(staticValues.refOI, refScene);
+vcAddAndSelectObject(staticValues.refOI); oiWindow;
 
 %% Create human sensor
 coneDensity = [.1 .6 .2 .1];
@@ -65,20 +67,23 @@ sensor = sensorSetSizeToFOV(sensor,sceneGet(refScene,'hfov'), ...
     refScene, staticValues.refOI);
 sensor = sensorCompute(sensor,staticValues.refOI);
 staticValues.sensor = sensor;
+vcAddAndSelectObject(staticValues.sensor); sensorWindow('scale',1);
 
 %% Create simulation parameters
 [theParams, staticParams] = setParameters('QuickTest');
 simParams = constructSimulationParameters(theParams, staticParams);
 
 %% Simulate under each conditions
-%  Try open matlabpool
+% Try open matlabpool
 % matlabpool open 4
 %  Loop over and compute classification accuracy
-for curSim = 1 : length(simParams)
+for curSim = 2 % 1 : length(simParams)
     % Compute match value
     params     = simParams(curSim);
-    matchColor = refColor + params.DO_TAFC_CLASSIFIER .* ...
-                                            params.cdAngle;
+    
+    % This isn't right.  Need to move into LMS space.
+    params.matchRGB = refColor + params.DO_TAFC_CLASSIFIER .* ...
+                                            0.0*[cos(params.cdAngle),sin(params.cdAngle),0];
     % Do simulation
     simResults(curSim) = ccAccuracy(params, staticValues);
 end
