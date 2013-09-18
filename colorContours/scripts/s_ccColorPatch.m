@@ -36,7 +36,7 @@ staticValues.refColor = refColor;
 %% Create reference color patch
 %  Assume that display has been linearized before experiment
 staticValues.display = displayCreate(monitorName);
-refImage = ones(128,128,3);
+refImage = ones(64,64,3);
 for ii = 1 : 3
     refImage(:,:,ii) = refImage(:,:,ii) * refColor(ii);
 end
@@ -83,7 +83,7 @@ for curSim = 2 % 1 : length(simParams)
     
     % This isn't right.  Need to move into LMS space.
     params.matchRGB = refColor + params.DO_TAFC_CLASSIFIER .* ...
-                                            0.0*[cos(params.cdAngle),sin(params.cdAngle),0];
+                                            0.0058*[cos(params.cdAngle),sin(params.cdAngle),0];
     % Do simulation
     simResults(curSim) = ccAccuracy(params, staticValues);
 end

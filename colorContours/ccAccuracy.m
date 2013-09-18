@@ -69,15 +69,15 @@ if ~isfield(staticValues, 'refOI')
 end
 
 %  if photon images is not computed, compute and store it
+nFrames = 100;
 if ~isfield(staticValues, 'isRefVoltsImgComputed') || ...
         ~staticValues.isRefVoltsImgComputed
-    nFrames = 100;
     staticValues.sensor = coneSamples(staticValues.refScene, nFrames, ...
         staticValues.sensor, staticValues.refOI);
 end
 
 % get photon absorptions from each cone in the sensor array
-refPhotons = sensorGet(staticValues.sensor,'photons');
+refPhotons = sensorGet(staticValues.sensor, 'photons');
 
 %% Compute photon images for match image
 %  Compute match image color
@@ -109,8 +109,9 @@ imwrite(matchImg, matchImgName);
 % Re-write sceneFromFile so instead of a file name, we can send in RGB
 % data. Also, allow the display to be either a name of a file or a display
 % structure. 
+staticValues.display.name = 'LCD-Apple';
 matchScene = sceneFromFile(matchImgName, 'rgb', [], staticValues.display.name);
-matchScene = sceneSet(matchScene,'h fov',sceneGet(staticValues.refScene,'h fov'));
+matchScene = sceneSet(matchScene,'h fov', sceneGet(staticValues.refScene,'h fov'));
 % vcAddAndSelectObject(matchScene); sceneWindow;
 
 % clean up
@@ -123,29 +124,18 @@ matchPhotons = sensorGet(sensor, 'photons');
 %% Classification
 
 svmOpts = '-s 0 -t 0';
-predictOpts = ' -q';
-% if (runtimeParams.SIM_QUIET)
-%     svmOpts =  [svmOpts ' -q'];
-%     % predictOpts = [predictOpts ' -q'];
-% end
 
 % We have matchPhotons - these are the test stimuli
-% We have refPhotons - these are the absorptions to the background
-% We take half of them and train 
-trainLabels = [ones(50,1); -1*ones(50,1)];
-trainRefPhotons   = RGB2XWFormat(refPhotons(:,:,1:50))';
-trainMatchPhotons = RGB2XWFormat(matchPhotons(:,:,1:50))';
-% trainingD = cat(,matchPhotons(:,:,1:50),3)
+% We have refPhotons   - these are the absorptions to the background
+nFolds = 10;
+labels = [ones(nFrames,1); -1*ones(nFrames,1)];
+refPhotons   = RGB2XWFormat(refPhotons(:,:,1:50))';
+matchPhotons = RGB2XWFormat(matchPhotons(:,:,1:50))';
+acc = svmClassifyAcc(cat(1,refPhotons, matchPhotons), ...
+                     labels, nFolds, 'svm', svmOpts);
+err = acc(2);
+acc = acc(1);
 
-% Each row is a photon image
-svmModel = svmtrain(trainLabels, double(cat(1,trainRefPhotons,trainMatchPhotons)), svmOpts);
-
-testLabels = [ones(50,1); -1*ones(50,1)];
-testRefPhotons   = RGB2XWFormat(refPhotons(:,:,51:end))';
-testMatchPhotons = RGB2XWFormat(matchPhotons(:,:,51:end))';
-
-[predictLabels, accuracy, foo] = svmpredict(testLabels, double(cat(1,testRefPhotons,testMatchPhotons)), svmModel, predictOpts);
-acc = accuracy(1);  % This is the probability correct
 
 %% Tell the calling routine that we computed the refPhotons
 staticValues.isRefVoltsImgComputed = true;
