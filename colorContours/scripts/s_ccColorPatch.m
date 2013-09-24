@@ -31,12 +31,13 @@ s_initISET
 monitorName = 'LCD-Apple.mat';
 wave        = 380:4:780;
 refColor    = [0.5 0.5 0.5];
+bgColor     = [0.5 0.5 0.5];
 staticValues.refColor = refColor;
 
 %% Create reference color patch
 %  Assume that display has been linearized before experiment
 staticValues.display = displayCreate(monitorName);
-refImage = ones(64,64,3);
+refImage = ones(16, 16, 3);
 for ii = 1 : 3
     refImage(:,:,ii) = refImage(:,:,ii) * refColor(ii);
 end
@@ -53,10 +54,11 @@ staticValues.refOI    = wvf2oi(wvf,'shift invariant');
 
 %% Build the background scene and oi from the image file.
 refScene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
-refScene = sceneSet(refScene,'h fov',2);
+% refScene = sceneFromFile(refImage,'rgb',[],monitorName,wave);
+refScene = sceneSet(refScene,'h fov', 0.5);
 staticValues.refScene = refScene;
 staticValues.refOI = oiCompute(staticValues.refOI, refScene);
-vcAddAndSelectObject(staticValues.refOI); oiWindow;
+% vcAddAndSelectObject(staticValues.refOI); oiWindow;
 
 %% Create human sensor
 coneDensity = [.1 .6 .2 .1];
@@ -67,7 +69,7 @@ sensor = sensorSetSizeToFOV(sensor,sceneGet(refScene,'hfov'), ...
     refScene, staticValues.refOI);
 sensor = sensorCompute(sensor,staticValues.refOI);
 staticValues.sensor = sensor;
-vcAddAndSelectObject(staticValues.sensor); sensorWindow('scale',1);
+% vcAddAndSelectObject(staticValues.sensor); sensorWindow('scale',1);
 
 %% Create simulation parameters
 [theParams, staticParams] = setParameters('QuickTest');
@@ -76,14 +78,18 @@ simParams = constructSimulationParameters(theParams, staticParams);
 %% Simulate under each conditions
 % Try open matlabpool
 % matlabpool open 4
-%  Loop over and compute classification accuracy
-for curSim = 2 % 1 : length(simParams)
+% Loop over and compute classification accuracy
+for curSim = 1 : length(simParams)
     % Compute match value
     params     = simParams(curSim);
     
-    % This isn't right.  Need to move into LMS space.
-    params.matchRGB = refColor + params.DO_TAFC_CLASSIFIER .* ...
-                                            0.0058*[cos(params.cdAngle),sin(params.cdAngle),0];
+    % This isn't right.  Need to move into LMS space
+    dir = [cos(params.cdAngle) sin(params.cdAngle) 0]';
+    refLMS   = RGB2ConeContrast(staticValues.display, refColor, bgColor);
+    matchLMS = refLMS + 0.01 * params.DO_TAFC_CLASSIFIER .* dir;
+    
+    params.matchRGB = coneContrast2RGB(staticValues.display,...
+                                       matchLMS, bgColor);
     % Do simulation
     simResults(curSim) = ccAccuracy(params, staticValues);
 end

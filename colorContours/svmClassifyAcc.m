@@ -42,8 +42,8 @@ if isempty(opts), opts = '-s 2 -q'; end
 %  Normalization is important when data values are small, i.e. volts image
 %  If we values are large, i.e. photon absorptions, it's fine to skip this
 %  step
-dataMatrix = (dataMatrix-repmat(min(dataMatrix),[length(dataMatrix) 1])) ...
-    ./ repmat(max(dataMatrix)-min(dataMatrix),[length(dataMatrix) 1]);
+dataMatrix = (dataMatrix-repmat(min(dataMatrix),[size(dataMatrix, 1) 1])) ...
+    ./ repmat(max(dataMatrix)-min(dataMatrix),[size(dataMatrix,1 ) 1]);
 
 %  Random permute the data
 [M, ~] = size(dataMatrix);

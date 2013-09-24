@@ -78,6 +78,7 @@ end
 
 % get photon absorptions from each cone in the sensor array
 refPhotons = sensorGet(staticValues.sensor, 'photons');
+refPhotons = double(refPhotons);
 
 %% Compute photon images for match image
 %  Compute match image color
@@ -87,7 +88,7 @@ if ~isfield(simParams, 'matchRGB')
 end
 %  Create image for match color
 if ~isfield(staticValues, 'scenePixels')
-    staticValues.scenePixels = [64 64]; 
+    staticValues.scenePixels = [16 16]; 
 end
 if isscalar(staticValues.scenePixels)
     val = staticValues.scenePixels;
@@ -121,6 +122,7 @@ delete(matchImgName);
 sensor = coneSamples(matchScene, nFrames, staticValues.sensor, ...
     staticValues.refOI);
 matchPhotons = sensorGet(sensor, 'photons');
+matchPhotons = double(matchPhotons);
 %% Classification
 
 svmOpts = '-s 0 -t 0';
@@ -129,8 +131,8 @@ svmOpts = '-s 0 -t 0';
 % We have refPhotons   - these are the absorptions to the background
 nFolds = 10;
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
-refPhotons   = RGB2XWFormat(refPhotons(:,:,1:50))';
-matchPhotons = RGB2XWFormat(matchPhotons(:,:,1:50))';
+refPhotons   = RGB2XWFormat(refPhotons)';
+matchPhotons = RGB2XWFormat(matchPhotons)';
 acc = svmClassifyAcc(cat(1,refPhotons, matchPhotons), ...
                      labels, nFolds, 'svm', svmOpts);
 err = acc(2);
