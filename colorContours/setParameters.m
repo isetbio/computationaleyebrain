@@ -174,7 +174,7 @@ switch (parameterPreset)
     case 'quicktest'
         sParams.stimulus.coneNumbersToUse = [4 2 1]; 
 
-        sParams.nColorDirections = 4;
+        sParams.nColorDirections = 8;
         sParams.dirAngleMax = pi;
         sParams.nTestLevels = 4;
         sParams.nDrawsPerTestStimulus = 100;

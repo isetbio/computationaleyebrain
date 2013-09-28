@@ -54,7 +54,6 @@ staticValues.refOI    = wvf2oi(wvf,'shift invariant');
 
 %% Build the background scene and oi from the image file.
 refScene = sceneFromFile(refFile,'rgb',[],monitorName,wave);
-% refScene = sceneFromFile(refImage,'rgb',[],monitorName,wave);
 refScene = sceneSet(refScene,'h fov', 0.5);
 staticValues.refScene = refScene;
 staticValues.refOI = oiCompute(staticValues.refOI, refScene);
@@ -77,16 +76,16 @@ simParams = constructSimulationParameters(theParams, staticParams);
 
 %% Simulate under each conditions
 % Try open matlabpool
-% matlabpool open 4
+matlabpool open 4
 % Loop over and compute classification accuracy
-for curSim = 1 : length(simParams)
+parfor curSim = 1 : length(simParams)
     % Compute match value
     params     = simParams(curSim);
     
     % This isn't right.  Need to move into LMS space
     dir = [cos(params.cdAngle) sin(params.cdAngle) 0]';
     refLMS   = RGB2ConeContrast(staticValues.display, refColor, bgColor);
-    matchLMS = refLMS + 0.01 * params.DO_TAFC_CLASSIFIER .* dir;
+    matchLMS = refLMS + params.nTestLevels*params.DO_TAFC_CLASSIFIER*dir;
     
     params.matchRGB = coneContrast2RGB(staticValues.display,...
                                        matchLMS, bgColor);
@@ -95,5 +94,8 @@ for curSim = 1 : length(simParams)
 end
 
 %  Close matlabpool
-% matlabpool close
+matlabpool close
+
+%% Fit weibull function
+
 %% Plot Result

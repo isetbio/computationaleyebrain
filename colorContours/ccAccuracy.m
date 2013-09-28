@@ -69,7 +69,7 @@ if ~isfield(staticValues, 'refOI')
 end
 
 %  if photon images is not computed, compute and store it
-nFrames = 100;
+nFrames = 500;
 if ~isfield(staticValues, 'isRefVoltsImgComputed') || ...
         ~staticValues.isRefVoltsImgComputed
     staticValues.sensor = coneSamples(staticValues.refScene, nFrames, ...
@@ -79,6 +79,7 @@ end
 % get photon absorptions from each cone in the sensor array
 refPhotons = sensorGet(staticValues.sensor, 'photons');
 refPhotons = double(refPhotons);
+refPhotons = refPhotons(50:60, 50:60, :);
 
 %% Compute photon images for match image
 %  Compute match image color
@@ -123,6 +124,7 @@ sensor = coneSamples(matchScene, nFrames, staticValues.sensor, ...
     staticValues.refOI);
 matchPhotons = sensorGet(sensor, 'photons');
 matchPhotons = double(matchPhotons);
+matchPhotons = matchPhotons(50:60, 50:60, :);
 %% Classification
 
 svmOpts = '-s 0 -t 0';

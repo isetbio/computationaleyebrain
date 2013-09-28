@@ -41,7 +41,7 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ...
 
 %% Set up PTB photoreceptors structure
 
-error('Call ptbConeIsomerizationsFromRadiance')
+%error('Call ptbConeIsomerizationsFromRadiance')
 
 % We'll do the computations at the wavelength spacing passed in for the
 % spectrum of interest.
