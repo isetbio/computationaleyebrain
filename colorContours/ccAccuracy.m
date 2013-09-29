@@ -42,6 +42,17 @@ function [acc, err, staticValues] = ccAccuracy(simParams, staticValues)
 if nargin < 1, error('simulation parameter structure required'); end
 if nargin < 2, error('static values structure required'); end
 
+%  set number of frames to be used in train and test
+if ~isfield(staticValues, 'nFrames')
+    nFrames = 500;
+else
+    nFrames = staticValues.nFrames;
+end
+
+if ~isfield(staticValues, 'doSecondSiteNoise')
+    staticValues.doSecondSiteNoise = false;
+end
+
 %% Compute photon images for reference image
 %  if scene for reference color is not set, create it
 if ~isfield(staticValues, 'refScene')
@@ -69,7 +80,6 @@ if ~isfield(staticValues, 'refOI')
 end
 
 %  if photon images is not computed, compute and store it
-nFrames = 500;
 if ~isfield(staticValues, 'isRefVoltsImgComputed') || ...
         ~staticValues.isRefVoltsImgComputed
     staticValues.sensor = coneSamples(staticValues.refScene, nFrames, ...
@@ -77,8 +87,14 @@ if ~isfield(staticValues, 'isRefVoltsImgComputed') || ...
 end
 
 % get photon absorptions from each cone in the sensor array
+% if doSecondSiteNoise is true, the sensor should contain photon
+% absorptions with second site noise here. This is not reasonable to store
+% it there, should change it to a cone structure later
 refPhotons = sensorGet(staticValues.sensor, 'photons');
 refPhotons = double(refPhotons);
+if staticValues.doSecondSiteNoise
+    refPhotons = coneComputeSSNoise(refPhotons, staticValues.coneType);
+end
 refPhotons = refPhotons(50:60, 50:60, :);
 
 %% Compute photon images for match image
@@ -112,8 +128,10 @@ imwrite(matchImg, matchImgName);
 % data. Also, allow the display to be either a name of a file or a display
 % structure. 
 staticValues.display.name = 'LCD-Apple';
-matchScene = sceneFromFile(matchImgName, 'rgb', [], staticValues.display.name);
-matchScene = sceneSet(matchScene,'h fov', sceneGet(staticValues.refScene,'h fov'));
+matchScene = sceneFromFile(matchImgName, 'rgb', [], ...
+                           staticValues.display.name);
+matchScene = sceneSet(matchScene,'h fov', ...
+                      sceneGet(staticValues.refScene,'h fov'));
 % vcAddAndSelectObject(matchScene); sceneWindow;
 
 % clean up
@@ -124,10 +142,19 @@ sensor = coneSamples(matchScene, nFrames, staticValues.sensor, ...
     staticValues.refOI);
 matchPhotons = sensorGet(sensor, 'photons');
 matchPhotons = double(matchPhotons);
-matchPhotons = matchPhotons(50:60, 50:60, :);
-%% Classification
 
-svmOpts = '-s 0 -t 0';
+%  Compute second site noise if needed
+if staticValues.doSecondSiteNoise
+    matchPhotons = coneComputeSSNoise(matchPhotons, staticValues.coneType);
+end
+
+%  Sample cone response in ROI
+matchPhotons = matchPhotons(50:60, 50:60, :);
+
+
+%% Classification
+%  Set svm options
+svmOpts = '-s 0 -t 0 -q';
 
 % We have matchPhotons - these are the test stimuli
 % We have refPhotons   - these are the absorptions to the background

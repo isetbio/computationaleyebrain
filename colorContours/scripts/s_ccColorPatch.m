@@ -20,7 +20,7 @@
 %    5. Plot the psychometric functions and the detection contours
 %
 %  See also:
-%    doOneSimulation
+%    ccAccuracy
 %
 %  DHB/BW/HJ (c) ISETBIO Team, 2013
 
@@ -32,7 +32,10 @@ monitorName = 'LCD-Apple.mat';
 wave        = 380:4:780;
 refColor    = [0.5 0.5 0.5];
 bgColor     = [0.5 0.5 0.5];
+
+% Init static parameter structure
 staticValues.refColor = refColor;
+staticValues.doSecondSiteNoise = true;
 
 %% Create reference color patch
 %  Assume that display has been linearized before experiment
@@ -63,11 +66,14 @@ staticValues.refOI = oiCompute(staticValues.refOI, refScene);
 coneDensity = [.1 .6 .2 .1];
 sensor = sensorCreate('human');
 sensor = sensorSet(sensor,'exp time',0.05);
-[sensor,xy,coneType] = sensorCreateConeMosaic(sensor, [], coneDensity);
 sensor = sensorSetSizeToFOV(sensor,sceneGet(refScene,'hfov'), ...
     refScene, staticValues.refOI);
+[sensor, ~, coneType] = sensorCreateConeMosaic(sensor, ...
+                          sensorGet(sensor, 'size'), coneDensity);
 sensor = sensorCompute(sensor,staticValues.refOI);
-staticValues.sensor = sensor;
+
+staticValues.sensor   = sensor;
+staticValues.coneType = coneType;
 % vcAddAndSelectObject(staticValues.sensor); sensorWindow('scale',1);
 
 %% Create simulation parameters
@@ -76,25 +82,25 @@ simParams = constructSimulationParameters(theParams, staticParams);
 
 %% Simulate under each conditions
 % Try open matlabpool
-matlabpool open 4
+% matlabpool open 4
 % Loop over and compute classification accuracy
-parfor curSim = 1 : length(simParams)
+for curSim = 1 : length(simParams)
     % Compute match value
-    params     = simParams(curSim);
+    params       = simParams(curSim);
+    staticParams = staticValues; % Make a local copy, parfor only
     
-    % This isn't right.  Need to move into LMS space
     dir = [cos(params.cdAngle) sin(params.cdAngle) 0]';
-    refLMS   = RGB2ConeContrast(staticValues.display, refColor, bgColor);
-    matchLMS = refLMS + params.nTestLevels*params.DO_TAFC_CLASSIFIER*dir;
+    refLMS   = RGB2ConeContrast(staticParams.display, refColor, bgColor);
+    matchLMS = refLMS + params.nTestLevels * dir;
     
-    params.matchRGB = coneContrast2RGB(staticValues.display,...
+    params.matchRGB = coneContrast2RGB(staticParams.display,...
                                        matchLMS, bgColor);
     % Do simulation
-    simResults(curSim) = ccAccuracy(params, staticValues);
+    simResults(curSim) = ccAccuracy(params, staticParams);
 end
 
 %  Close matlabpool
-matlabpool close
+%  matlabpool close
 
 %% Fit weibull function
 

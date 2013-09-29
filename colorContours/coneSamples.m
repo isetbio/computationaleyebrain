@@ -84,6 +84,8 @@ sensor = sensorCompute(sensor,oi);
 %  Now, we set it with no eye-movement
 sensor = sensorSet(sensor,'movement positions', [0 0]);
 sensor =  sensorSet(sensor,'frames per position', nSamples);
+vcAddAndSelectObject('scene',scene);
+vcAddAndSelectObject('oi', oi);
 
 %  Compute photon cone absorptions
 sensor = coneAbsorptions(sensor,oi);

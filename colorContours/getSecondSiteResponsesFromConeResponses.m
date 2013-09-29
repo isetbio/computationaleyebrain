@@ -69,7 +69,7 @@ switch(blankSecondSiteResponses.type)
                 %
                 % I learned the hard way that some care is needed to make sure this is fast.
                 if (theParams.surroundSize > 0 && theParams.surroundWeight > 0)
-                    centerIndices = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
+                    centerIndices   = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
                     surroundIndices = 1:blankSecondSiteResponses.oneConeEachClassStartIndices(3)-1;
                     
                     % Each time through the surround size loop, radomize the order of the LM cones and
