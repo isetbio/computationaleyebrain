@@ -24,7 +24,7 @@ os  = 1:length(tParams.OBSERVER_STATES);           % observer states
 ct  = 1:length(tParams.DO_TAFC_CLASSIFIER_STATES); % classifier states
 mp  = 1:length(tParams.macularPigmentDensityAdjustments);
 cdi = 1:sParams.nColorDirections;                  % color direction index
-tl  = 0.005 * (1 : sParams.nTestLevels);
+tl  = 0.005 + 0.002 * (1 : sParams.nTestLevels);
 
 [os, ct, mp, cdi, tl] = ndgrid(os, ct, mp, cdi, tl);   % create grid
 os = os(:); ct = ct(:); tl = tl(:);

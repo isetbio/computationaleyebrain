@@ -105,7 +105,7 @@ if ~isfield(simParams, 'matchRGB')
 end
 %  Create image for match color
 if ~isfield(staticValues, 'scenePixels')
-    staticValues.scenePixels = [16 16]; 
+    staticValues.scenePixels = [64 64]; 
 end
 if isscalar(staticValues.scenePixels)
     val = staticValues.scenePixels;
@@ -128,7 +128,7 @@ imwrite(matchImg, matchImgName);
 % data. Also, allow the display to be either a name of a file or a display
 % structure. 
 staticValues.display.name = 'LCD-Apple';
-matchScene = sceneFromFile(matchImgName, 'rgb', [], ...
+matchScene = sceneFromFile(matchImg, 'rgb', [], ...
                            staticValues.display.name);
 matchScene = sceneSet(matchScene,'h fov', ...
                       sceneGet(staticValues.refScene,'h fov'));
