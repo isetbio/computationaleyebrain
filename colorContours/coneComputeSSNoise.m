@@ -34,20 +34,20 @@ end
 
 coneType = repmat(coneType, [1 1 size(coneRespSSNF,3)]);
 
-if ~isfield(opts, 'weights'), opts.weights = 0.2; end
-if ~isfield(opts, 'ssFanoFactor'), opts.ssFanoFactor = 1; end
+if ~isfield(opts, 'weights'), opts.weights = 0.7; end
+if ~isfield(opts, 'ssFanoFactor'), opts.ssFanoFactor = 4; end
 
 %% Wire L and M cones
-LConeResp = coneRespSSNF(coneType == 3);
-MConeResp = coneRespSSNF(coneType == 4);
+LConeResp = coneRespSSNF(coneType == 2);
+MConeResp = coneRespSSNF(coneType == 3);
 
 nLCones = length(LConeResp);
 nMCones = length(MConeResp);
 
 coneResp = coneRespSSNF;
-coneResp(coneType == 3) = LConeResp - opts.weights * ...
+coneResp(coneType == 2) = LConeResp - opts.weights * ...
                           MConeResp(randi(nMCones, [nLCones 1]));
-coneResp(coneType == 4) = MConeResp - opts.weights * ...
+coneResp(coneType == 3) = MConeResp - opts.weights * ...
                           LConeResp(randi(nLCones, [nMCones 1]));
 %% Add second site noise
 %  The noise is governed by the specified Fano factor, although we compute
@@ -57,7 +57,7 @@ coneResp(coneType == 4) = MConeResp - opts.weights * ...
 
 if opts.ssFanoFactor > 0
     stdMat = sqrt(opts.ssFanoFactor*abs(coneResp));
-    coneResp = coneResp + stdMat.*randn(size(coneResp));
+    coneResp = abs(coneResp + stdMat.*randn(size(coneResp)));
 end
 
 end

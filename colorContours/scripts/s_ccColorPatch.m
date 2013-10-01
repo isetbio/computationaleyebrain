@@ -103,21 +103,21 @@ for curSim = 1 : length(simParams)
     params.matchRGB = coneContrast2RGB(staticParams.display,...
                                        matchLMS, bgColor);
     % Do simulation
-    simResults(curSim) = ccAccuracy(params, staticParams);
+    [simResults(curSim),~,staicValues] = ccAccuracy(params, staticParams);
     
     % Show debug information here, should be deleted in parallel
     % computation
     fprintf('Acc - %.2f...Done!\n', simResults(curSim));
 end
 
-save deleteMe.mat
+save deleteMe.mat simResults staticValues simParams
 %  Close matlabpool
 %  matlabpool close
 
 %%  Re-organize data
 results.angle   = unique([simParams.cdAngle]);
 results.level  = unique([simParams.nTestLevels]);
-results.predAcc = zeros(length(results.angle), length(results.levels));
+results.predAcc = zeros(length(results.angle), length(results.level));
 
 for i = 1 : length(simParams)
     angleIndx = find(results.angle == simParams(i).cdAngle, 1);
@@ -148,7 +148,7 @@ for curDir = 1 : length(results.angle)
     % Plot
     threshX = alpha*(-log(2*(1-pCorrect))).^(1/beta);
     plot(threshX,pCorrect);
-    plot(results.levels,results.predAcc(curDir,:),'or');
+    plot(results.level,results.predAcc(curDir,:),'or');
 end
 
 %  plot threshold data and fitted ellipse

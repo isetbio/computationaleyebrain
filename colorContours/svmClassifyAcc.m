@@ -45,6 +45,10 @@ if isempty(opts), opts = '-s 2 -q'; end
 dataMatrix = (dataMatrix-repmat(min(dataMatrix),[size(dataMatrix, 1) 1])) ...
     ./ repmat(max(dataMatrix)-min(dataMatrix),[size(dataMatrix,1 ) 1]);
 
+% The data should not contain any NaN inside
+% If there's any NaN, set it to zero
+dataMatrix(isnan(dataMatrix)) = 0;
+
 %  Random permute the data
 [M, ~] = size(dataMatrix);
 ind   = randperm(M);

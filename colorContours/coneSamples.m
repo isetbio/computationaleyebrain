@@ -72,11 +72,11 @@ if isempty(sensor)
     sensor = sensorCreate('human'); 
     sensor = sensorSet(sensor,'exp time',0.05);
     [sensor,xy,coneType] = sensorCreateConeMosaic(sensor, [], coneDensity);
+    sensor = sensorSetSizeToFOV(sensor, sceneGet(scene,'hfov'),scene,oi);
 end
 
 %  sensor for Thibos calculation
 oi     = oiCompute(oi,scene);
-sensor = sensorSetSizeToFOV(sensor, sceneGet(scene,'hfov'),scene,oi);
 sensor = sensorCompute(sensor,oi);
 
 %% Compute sensor image samples
