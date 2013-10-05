@@ -60,11 +60,11 @@ if ~isfield(staticValues, 'refScene')
     for i = 1 : 3
         refImg(:,:,i) = simParams.matchRGB(i);
     end
-    refImgName = fullfile(isetbioRootPath,'tmp',['refImg_' ...
-                        num2str(randi(1e6)) '.png']);
+    %refImgName = fullfile(isetbioRootPath,'tmp',['refImg_' ...
+    %                    num2str(randi(1e6)) '.png']);
     staticValues.refScene = sceneFromFile(refImgName, 'rgb', ...
                                           [], staticValues.display);
-    delete(refImgName);
+    %delete(refImgName);
 end
 % vcAddAndSelectObject(staticValues.refScene); sceneWindow;
 
@@ -100,8 +100,12 @@ refPhotons = refPhotons(50:60, 50:60, :);
 %% Compute photon images for match image
 %  Compute match image color
 if ~isfield(simParams, 'matchRGB')
-    % Comment will appear
-    disp('No matchRGB')
+    % Compute match value
+    dir = [cos(simParams.cdAngle) sin(simParams.cdAngle) 0]';
+    matchLMS = staticValues.refLMS + simParams.nTestLevels * dir;
+    
+    simParams.matchRGB = coneContrast2RGB(staticValues.display,...
+        matchLMS, staticValues.bgColor);
 end
 %  Create image for match color
 if ~isfield(staticValues, 'scenePixels')
@@ -154,7 +158,7 @@ matchPhotons = matchPhotons(50:60, 50:60, :);
 
 %% Classification
 %  Set svm options
-svmOpts = '-s 0 -t 0 -q';
+svmOpts = '-s 0 -q';
 
 % We have matchPhotons - these are the test stimuli
 % We have refPhotons   - these are the absorptions to the background

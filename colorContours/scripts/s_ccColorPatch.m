@@ -24,8 +24,12 @@
 %
 %  DHB/BW/HJ (c) ISETBIO Team, 2013
 
-%% Init ISET
+%% Init ISET & control parameters
 s_initISET
+
+%% Prompt cluster choice
+USE_PROCLUS = input('Is pro-clus (1-yes, 0-no):');
+assert(USE_PROCLUS == 0 || USE_PROCLUS == 1);
 
 %% Main parameters for background
 monitorName = 'LCD-Apple.mat';
@@ -35,6 +39,7 @@ bgColor     = [0.5 0.5 0.5];
 
 % Init static parameter structure
 staticValues.refColor = refColor;
+staticValues.bgColor  = bgColor;
 staticValues.doSecondSiteNoise = true;
 staticValues.nFrames = 1500;
 staticValues.scenePixels = [64 64];
@@ -46,8 +51,8 @@ refImage = ones([staticValues.scenePixels 3]);
 for ii = 1 : 3
     refImage(:,:,ii) = refImage(:,:,ii) * refColor(ii);
 end
-refFile = fullfile(isetbioRootPath,'tmp','refFile.png');
-imwrite(refImage,refFile);
+%refFile = fullfile(isetbioRootPath,'tmp','refFile.png');
+%imwrite(refImage,refFile);
 
 %% Initiate the human optics
 wvf    = wvfCreate('wave',wave);
@@ -81,42 +86,64 @@ staticValues.coneType = coneType;
 %% Create simulation parameters
 [theParams, staticParams] = setParameters('QuickTest');
 simParams = constructSimulationParameters(theParams, staticParams);
+staticValues.refLMS = RGB2ConeContrast(staticValues.display, ...
+                                       refColor, bgColor);
 
 %% Simulate under each conditions
-% Try open matlabpool
-% matlabpool open 4
-% Loop over and compute classification accuracy
-refLMS   = RGB2ConeContrast(staticValues.display, refColor, bgColor);
-for curSim = 1 : length(simParams)
-    % Compute match value
-    params       = simParams(curSim);
-    staticParams = staticValues; % Make a local copy, parfor only
+if USE_PROCLUS
+    % Start jobs
+    sgeCommand = ['r = ccAccuracy(simParams(jobindex), staticValues);' ...
+                  'save(sprintf(''~/test%d.mat'',jobindex));'];
+    sgerun2(sgeCommand, 'colorContour0', 1, 1:length(simParams));
+    % Wait until all job completed
+    % here, we wait until onlly one entry (the interactive window) is
+    % lefted in the job list. I know this is awkward and has a lot of
+    % drawbacks. However, I cannot get the jobIDs when they get created. I
+    % shall update this part soon, to make it more robust and reasonable
+    isFinished = false; counter = 0;
+    while ~isFinished
+        pause(1); % Wait one seconds
+        [~, outcmd] = unix('qstat'); % Check again
+        isFinished  = length(strsplit(outcmd, 10)) <= 4;
+        counter = counter + 1;
+        if counter > 600 % Kill myself if something gets wrong there
+            fprintf('Current queue is %s', outcmd);
+            error('Jobs cannot be finished in a long time');
+        end
+    end
     
-    % Show some debug information here, should be deleted when computed
-    % parallel
-    fprintf('Simulation %d: Angle - %d, Level - %f...', curSim, ...
-        round(params.cdAngle*180/pi), params.nTestLevels);
-    
-    dir = [cos(params.cdAngle) sin(params.cdAngle) 0]';
-    matchLMS = refLMS + params.nTestLevels * dir;
-    
-    params.matchRGB = coneContrast2RGB(staticParams.display,...
-                                       matchLMS, bgColor);
-    % Do simulation
-    [simResults(curSim),~,staicValues] = ccAccuracy(params, staticParams);
-    
-    % Show debug information here, should be deleted in parallel
-    % computation
-    fprintf('Acc - %.2f...Done!\n', simResults(curSim));
-end
+    % Load results
+    simResults = loadmulti('~/test*.mat', 'r', 1);
+else % Compute locally
+    %  Open matlabpool
+    numCores = feature('numCores');
+    %  Cap the number of cores, Matlab only support 12 cores locally
+    if numCores > 12
+        numCores = 12;
+    end
+    matlabpool('open', numCores);
+    % Loop over and compute classification accuracy
+    parfor curSim = 1 : length(simParams)
+        % Do simulation
+        curParams = simParams(curSim);
+        simResults(curSim) = ccAccuracy(curParams, staticValues);
+        
+        % Show debug information
+        fprintf('Simulation %d: Angle - %d, Level - %f...', curSim, ...
+            round(curParams.cdAngle*180/pi), curParams.nTestLevels);
+        fprintf('Acc - %.2f...Done!\n', simResults(curSim));
+    end
 
-save deleteMe.mat simResults staticValues simParams
-%  Close matlabpool
-%  matlabpool close
+    % Save results
+    save simResults.mat simResults staticValues simParams
+
+    % Close matlabpool
+    matlabpool close
+end
 
 %%  Re-organize data
 results.angle   = unique([simParams.cdAngle]);
-results.level  = unique([simParams.nTestLevels]);
+results.level   = unique([simParams.nTestLevels]);
 results.predAcc = zeros(length(results.angle), length(results.level));
 
 for i = 1 : length(simParams)
@@ -128,7 +155,11 @@ end
 
 %% Weibull fit and plot
 %  init plot figure
-figure; hold on;
+hf = figure('NumberTitle', 'off', ...
+       'Name', 'Weibull fit curve', ...
+       'Visible', 'off' ...
+); 
+hold on;
 
 %  fit for every direction and plot weibull curve
 pCorrect = 0.51:0.01:0.99;
@@ -142,7 +173,7 @@ for curDir = 1 : length(results.angle)
         results.predAcc(curDir,:) * staticValues.nFrames, ...
         (1-results.predAcc(curDir, :)) * staticValues.nFrames,[],2.2);
     results.ccThresh(curDir) = FindThreshWeibTAFC(0.75,alpha,beta);
-    results.threshColor(:, curDir) = refLMS(1 : 2)' + ...
+    results.threshColor(:, curDir) = staticValues.refLMS(1 : 2)' + ...
         results.ccThresh(curDir)*dir;
     
     % Plot
@@ -151,9 +182,28 @@ for curDir = 1 : length(results.angle)
     plot(results.level,results.predAcc(curDir,:),'or');
 end
 
-%  plot threshold data and fitted ellipse
-figure; hold on;
+saveas(hf, 'weibullFit.fig');
+close(hf);
 
+%  plot threshold data and fitted ellipse
+hf = figure('NumberTitle', 'off', ...
+       'Name', 'Color Contour', ...
+       'Visible', 'off'); hold on;
+grid on; xlabel('L'); ylabel('M');
 plot(results.threshColor(1,:), results.threshColor(2,:), 'ro');
 [zg, ag, bg, alphag] = fitellipse(results.threshColor);
 plotellipse(zg, ag, bg, alphag, 'b--')
+
+axis equal;
+saveas(hf, 'colorContour.png');
+close(hf);
+
+%% Email me the result
+%  My email addressed should be cleaned out before I checked in the code
+sendMailAsHJ('hjiang36@gmail.com', 'Simulation Result', ...
+           '', {'colorContour.png', 'weibullFit.png'});
+       
+%% Clean up
+delete('weibullFit.fig');
+delete('colorContour.fig'); 
+delete('simResults.mat');

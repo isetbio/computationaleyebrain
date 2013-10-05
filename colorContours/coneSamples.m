@@ -88,6 +88,7 @@ vcAddAndSelectObject('scene',scene);
 vcAddAndSelectObject('oi', oi);
 
 %  Compute photon cone absorptions
-sensor = coneAbsorptions(sensor,oi);
+%  We do not show the waitbar for the sake of parellel computation
+sensor = coneAbsorptions(sensor, oi, false);
 
 end
