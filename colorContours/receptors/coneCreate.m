@@ -1,5 +1,6 @@
-function coneCreate
-% Default cone structure
+function cone = coneCreate(type, varargin)
+%% function coneCreate
+%  Default cone structure
 %
 %
 % See the PTB routines,
@@ -20,5 +21,28 @@ function coneCreate
 % field, and optical density, and so forth, and that when we do a
 % coneGet(cone,'spectral qe') we combine the whole thing.
 %
-% 
+
+%% Check 
+if notDefined('type'), type = 'human'; end
+if nargin < 2, density = [.1 .6 .2 .1]; else density = varargin{1}; end
+
+%% Create cone structure
+switch type
+    case 'human'
+        cone.species = 'human';
+        sensor = sensorCreate('human');
+        sensor = sensorSet(sensor, 'exp time',0.05); % Init to 50 ms
+        sensor = sensorSet(sensor, 'fov', 2);        % Init to 2 degree
+        [sensor, xy, coneType] = sensorCreateConeMosaic(sensor, ...
+                          sensorGet(sensor, 'size'), density);
+        cone.sensor   = sensor;
+        cone.conePos  = xy;
+        cone.coneType = coneType;
+        cone.density  = density; 
+
+    otherwise
+        error('Unknown type encountered');
+end
+
+
 end
