@@ -43,6 +43,8 @@ switch param
         val = cone.density;
     case {'conetype', 'pattern'}
         val = cone.coneType;
+    % Should add more parameters about sencond site noise here
+    
     otherwise
         val = sensorGet(cone.sensor, param, varargin);
 end
