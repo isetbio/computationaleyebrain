@@ -1,2 +1,3 @@
-function cone = coneCompute(cone, oi, noiseType, nSamples)
+function cone = coneCompute(cone, oi, noiseType)
+%% 
 end
