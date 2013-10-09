@@ -1,6 +1,6 @@
 %% v_ptbIsetIsomerizations
 %
-% Confirmat that when we start with the same irradiance function we get
+% Confirm that when we start with the same irradiance function we get
 % the same number of estimated isomerizations
 %
 %
@@ -23,6 +23,7 @@ radiance = mean(radiance);
 
 vcNewGraphWin; 
 plot(wave,radiance); 
+xlabel('Wavelength'); ylabel('Radiance (energy)')
 set(gca,'ylim',[min(radiance(:))/2 max(radiance(:))*1.5]); grid on
 
 %% Compute the irradiance in ISETBIO
@@ -52,17 +53,19 @@ pupilDiameterMm    = opticsGet(optics,'pupil diameter','mm');
 focalLengthMm      = opticsGet(optics,'focal length','mm');
 integrationTimeSec = sensorGet(sensor,'exp time','sec');
 
-%
+% The v_ptbIsetIrradiance has a much closer value.  Figure out the problem.
 % [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2]
 [~, ~, ptbPhotoreceptors, ptbIrradiance] = ...
-    ptbConeIsomerizationsFromSpectralRadiance(radiance(:), wave(:),...
+    ptbConeIsomerizationsFromRadiance(radiance(:), wave(:),...
     pupilDiameterMm, focalLengthMm, integrationTimeSec,0);
 
-% The irradiances differ - this time more than I would like.
-vcNewGraphWin; plot(wave,ptbIrradiance,'r-',wave,irradiance,'k:');
+%% Compare the irradiances 
+
+% They differ - this time more than I would like.
+vcNewGraphWin; plot(wave,ptbIrradiance(:),'ro',wave,irradiance(:),'ko');
 set(gca,'ylim',[0 max(ptbIrradiance(:))*1.5],'xlim',[0 max(ptbIrradiance(:))*1.5]);
 legend('PTB','ISETBIO')
 
-vcNewGraphWin; plot(ptbIrradiance(:),irradiance(:),'.'); identityLine;
+%% Then go on to check the cone isomerizations
 
 %% End

@@ -15,6 +15,7 @@
 %% Main parameters
 s_initISET
 
+%%
 monitorName = 'LCD-Apple.mat';
 wave   = 380:4:780;
 bLevel = 0.5;             % Linear value of display primaries
@@ -99,8 +100,12 @@ vcNewGraphWin([],'tall');
 subplot(2,1,1)
 semilogy(wave,ptbIrradiance,'r--',wave,ibIrradiance,'k:');
 legend('PTB','ISETBIO'); grid on; 
+
 subplot(2,1,2)
-plot(ibIrradiance,ptbIrradiance,'.')
+plot(ibIrradiance,ptbIrradiance,'o')
+xlabel('Isetbio irradiance');
+ylabel('PTB irradiance')
+
 identityLine; grid on
 
 %% END
