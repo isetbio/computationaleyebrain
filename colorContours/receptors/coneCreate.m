@@ -1,7 +1,5 @@
 function cone = coneCreate(type, varargin)
-%% function coneCreate
-%  Default cone structure
-%
+% Create a cone structure that includes pre-retinal filter parameters
 %
 % See the PTB routines,
 %     DefaultPhotoreceptors
@@ -25,6 +23,7 @@ function cone = coneCreate(type, varargin)
 
 %% Check 
 if notDefined('type'), type = 'human'; end
+
 if nargin < 2, density = [.1 .6 .2 .1]; else density = varargin{1}; end
 
 %% Create cone structure

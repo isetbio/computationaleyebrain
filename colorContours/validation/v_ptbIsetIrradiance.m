@@ -37,25 +37,28 @@ oiB    = wvf2oi(wvf,'shift invariant');
 % the max primary intensity.  To do this, we need to read the DAC for the
 % display calculate the right level.
 
-d       = displayCreate(monitorName);
-gTable  = displayGet(d,'gamma table');  % plot(gTable)
-igTable = ieLUTInvert(gTable);          % Maps linear values to DAC
+d = displayCreate(monitorName);
+d = displaySet(d,'gtable','linear');
 
-% It would be much better if somehow we didn't need to divide by size()
-bDAC    = ieLUTLinear(repmat(bLevel,1,3),igTable)/size(gTable,1);
+% gTable  = displayGet(d,'gamma table');  % plot(gTable)
+% igTable = ieLUTInvert(gTable);          % Maps linear values to DAC
+% 
+% % It would be much better if somehow we didn't need to divide by size()
+% bDAC    = ieLUTLinear(repmat(bLevel,1,3),igTable)/size(gTable,1);
 
-%% Write out the image of the background.  Then read it.
-bImage = ones(128,128,3);
-for ii=1:3
-    bImage(:,:,ii) = bImage(:,:,ii)*bDAC(ii);
-end
+%% The background is one half the monitor maximum
 
-bFile = fullfile(isetbioRootPath,'tmp','bFile.png');
-imwrite(bImage,bFile);
+bImage = ones(128,128,3)*0.5;
+% for ii=1:3
+%     bImage(:,:,ii) = bImage(:,:,ii)*bDAC(ii);
+% end
+% 
+% bFile = fullfile(isetbioRootPath,'tmp','bFile.png');
+% imwrite(bImage,bFile);
 
 % Build the scene from the image file.  It would be nice if we could send
 % in the data rather than the filename.
-bScene = sceneFromFile(bFile,'rgb',[],monitorName,wave);
+bScene = sceneFromFile(bImage,'rgb',[],d,wave);
 vcAddAndSelectObject(bScene); sceneWindow;
 
 %% ISETBIO path for creating an irradiance image from the radiance
@@ -81,6 +84,7 @@ wave    = displayGet(d,'wave');
 % These are the linear RGB background values
 backRGB = repmat(bLevel,3,1);  
 backSpd = displayGet(d,'spd')*backRGB;
+vcNewGraphWin; plot(wave,backSpd);
 
 % Make sure we have the same focal length and pupil diameter as ISETBIO
 optics = oiGet(oiB,'optics');
@@ -88,7 +92,8 @@ focalLengthMm   = opticsGet(optics,'focal length','mm');
 pupilDiameterMm = opticsGet(optics,'pupil diameter','mm');
 integrationTimeSec = 0.05;  % Irrelevant for irradiance
 
-% The PTB call
+% The PTB call is close, but off by a small factor.  PTB is slightly
+% higher.  See comment below on irradiance formula for PTB and ISETBIO.
 [~,~,ptbPhotoreceptors,ptbIrradiance] = ...
     ptbConeIsomerizationsFromRadiance(backSpd,wave,...
     pupilDiameterMm,focalLengthMm,integrationTimeSec,0);
@@ -96,7 +101,10 @@ integrationTimeSec = 0.05;  % Irrelevant for irradiance
 %% Actually, a little puzzling.  Close, but not precisely interpretable.
 vcNewGraphWin([],'tall'); 
 
-% There is a little difference in certain intensity levels.  Why?
+% There is a little difference in certain intensity levels.  Why?  There is
+% some issue with the formula PTB uses to compute irradiance.  It is the
+% simple form while ISETBIO uses a form that accounts for magnification.
+% That might introduce a slight scale factor difference that explains this.
 subplot(2,1,1)
 semilogy(wave,ptbIrradiance,'r--',wave,ibIrradiance,'k:');
 legend('PTB','ISETBIO'); grid on; 
