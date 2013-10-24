@@ -38,6 +38,7 @@ function val = coneGet(cone, param, varargin)
 %                                      pre-receprocal transimitance
 %    {'effetive absorbtance'}        - cone absorbtance with lens and
 %                                      macular pigment transmittance
+%    {'quantal fundamentals'}        - quantal fundamentals of the cones
 %
 %    MORE PARAMETERS ABOUT UNDERLYING SENSOR CAN BE FOUND IN sensorGet
 %    FUNCTION
@@ -109,6 +110,9 @@ switch param
         absorbtance = coneGet(cone, 'absorbtance');
         eyeTrans = coneGet(cone, 'eye trans');
         val = absorbtance .* repmat(eyeTrans, [1 size(absorbtance, 2)]);
+    case {'quantalfundamentals'}
+        val = coneGet(cone, 'eff absorbtance');
+        val = val ./ repmat(max(val), size(val, 2));
     otherwise
         % Try to get parameter value from the underlying sensor
         val = sensorGet(cone.sensor, param, varargin);
