@@ -17,12 +17,12 @@ function varLMSIfun = cm_variableLMSI_PODandLambda(AbsSpectra, POD, Lambdashift,
 % C) VistaLab 2012 HH 
 %
 %%
-if ~exist('wls','var'),              wls = cm_getDefaultWls;                     end
-if ~exist('eyetransmittance','var'), eyetransmittance = LensTransmittance(wls'); end
+if notDefined('wls'), wls = (400:10:700)'; end
+if notDefined('eyetransmittance'), error('eye transmittance required'); end
     
-if length(POD) == 1;            POD = POD * ones(1,4);                  end
+if length(POD) == 1; POD = POD * ones(1,4); end
 
-if ~exist('Lambdashift','var') || isempty(Lambdashift)    
+if notDefined('Lambdashift')  
        skipshiftflag = true;
 else
        skipshiftflag = false;
@@ -45,10 +45,10 @@ for ii = 1:numSensor
     end
     
     % Absorbtance to Response function
-    tmp = varAbtLMSI' .* eyetransmittance(:);
+    tmp = varAbtLMSI .* eyetransmittance(:);
         
     % normalize (max relative response should be one.)
-    varLMSIfun(:,ii) = tmp ./ max(tmp(:));
+    varLMSIfun(:,ii) = tmp ;%./ max(tmp(:));
     
 end
 

@@ -13,7 +13,7 @@ s_initISET
 %% Create an radiance image
 scene = sceneCreate('uniform ee');    % Equal energy
 scene = sceneSet(scene,'fov',20);     % Big field required
-wave = sceneGet(scene,'wave');
+wave  = sceneGet(scene,'wave');
 
 sz = sceneGet(scene,'size');
 rect = [sz(2)/2,sz(1)/2,5,5];
@@ -85,10 +85,14 @@ ptbCones = ptbPhotoreceptors.effectiveAbsorbtance';   % Appropriate for quanta
 ptbCones = [zeros(size(ptbCones,1),1),ptbCones];
 
 sensor = sensorCreate('human');
-plotSensor(sensor,'color filters')
+sensor = sensorSet(sensor, 'wave', wave);
+%plotSensor(sensor,'color filters')
 
-sensor = sensorSet(sensor,'color filters',ptbCones);
+%sensor = sensorSet(sensor,'color filters',ptbCones);
 sensor = sensorSet(sensor,'exp time',integrationTimeSec);
+cone   = coneCreate;
+effAbsorbtance = coneGet(cone, 'eff absorbtance');
+sensor = sensorSet(sensor,'color filters',effAbsorbtance);
 sensor = sensorCompute(sensor,oi);
 vcAddAndSelectObject(sensor); 
 sensorImageWindow;
@@ -96,16 +100,10 @@ sensorImageWindow;
 sensorWindow('scale',1);
 
 %% Compare PTB sensor spectral responses with ISETBIO
-ptbCones  = ptbPhotoreceptors.effectiveAbsorbtance;   % Appropriate for quanta
 isetCones = sensorGet(sensor,'spectral qe');
 
-vcNewGraphWin; plot(wave,ptbCones); 
+vcNewGraphWin; plot(wave,ptbCones);
 plot(ptbCones(:,2),isetCones(:,2),'o')
-
-
-vcNewGraphWin;  plot(wave,isetCones);
-
-vcNewGraphWin; plot(wave,ptbPhotoreceptors.quantalFundamentals)
 
 
 

@@ -1,4 +1,4 @@
-function PigResfunc = cm_PigmentResposefunction(foveaflag, modelparams, melanopsinflag)
+function PigResfunc = cm_PigmentResponsefunction(foveaflag, modelparams, melanopsinflag)
 % PigResfunc = cm_PigmentResposefunction(foveaflag, modelparams, melanopsinflag)
 %
 % <Input>

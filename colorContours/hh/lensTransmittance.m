@@ -1,8 +1,8 @@
-function [lensTrans, wavelength, den_lens] = cm_LensTransmittance(lensTransmitttanceFactor,wavelength,source)
+function [lensTrans, wavelength] = lensTransmittance(lensTransmitttanceFactor,wavelength,source)
 
 % Calculate lens tranmittance from
 %
-%   [lensTrans, wavelength, den_lens] =
+%   [lensTrans, wavelength] =
 %   cm_LensTransmittance(lensTransmitttanceFactor,wavelength,source)
 %
 %
@@ -15,15 +15,15 @@ function [lensTrans, wavelength, den_lens] = cm_LensTransmittance(lensTransmittt
 %
 % Hiroshi to put more comments including references to all methods.
 
-if ~exist('wavelength','var'), wavelength = cm_getDefaultWls; end
-if ~exist('source','var'), source = 'stockman2'; end
+if notDefined('wavelength'), wavelength = (400:10:700)'; end
+if notDefined('source'), source = 'stockman2'; end
 
 switch source
     
     case {'stockmanF','fixed','Fixed','F'}
         % default stockman's lens pigment densitiy.
-        den_lens_ssf = vcReadSpectra('lensDensity',wavelength);
-        den_lens = SplineSrf(S_lens_ssf,den_lens_ssf,wavelength,1);
+        [den_lens_ssf, wave_in] = vcReadSpectra('lensDensity',wavelength);
+        den_lens = SplineSrf(wave_in(:),den_lens_ssf,wavelength(:),1);
         
     case {'stockman1','stockman'};
         %  lensTransmitttanceFactor should be within 25% (0.75 to 1.25)
@@ -49,24 +49,19 @@ switch source
         % truncated data from 460nm to the end, and interpolated linearly
         % (dens
         load('decompStockLens'); % please read comments in the mat file
-        
-        if ~exist('wave','var'), wave = nm; end
-        
         % Pigment densities are calculated with two components
         % 1) shorter wavelength part (fixed)
         % 2) short to middle wavelength part parameterized with one scalar
         
-        den_lens = SplineSrf(S_lens_s2f, dens_lens1, wave, 1) * lensTransmitttanceFactor ...
-            + SplineSrf(S_lens_s2f, dens_lens2, wave,1);
-        
-        den_lens = den_lens(find(wavelength(1) == wave):find(wavelength(end) == wave));
-
-                 
+        den_lens = SplineSrf(S_lens_s2f, dens_lens1, wavelength, 1) * ...
+            lensTransmitttanceFactor + ...
+            SplineSrf(S_lens_s2f, dens_lens2, wavelength,1);                
     otherwise
         error('Unknown method: %s\n',source)
 end
 
 lensTrans = 10.^(-den_lens)';
+lensTrans = lensTrans(:);
 
 return
 

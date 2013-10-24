@@ -13,9 +13,7 @@ function [absorbanceSpectra wls opticaldensities]= cm_loadLMSabsorbance(fovealfl
 % HH (c) Vista lab 2012. 
 % 
 %%
-if ~exist('wls','var') || isempty(wls)
-    wls = cm_getDefaultWls;
-end
+if notDefined('wls'), wls = (400:10:700); end
 
 % for PhotopigmentAxialDensity.m (from PTB)
 if fovealflag == false;

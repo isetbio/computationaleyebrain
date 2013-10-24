@@ -11,9 +11,8 @@ function inertP = odParams(visualfield, wave)
 % 
 %  (c) VISTA lab 2012 HH
 %%
-if ~exist('wave','var') || isempty(wave)
-    wave = cm_getDefaultWls;
-end
+if notDefined('wave'), wave = (400:10:700)'; end
+if notDefined('visualfield'), visualfield = 'fovea'; end
 
 inertP.visfield = visualfield;
 inertP.wave     = wave;
@@ -23,8 +22,8 @@ switch lower(visualfield)
     % stockman foveal params (at 2 deg)
     case {'f','fov','fovea','stf','stockmanfovea'}
         
-        inertP.lens    = 1;
-        inertP.macular = 0.28;
+        inertP.lensTransF = 1;
+        inertP.macDensity = 0.28;
         inertP.LPOD    = 0.5;
         inertP.MPOD    = 0.5;
         inertP.SPOD    = 0.4;
@@ -33,8 +32,8 @@ switch lower(visualfield)
     % stockman peripheral params (at 10 deg)    
     case {'p','peri','periphery','stp','stockmanperi','stockmanperiphery'}
         
-        inertP.lens    = 1;
-        inertP.macular = 0;
+        inertP.lensTransF = 1;
+        inertP.macDensity = 0;
         inertP.LPOD    = 0.38;
         inertP.MPOD    = 0.38;
         inertP.SPOD    = 0.3;
@@ -42,8 +41,8 @@ switch lower(visualfield)
         
     case {'s1f'}
         
-        inertP.lens    = 0.7467;
-        inertP.macular = 0.6910;
+        inertP.lensTransF = 0.7467;
+        inertP.macDensity = 0.6910;
         inertP.LPOD    = 0.4964; 
         inertP.MPOD    = 0.2250;
         inertP.SPOD    = 0.1480;
@@ -52,8 +51,8 @@ switch lower(visualfield)
         
     case {'s1p'}
         
-        inertP.lens    = 0.7467;
-        inertP.macular = 0;
+        inertP.lensTransF = 0.7467;
+        inertP.macDensity = 0;
         inertP.LPOD    = 0.4964 ./ 0.5 .* 0.38; 
         inertP.MPOD    = 0.2250 ./ 0.5 .* 0.38;
         inertP.SPOD    = 0.1480 ./ 0.4 .* 0.3;
@@ -62,8 +61,8 @@ switch lower(visualfield)
         
     case {'s2f'}
         
-        inertP.lens    = 0.7637;
-        inertP.macular = 0.5216;
+        inertP.lensTransF = 0.7637;
+        inertP.macDensity = 0.5216;
         inertP.LPOD    = 0.4841; 
         inertP.MPOD    = 0.2796;
         inertP.SPOD    = 0.2072;
@@ -71,8 +70,8 @@ switch lower(visualfield)
         inertP.visfield = 'f';
 
     case {'s2p'}
-        inertP.lens    = 0.7637;
-        inertP.macular = 0;
+        inertP.lensTransF = 0.7637;
+        inertP.macDensity = 0;
         inertP.LPOD    = 0.4841 ./ 0.5 .* 0.38; 
         inertP.MPOD    = 0.2796 ./ 0.5 .* 0.38;
         inertP.SPOD    = 0.2072 ./ 0.4 .* 0.3;

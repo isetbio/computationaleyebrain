@@ -33,23 +33,76 @@ if notDefined('val'), error('new value of parameter required'); end
 %% Set parameters
 param = ieParamFormat(param);  % Lower case and remove spaces
 switch param
-    case {'position', 'pos', 'conepos'}
-        assert(coneGet(cone, 'size') == size(val), 'pos size mismatch');
-        cone.conePos = val;
     case {'density', 'conedensity'}
-        cone.density = val(:);
-        % Adjust cone pattern to new density
-        % Shall I keep the rSeed the same as before?
-        [sensor, xy, coneType] = sensorCreateConeMosaic(cone.sensor, ...
-                          sensorGet(cone.sensor, 'size'), cone.density);
-        cone.sensor   = sensor;
-        cone.conePos  = xy;
-        cone.coneType = coneType;
+        cone.coneDensity = val;
+        cone.sensor = sensorCreateConeMosaic(cone.sensor, ...
+                   sensorGet(sensor, 'size'), cone.coneDensity);
+               
+    case {'wave', 'wavelength'}
+        cone.wave = val;
+        cone.sensor  = sensorSet(cone.sensor, 'wave', val);
+        cone.macular = macular(coneGet(cone, 'mac density'), val);
+
+    case {'lenstrans', 'lenstransmittance'}
+        cone.lensTrans = val;
+        cone.sensor = sensorSet(cone.sensor, 'color filters', ...
+            coneGet(cone, 'eff absorbtance'));
         
-    case {'conetype', 'pattern'}
-        % I shall think about how to do this one
+    case {'lensabsorption'}
+        cone = coneSet(cone, 'lens trans', 1 - val);
+        cone.sensor = sensorSet(cone.sensor, 'color filters', ...
+            coneGet(cone, 'eff absorbtance'));
         
-    % Should add more parameter about second site noise here
+    case {'macular', 'macularpigments'}
+        cone.macular = val;
+        cone.sensor = sensorSet(cone.sensor, 'color filters', ...
+            coneGet(cone, 'eff absorbtance'));
+        
+    case {'macdens','maculardensity'}
+        cone.macular = macular(val, coneGet(cone, 'wave'));
+
+    case {'maculartrans', 'mactrans'}
+        if (any(size(cone.macular.transmittance)~= size(val)))
+            error('Transmittance size mismatch');
+        end
+        cone.macular.transmittance = val;
+        cone.macular.absorption = 1 - val;
+        
+    case {'macularabsorption'}
+        if (any(size(cone.macular.absorption)~= size(val)))
+            error('Absorption size mismatch');
+        end
+        cone.macular.absorption = val;
+        cone.macular.transmittance = 1 - val;
+
+    case {'pods','pod'}
+        if (any(size(cone.PODs)~= size(val)))
+            error('PODs size mismatch');
+        end
+        cone.PODs = val;
+    case {'lpod'}
+        if ~isscalar(val), error('val should be scaler'); end
+        cone.PODS(1) = val;
+    case {'mpod'}
+        if ~isscalar(val), error('val should be scaler'); end
+        cone.PODS(2) = val;
+    case {'spod'}
+        if ~isscalar(val), error('val should be scaler'); end
+        cone.PODS(3) = val;
+    case {'melpod'}
+        if ~isscalar(val), error('val should be scaler'); end
+        cone.PODS(4) = val;
+    case {'peakshift', 'lambdashift'}
+        % Should re-generate a lot of things, think about it later
+        cone.peakShift = val;
+        
+    case {'qe', 'quantalefficiency', 'quantaleff'}
+        cone.quantalEfficiency = val;
+        
+    case {'absorbance'}
+        disp('Overwrite absorbtance, please be sure what you are doing');
+        cone.absorbance = val;
+        
     otherwise % Try set the sensor parameter
         cone.sensor = sensorSet(cone.sensor,param,val,varargin);
 end
