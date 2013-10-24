@@ -39,6 +39,13 @@ function val = coneGet(cone, param, varargin)
 %    {'effetive absorbtance'}        - cone absorbtance with lens and
 %                                      macular pigment transmittance
 %    {'quantal fundamentals'}        - quantal fundamentals of the cones
+%    {'adapted volts'}               - volts image after cone adaptation,
+%                                      which could be used for rgc
+%                                      computation
+%    {'adapt gain','gain map'}       - cone adaptation gain map
+%    {'adaptation type','adapt type} - cone adaptation type, see
+%                                      coneAdaptation for more details
+%    {'adapt offset'}                - cone adaptation offset
 %
 %    MORE PARAMETERS ABOUT UNDERLYING SENSOR CAN BE FOUND IN sensorGet
 %    FUNCTION
@@ -121,6 +128,30 @@ switch param
             end
         end
         val = val ./ repmat(max(val), size(val, 2));
+    case {'adaptedvolts'}
+        if isfield(cone, 'adaptVolts')
+            val = cone.adaptVolts;
+        else
+            val = [];
+            warning('Adaptation image not computed');
+        end
+    case {'adaptgain','gainmap'}
+        if isfield(cone, 'adaptGain')
+            val = cone.adaptGain;
+        else
+            val = [];
+            warning('Adaptation image not computed');
+        end
+    case {'adaptationtype', 'adapttype'}
+        val = cone.adaptType;
+    case {'adaptoffset'}
+        if isfield(cone, 'adaptOffset')
+            val = cone.adaptOffset;
+        else
+            val = [];
+            warning('Adaptation image not computed');
+        end
+        
     otherwise
         % Try to get parameter value from the underlying sensor
         val = sensorGet(cone.sensor, param, varargin);

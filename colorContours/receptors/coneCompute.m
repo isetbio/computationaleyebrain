@@ -48,4 +48,9 @@ vcAddAndSelectObject('oi', oi);
 sensor = coneAbsorptions(sensor, oi);
 cone   = coneSet(cone, 'sensor', sensor);
 
+%% Cone adaptation
+%  Compute cone adaptation using isetbio routine coneAdaptation
+%  I hope the interface of coneAdaptation could be simplified
+cone = coneAdapt(cone);
+
 end

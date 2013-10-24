@@ -38,6 +38,8 @@ function cone = coneSet(cone, param, val, varargin)
 %    {'absorbance'}                  - cone absorbance, not recommended to
 %                                      set this parameter directly unless
 %                                      you know what you are doing
+%    {'adaptation type','adapt type} - cone adaptation type, see
+%                                      coneAdaptation for more details
 %
 %    MORE SUPPORTED PARAMETRES CAN BE FOUND IN FUNCTION sensorSet
 %
@@ -138,6 +140,11 @@ switch param
     case {'absorbance'}
         disp('Overwrite absorbtance, please be sure what you are doing');
         cone.absorbance = val;
+    
+    case {'adaptationtype', 'adapttype'}
+        if cone.adaptType ~= val
+            cone = coneAdapt(cone, val);
+        end
         
     otherwise % Try set the sensor parameter
         cone.sensor = sensorSet(cone.sensor,param,val,varargin);

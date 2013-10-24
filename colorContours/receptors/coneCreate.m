@@ -143,6 +143,9 @@ switch species
         
         cone.sensor = sensor;
         
+        % set adaptation
+        cone.adaptType = 2; % Adaptation by cone type, see coneAdaptation
+        
     otherwise
         error('Unknown type encountered');
 end
