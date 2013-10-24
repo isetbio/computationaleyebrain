@@ -14,6 +14,7 @@ function val = coneGet(cone, param, varargin)
 %    {'species', 'kind'}             - cone species, generally 'human'
 %    {'density', 'cone density'}     - density of each cone type, for
 %                                      human, it should be [K,L,M,S]
+%    {'sensor'}                      - underlying sensor structure
 %    {'wave', 'wavelength'}          - wavelength of samples in cones
 %    {'type', 'visual field'}        - visual field of eye, can be 'fovea'
 %                                      or 'periphery'
@@ -30,8 +31,7 @@ function val = coneGet(cone, param, varargin)
 %    {'MPOD'}                        - M POD density
 %    {'SPOD'}                        - S POD density
 %    {'melPOD'}                      - mel POD density
-%    {'peak shift', 'lambda shift'}  - peak shift, varargin is used to
-%                                      decide units, default 'nm'
+%    {'peak lambda', 'lambda max'}   - peak spectra position
 %    {'qe', 'quantal eff'}           - quantal efficiency
 %    {'absorbance'}                  - cone absorbance
 %    {'absorbtance'}                 - cone absorbtance without any
@@ -48,7 +48,7 @@ function val = coneGet(cone, param, varargin)
 %    expTime = coneGet(cone, 'species');
 %
 %  See also:
-%    coneSet, coneCreate
+%    coneSet, coneCreate, sensorGet
 %
 %  TODO:
 %    For most parameters, we should accept a third parameter as wavelength
@@ -66,6 +66,8 @@ switch param
         val = cone.species;
     case {'density', 'conedensity'}
         val = cone.coneDensity;
+    case {'sensor'}
+        val = cone.sensor;
     case {'wave', 'wavelength'}
         val = cone.wave;
     case {'type', 'visualfield'}
@@ -94,8 +96,8 @@ switch param
         val = cone.PODS(3);
     case {'melpod'}
         val = cone.PODS(4);
-    case {'peakshift', 'lambdashift'}
-        val = cone.peakShift;
+    case {'peaklambda', 'lambdamax'}
+        val = cone.peakLambda;
     case {'qe', 'quantalefficiency', 'quantaleff'}
         val = cone.quantalEfficiency;
     case {'absorbance'}
@@ -112,6 +114,12 @@ switch param
         val = absorbtance .* repmat(eyeTrans, [1 size(absorbtance, 2)]);
     case {'quantalfundamentals'}
         val = coneGet(cone, 'eff absorbtance');
+        qe  = coneGet(cone, 'qe');
+        if length(qe) == size(val,2)
+            for i = 1 : size(val, 2)
+                val(:,i) = val(:,i) * qe(i);
+            end
+        end
         val = val ./ repmat(max(val), size(val, 2));
     otherwise
         % Try to get parameter value from the underlying sensor

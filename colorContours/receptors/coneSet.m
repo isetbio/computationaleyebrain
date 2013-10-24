@@ -14,14 +14,40 @@ function cone = coneSet(cone, param, val, varargin)
 %               set to new value
 %
 %  Supported parameters:
-%    COMMENT TO BE ADDED HERE
+%    {'density', 'cone density'}     - density of each cone type, for
+%                                      human, it should be [K,L,M,S]
+%    {'fov', 'h fov'}                - sensor fov, scene and oi are
+%                                      accepted in varargin
+%    {'wave', 'wavelength'}          - wavelength of samples in cones
+%    {'sensor'}                      - underlying ISET sensor structure
+%    {'lens trans'}                  - lens transmittance
+%    {'lens absorption'}             - lens absorbtance
+%    {'macular', 'macular pigments'} - macular pigment structure
+%    {'mac dens','macular density'}  - macular density
+%    {'macular trans'}               - macular transmittance
+%    {'macular absorption'}          - macular absorption
+%    {'eye trans'}                   - totally transmittance for lens and
+%                                      macular pigments
+%    {'PODs','POD'}                  - PODs vector for [L,M,S,mel]
+%    {'LPOD'}                        - L POD density
+%    {'MPOD'}                        - M POD density
+%    {'SPOD'}                        - S POD density
+%    {'melPOD'}                      - mel POD density
+%    {'peak lambda', 'lambda max'}   - peak spectra position
+%    {'qe', 'quantal eff'}           - quantal efficiency
+%    {'absorbance'}                  - cone absorbance, not recommended to
+%                                      set this parameter directly unless
+%                                      you know what you are doing
+%
+%    MORE SUPPORTED PARAMETRES CAN BE FOUND IN FUNCTION sensorSet
 %
 %  Example:
 %    cone = coneCreate('human');
+%    cone = coneSet('density',[0.1 0.65 0.2 0.05]);
 %    cone = coneSet('exp time', 0.02);
 %
 %  See also:
-%    coneCreate, coneGet
+%    coneCreate, coneGet, sensorSet
 %
 %  HJ/BW/DHB (c) ISETBIO Team, 2013
 
@@ -42,6 +68,14 @@ switch param
         cone.wave = val;
         cone.sensor  = sensorSet(cone.sensor, 'wave', val);
         cone.macular = macular(coneGet(cone, 'mac density'), val);
+        
+    case {'sensor'}
+        cone.sensor = val;
+        
+    case {'fov', 'h fov'}
+        if nargin > 4, scene = varargin{1}; end
+        if nargin > 5, oi = varargin{2}; end
+        cone.sensor = sensorSetSizeToFOV(cone.sensor, val, scene, oi);
 
     case {'lenstrans', 'lenstransmittance'}
         cone.lensTrans = val;
@@ -80,6 +114,7 @@ switch param
             error('PODs size mismatch');
         end
         cone.PODs = val;
+        
     case {'lpod'}
         if ~isscalar(val), error('val should be scaler'); end
         cone.PODS(1) = val;
@@ -92,9 +127,10 @@ switch param
     case {'melpod'}
         if ~isscalar(val), error('val should be scaler'); end
         cone.PODS(4) = val;
-    case {'peakshift', 'lambdashift'}
-        % Should re-generate a lot of things, think about it later
+    case {'peaklambda', 'lambdamax'}
         cone.peakShift = val;
+        cone.absorbance = StockmanSharpeNomogram(cone.wave, val)';
+        cone.absorbance = padarray(cone.absorbance,[0 1],'pre');
         
     case {'qe', 'quantalefficiency', 'quantaleff'}
         cone.quantalEfficiency = val;

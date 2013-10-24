@@ -4,7 +4,7 @@
 % the same number of estimated isomerizations
 %
 %
-% DHB/BW Copyright ISETBIO Team, 2013
+% DHB/BW/HJ Copyright ISETBIO Team, 2013
 
 
 %%
@@ -67,6 +67,10 @@ m = opticsGet(optics,'magnification',sceneGet(scene,'distance'));
     ptbConeIsomerizationsFromRadiance(radiance(:), wave(:),...
     pupilDiameterMm, focalLengthMm, integrationTimeSec,0);
 
+% ptb effective absorbtance
+ptbCones = ptbPhotoreceptors.effectiveAbsorbtance'; % Appropriate for quanta
+ptbCones = [zeros(size(ptbCones,1),1),ptbCones];
+
 %% Compare the irradiances 
 
 % They differ - this time more than I would like.
@@ -78,33 +82,21 @@ legend('PTB','ISETBIO')
 % really close.  But still, they differ by about 1/100.  This may be
 % because of some spatial interpolation and blurring that we haven't
 % accounted for in the oiCompute/optics.
-vcNewGraphWin; plot(wave,ptbIrradiance(:)/(1+abs(m))^2,'ro',wave,irradiance(:),'ko');
+vcNewGraphWin; 
+plot(wave,ptbIrradiance(:)/(1+abs(m))^2,'ro',wave,irradiance(:),'ko');
 
 %%  ISETBIO sensor absorptions
-ptbCones = ptbPhotoreceptors.effectiveAbsorbtance';   % Appropriate for quanta
-ptbCones = [zeros(size(ptbCones,1),1),ptbCones];
-
-sensor = sensorCreate('human');
-sensor = sensorSet(sensor, 'wave', wave);
-%plotSensor(sensor,'color filters')
-
-%sensor = sensorSet(sensor,'color filters',ptbCones);
-sensor = sensorSet(sensor,'exp time',integrationTimeSec);
-cone   = coneCreate;
-effAbsorbtance = coneGet(cone, 'eff absorbtance');
-sensor = sensorSet(sensor,'color filters',effAbsorbtance);
-sensor = sensorCompute(sensor,oi);
-vcAddAndSelectObject(sensor); 
-sensorImageWindow;
-
-sensorWindow('scale',1);
+cone = coneCreate;
+cone = coneSet(cone, 'exp time', integrationTimeSec);
+cone = coneCompute(cone, oi);
+isetCones = coneGet(cone, 'spectral qe');
 
 %% Compare PTB sensor spectral responses with ISETBIO
-isetCones = sensorGet(sensor,'spectral qe');
+vcNewGraphWin; plot(wave, isetCones);
+hold on; plot(wave, ptbCones, '--');
 
 vcNewGraphWin; plot(wave,ptbCones);
-plot(ptbCones(:,2),isetCones(:,2),'o')
-
-
+plot(ptbCones(:),isetCones(:),'o');
+hold on; plot([0 1],[0 1], '--');
 
 %% End

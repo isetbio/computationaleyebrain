@@ -19,6 +19,12 @@ function cone = coneCreate(species, modelParams)
 % field, and optical density, and so forth, and that when we do a
 % coneGet(cone,'spectral qe') we combine the whole thing.
 %
+%  Example:
+%    cone = coneCreate('human');
+%
+%  See also:
+%    coneGet, coneSet, sensorCreate
+%
 % HJ/BW/DHB (c) ISETBIO Team, 2013
 
 %% Check 
@@ -55,7 +61,12 @@ if ~isfield(modelParams, 'SPOD'), modelParams.SPOD = 0.4; end
 if ~isfield(modelParams, 'melPOD'), modelParams.melPOD = 0.5; end
 
 %  Check peak shift
-if ~isfield(modelParams, 'peakShift'), modelParams.peakShift = 0; end
+if ~isfield(modelParams, 'peakLambda')
+    % Set to default stockman and sharp S-, M- and L-cone pigment spectra
+    % Stockman & Sharpe (2000), p. 1730 or http://www.cvrl.org/
+    % Keep in L,M,S order
+    modelParams.peakLambda = [558.9 530.3 420.7]';
+end
 
 %  Check cone density for [K,L,M,S]
 if ~isfield(modelParams, 'coneDensity')
@@ -71,9 +82,12 @@ end
 %  Check cone absorbtance
 if ~isfield(modelParams, 'coneAbsorbtance')
     % Should generate with lambda shift, change this later
-    load T_log10coneabsorbance_ss.mat;
-    modelParams.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,...
-        T_log10coneabsorbance_ss, modelParams.wave,2)';
+    % load T_log10coneabsorbance_ss.mat;
+    % modelParams.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,...
+    %    T_log10coneabsorbance_ss, modelParams.wave,2)';
+    modelParams.absorbance = StockmanSharpeNomogram(modelParams.wave, ...
+                                modelParams.peakLambda)';
+    % Add absorbance for K-cones 
     modelParams.absorbance = padarray(modelParams.absorbance,[0 1],'pre');
 end
 
@@ -106,8 +120,9 @@ switch species
                      modelParams.SPOD modelParams.melPOD];
         cone.PODs = cone.PODs(:);
 
-        % peak shift
-        cone.peakShift = modelParams.peakShift;
+        % peak spectrum position
+        % Only stores for L,M,S and peak for K is ignored
+        cone.peakLambda = modelParams.peakLambda;
         
         % quantal efficiency
         cone.quantalEfficiency = modelParams.quantalEfficiency;
