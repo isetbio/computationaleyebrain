@@ -154,7 +154,11 @@ switch param
         
     otherwise
         % Try to get parameter value from the underlying sensor
-        val = sensorGet(cone.sensor, param, varargin);
+        if isempty(varargin)
+            val = sensorGet(cone.sensor, param);
+        else
+            val = sensorGet(cone.sensor, param, varargin);
+        end
 end
 
 end

@@ -1,76 +1,70 @@
-function cone = coneAdapt(cone, typeAdapt)%,volts,sensor,species)
-%Cone adaptation
+function cone = coneAdapt(cone, adaptType)
+%% function  coneAdapt(cone, [adaptType])
+%    compute cone adaptation
+% 
+% Introduction:
+%   Implement adaptation models to produce the cone volts.
 %
-%   absorptions = coneAdapt(typeAdapt,volts,sensor,species)
+%   The adaptation serves two main goals.  First, the mean level is
+%   determined as a reference so that increments and decrements are
+%   meaningful. This is needed so that on- and off-cells can work.  When we
+%   have a cone absorption that is above the mean, this should cause an
+%   off-cell to reduce its firing rate and on-cell to increase. Conversely,
+%   cone absorptions below the mean cause an on-cell to decrease and an
+%   off-cell to increase. By setting a 0 level at the mean, the cones
+%   signal to the RGCs.  (This text sucks.  Make it better).
 %
-% Implement adaptation models to produce the cone volts.  The properties of
-% the sensor and the type of species are additional parameters.  Not sure
-% they should be separated out this way.
+%   See the discussion in Rodieck p. 177 and thereabouts for ideas about
+%   cone signals. The physiological question is what is the meaning of the
+%   offset or zero mean?  Rodieck describes the effect of light as setting
+%   the mean transmitter release.  In the dark, there is a relatively large
+%   dynamic range. As the light is on steadily, the release decreases and
+%   the range available for another flash also decreases.   If you darken
+%   from the mean, however, the rate can increase.
 %
-% The adaptation serves two main goals.  First, the mean level is
-% determined as a reference so that increments and decrements are
-% meaningful. This is needed so that on- and off-cells can work.  When we
-% have a cone absorption that is above the mean, this should cause an
-% off-cell to reduce its firing rate and on-cell to increase.  Conversely,
-% cone absorptions below the mean cause an on-cell to decrease and an
-% off-cell to increase.  By setting a 0 level at the mean, the cones signal
-% to the RGCs.  (This text sucks.  Make it better).
+%   The way in which the mean is set must depend on a combination of the
+%   photoisomerizations and the recycling rate, probably through some
+%   equilibrium equation.  The recycling rate depends on the isomerization
+%   rate and they set an equilibrium that is slower and slower as the mean
+%   background gets brighter.  This is how the value of the offset gets
+%   set.
 %
-% See the discussion in Rodieck p. 177 and thereabouts for ideas about cone
-% signals.  The physiological question is what is the meaning of the offset
-% or zero mean?  Rodieck describes the effect of light as setting the mean
-% transmitter release.  In the dark, there is a relatively large dynamic
-% range. As the light is on steadily, the release decreases and the range
-% available for another flash also decreases.   If you darken from the
-% mean, however, the rate can increase.
+%   In addition to Rodieck's discussion, there are famous papers by Boynton
+%   and others at SRI expressing such a model based on cone ERPs, and
+%   probably Rushton and others (van Norren?).
 %
-% The way in which the mean is set must depend on a combination of the
-% photoisomerizations and the recycling rate, probably through some
-% equilibrium equation.  The recycling rate depends on the isomerization
-% rate and they set an equilibrium that is slower and slower as the mean
-% background gets brighter.  This is how the value of the offset gets set.
+%   The other issue is the total gain.  The cones can only modulate over a
+%   dynamic range around the mean.  So, we set the gain as well to keep the
+%   modulation within some range, such as +/- 50 mV of the mean.
 %
-% In addition to Rodieck's discussion, there are famous papers by Boynton
-% and others at SRI expressing such a model based on cone ERPs, and
-% probably Rushton and others (van Norren?).
+%   The third issue is whether all the cones are the same, or there is
+%   space-variant adaptation.  That is for the future.
 %
-% The other issue is the total gain.  The cones can only modulate over a
-% dynamic range around the mean.  So, we set the gain as well to keep the
-% modulation within some range, such as +/- 50 mV of the mean.
+% Inputs:
+%   cone:       cone structure, more details can be found in coneCreate
+%   adaptType:  adaptation model, type explaination
+%       0 - no adaptation
+%       1 - a single gain map for the whole cone array
+%       2 - one gain map computed for each cone class
+%       3 - cone by cone adaptation (NYI)
 %
-% The third issue is whether all the cones are the same, or there is
-% space-variant adaptation.  That is for the future.
-%
-% Inputs
-%  typeAdapt:  The adaptation model
-%   typeAdapt= 0 - no adaptation
-%   typeAdapt= 1 - a single gain map for the whole cone array
-%   typeAdapt= 2 - one gain map computed for each cone class
-%   typeAdapt= 3 - cone by cone adaptation (NYI)
-%
-%  volts:      These are a 3D array of coneMosaic x nTimeSamples.
-%  sensor:     This is returned with the mean voltage.
-%  species:    Normally 'human', but we are experimenting with 'mouse'.
-%
-% Returns
-%  absorptions: A structure containing the adapted data used by the RGC
-%  calculations.  Information is added to the structure in the calling
-%  routine (coneAbsorptionsTS).
-%   .data = the adapted volts
-%   .sensor = save the sensor here
-%   .unadapteddata = volts;
-%   .gain = the effective adaptation gain
+% Outputs:
+%  cone: cone structure with adapted data and corresponding inforamtion
+%        fields set. The information can be retrieved by usning function
+%        coneGet. The computed fields are as below: 
+%        .adaptVolts    - the adapted volts images 
+%        .adaptGain     - the effective adaptation gain, can be scaler or 
+%                         vector
+%        .adaptOffset   - the adaptation offset
 %
 %
-% ALERT:
+% TODO:
 %   The amount of adaptation is hard coded at this moment.  It should
 %   be a parameter somewhere.  Worse yet, the amount of adaptation differs
 %   between types 1 and 2. Fix this.
 %
 %   In the future, we will look at the time series and have a time-varying
 %   adaptation function.
-%
-%
 %
 % Note:
 %   This is adopted from coneAdaptation in isetbio. This function
@@ -86,24 +80,24 @@ function cone = coneAdapt(cone, typeAdapt)%,volts,sensor,species)
 %% Check inputs & init parameters
 %  check inputs
 if notDefined('cone'), error('cone structure required'); end
-if notDefined('typeAdapt'), typeAdapt = coneGet(cone, 'adapt type'); end
+if notDefined('typeAdapt'), adaptType = coneGet(cone, 'adapt type'); end
 
 %  init parameters
-cone    = coneSet(cone, 'adapt type', typeAdapt);
+cone    = coneSet(cone, 'adapt type', adaptType);
 sensor  = coneGet(cone, 'sensor');
 volts   = sensorGet(sensor, 'volts');
 species = coneGet(cone, 'species');
 
-if typeAdapt == 0
+if adaptType == 0
     adaptedData = volts;
     gain = 1;
 else
     % Do adaptation according to species
     switch lower(species)
         case 'human'
-            [adaptedData,gain] = rgcHumanAdapt(volts,sensor,typeAdapt);
+            [adaptedData,gain] = rgcHumanAdapt(volts,sensor,adaptType);
         case 'mouse'
-            [adaptedData,gain] = rgcMouseAdapt(volts,sensor,typeAdapt);
+            [adaptedData,gain] = rgcMouseAdapt(volts,sensor,adaptType);
         otherwise, error('Unknown species %s\n',species);
     end
 end
@@ -180,7 +174,7 @@ switch typeAdapt
         end
         
         % Figure out which cone type is in which position
-        [CFAnumbers,mp] = sensorImageColorArray(sensorDetermineCFA(sensor));
+        [CFAnumbers,~] = sensorImageColorArray(sensorDetermineCFA(sensor));
         % figure; image(CFAnumbers); colormap(mp)
         
         % determine which value cone type as specified in filterLetters

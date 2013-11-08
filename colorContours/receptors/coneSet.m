@@ -64,7 +64,7 @@ switch param
     case {'density', 'conedensity'}
         cone.coneDensity = val;
         cone.sensor = sensorCreateConeMosaic(cone.sensor, ...
-                   sensorGet(sensor, 'size'), cone.coneDensity);
+                   sensorGet(cone.sensor, 'size'), cone.coneDensity);
                
     case {'wave', 'wavelength'}
         cone.wave = val;
@@ -74,9 +74,9 @@ switch param
     case {'sensor'}
         cone.sensor = val;
         
-    case {'fov', 'h fov'}
-        if nargin > 4, scene = varargin{1}; end
-        if nargin > 5, oi = varargin{2}; end
+    case {'fov', 'hfov'}
+        if ~isempty(varargin), scene = varargin{1}; end
+        if length(varargin) > 1, oi = varargin{2}; end
         cone.sensor = sensorSetSizeToFOV(cone.sensor, val, scene, oi);
 
     case {'lenstrans', 'lenstransmittance'}
