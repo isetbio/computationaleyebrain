@@ -1,6 +1,5 @@
 function [lensTrans, wavelength] = lensTransmittance(lensTransmitttanceFactor,wavelength,source)
-
-% Calculate lens tranmittance from
+% Calculate lens tranmittance
 %
 %   [lensTrans, wavelength] =
 %   cm_LensTransmittance(lensTransmitttanceFactor,wavelength,source)

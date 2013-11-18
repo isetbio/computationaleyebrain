@@ -69,20 +69,33 @@ if notDefined('param'), error('Parameter name required'); end
 %% Get property value
 param = ieParamFormat(param);  % Lower case and remove spaces
 switch param
-    case {'species', 'kind'}
-        val = cone.species;
-    case {'density', 'conedensity'}
-        val = cone.coneDensity;
-    case {'sensor'}
-        val = cone.sensor;
-    case {'wave', 'wavelength'}
-        val = cone.wave;
+        
+    case {'name'}
+        val = cone.name;
     case {'type', 'visualfield'}
         val = cone.type;
+        case {'wave', 'wavelength'}
+        val = cone.wave;
+    case {'species', 'kind'}
+        % Which animal species.
+        % Currently supports only 'human'
+        val = cone.species;
+        
+    case {'density', 'conedensity'}
+        % Spatial density of the cone samples.
+        % The sum of this vector should be 1
+        % The ...
+        val = cone.coneDensity;
+    case {'sensor'}
+        % Not sure this should be here
+        val = cone.sensor;
+        
+
     case {'lenstrans', 'lenstransmittance'}
         val = cone.lensTrans;
     case {'lensabsorption'}
         val = 1 - cone.lensTrans;
+        
     case {'macular', 'macularpigments'}
         val = cone.macular;
     case {'macdens','maculardensity'}

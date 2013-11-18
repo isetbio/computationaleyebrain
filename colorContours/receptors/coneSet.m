@@ -1,7 +1,7 @@
 function cone = coneSet(cone, param, val, varargin)
-%% function coneSet(cone, param, val, [varargin])
-%    Set parameters to cone structure. Please refer to coneGet for more
-%    detailed information about supported parameters
+% Set parameters in a cone structure.
+%
+%      cone = coneSet(cone, param, val, [varargin])
 %
 %  Inputs:
 %    cone     - cone structure, created by coneCreate
@@ -41,7 +41,7 @@ function cone = coneSet(cone, param, val, varargin)
 %    {'adaptation type','adapt type} - cone adaptation type, see
 %                                      coneAdaptation for more details
 %
-%    MORE SUPPORTED PARAMETRES CAN BE FOUND IN FUNCTION sensorSet
+%    MORE SUPPORTED PARAMETERS CAN BE FOUND IN FUNCTION sensorSet
 %
 %  Example:
 %    cone = coneCreate('human');
@@ -85,33 +85,27 @@ switch param
             coneGet(cone, 'eff absorbtance'));
         
     case {'lensabsorption'}
+        %
         cone = coneSet(cone, 'lens trans', 1 - val);
         cone.sensor = sensorSet(cone.sensor, 'color filters', ...
             coneGet(cone, 'eff absorbtance'));
-        
-    case {'macular', 'macularpigments'}
+    
+        % Macular pigment related sets
+    case {'macular'}
+        % cone = coneSet(cone,'macular',m);
         cone.macular = val;
-        cone.sensor = sensorSet(cone.sensor, 'color filters', ...
-            coneGet(cone, 'eff absorbtance'));
         
-    case {'macdens','maculardensity'}
-        cone.macular = macular(val, coneGet(cone, 'wave'));
-
-    case {'maculartrans', 'mactrans'}
-        if (any(size(cone.macular.transmittance)~= size(val)))
-            error('Transmittance size mismatch');
-        end
-        cone.macular.transmittance = val;
-        cone.macular.absorption = 1 - val;
+    case {'maculardensity'}
+        % cone = coneSet(cone,'macular density',val)
+        % val is typically between 0 and 0.7, a range of macular pigment
+        % densities.
+        %
+        m    = coneGet(cone,'macular');
+        m    = macularSet(m,'density',val);
+        cone = coneSet(cone,'macular',m);
         
-    case {'macularabsorption'}
-        if (any(size(cone.macular.absorption)~= size(val)))
-            error('Absorption size mismatch');
-        end
-        cone.macular.absorption = val;
-        cone.macular.transmittance = 1 - val;
-
     case {'pods','pod'}
+        % Pigment optical densities for the cones and melanopsin 
         if (any(size(cone.PODs)~= size(val)))
             error('PODs size mismatch');
         end
@@ -129,12 +123,14 @@ switch param
     case {'melpod'}
         if ~isscalar(val), error('val should be scaler'); end
         cone.PODS(4) = val;
+        
     case {'peaklambda', 'lambdamax'}
         cone.peakShift = val;
         cone.absorbance = StockmanSharpeNomogram(cone.wave, val)';
         cone.absorbance = padarray(cone.absorbance,[0 1],'pre');
         
     case {'qe', 'quantalefficiency', 'quantaleff'}
+        % Is this spectral?
         cone.quantalEfficiency = val;
         
     case {'absorbance'}
