@@ -11,13 +11,15 @@ function val = coneGet(cone, param, varargin)
 %    val      - value for parameter, if not found, return empty
 %
 %  Supported params:
+%    {'name'}                        - user defined name of the cone
+%    {'type'}                        - should be 'cone'
 %    {'species', 'kind'}             - cone species, generally 'human'
 %    {'density', 'cone density'}     - density of each cone type, for
 %                                      human, it should be [K,L,M,S]
-%    {'sensor'}                      - underlying sensor structure
 %    {'wave', 'wavelength'}          - wavelength of samples in cones
 %    {'type', 'visual field'}        - visual field of eye, can be 'fovea'
 %                                      or 'periphery'
+%    {'lens'}                        - underlying lens structure
 %    {'lens trans'}                  - lens transmittance
 %    {'lens absorption'}             - lens absorbtance
 %    {'macular', 'macular pigments'} - macular pigment structure
@@ -26,11 +28,10 @@ function val = coneGet(cone, param, varargin)
 %    {'macular absorption'}          - macular absorption
 %    {'eye trans'}                   - totally transmittance for lens and
 %                                      macular pigments
-%    {'PODs','POD'}                  - PODs vector for [L,M,S,mel]
-%    {'LPOD'}                        - L POD density
-%    {'MPOD'}                        - M POD density
-%    {'SPOD'}                        - S POD density
-%    {'melPOD'}                      - mel POD density
+%    {'PODs','POD'}                  - pigment density vector for [L,M,S]
+%    {'LPOD'}                        - L pigment density
+%    {'MPOD'}                        - M pigment density
+%    {'SPOD'}                        - S pigment density
 %    {'peak lambda', 'lambda max'}   - peak spectra position
 %    {'qe', 'quantal eff'}           - quantal efficiency
 %    {'absorbance'}                  - cone absorbance
@@ -68,8 +69,7 @@ if notDefined('param'), error('Parameter name required'); end
 
 %% Get property value
 param = ieParamFormat(param);  % Lower case and remove spaces
-switch param
-        
+switch param   
     case {'name'}
         val = cone.name;
     case {'type', 'visualfield'}
@@ -77,36 +77,41 @@ switch param
         case {'wave', 'wavelength'}
         val = cone.wave;
     case {'species', 'kind'}
-        % Which animal species.
+        % Animal species.
         % Currently supports only 'human'
         val = cone.species;
         
     case {'density', 'conedensity'}
         % Spatial density of the cone samples.
-        % The sum of this vector should be 1
-        % The ...
+        % The vector should be in form [K, L, M, S]
+        % Sum of the four elememts should be 1
         val = cone.coneDensity;
-    case {'sensor'}
-        % Not sure this should be here
-        val = cone.sensor;
-        
-
+ 
+    case {'lens'}
+        % Lens structure, see lensCreate and lensGet
+        val = cone.lens;
     case {'lenstrans', 'lenstransmittance'}
-        val = cone.lensTrans;
-    case {'lensabsorption'}
-        val = 1 - cone.lensTrans;
+        % Lens transmittance
+        val = lensGet(cone.lens, ' transmittance');
+    case {'lensabsorption','lensabsorbtance'}
+        val = lensGet(cone.lens, 'absorption');
         
     case {'macular', 'macularpigments'}
         val = cone.macular;
     case {'macdens','maculardensity'}
-        val = cone.macular.density;
+        val = macularGet(cone.macular, 'density');
     case {'maculartrans', 'mactrans'}
-        val = cone.macular.transmittance;
+        val = macularGet(cone.macular, 'transmittance');
     case {'macularabsorption'}
-        val = cone.macular.absorption;
+        val = macularGet(cone.macular, 'absorption');
+        
     case {'eyetrans','eyetransmittance'}
-        val = cone.lensTrans .* cone.macular.transmittance;
+        % pre-retina eye transimittance, including lens and macular pigment
+        val = coneGet(cone,'lens trans') .* ...
+                coneGet(cone, 'macular trans');
     case {'pods','pod'}
+        % pigment density inside each cone cell
+        % 3-element vector, for [L,M,S] repectively
         val = cone.PODs;
     case {'lpod'}
         val = cone.PODS(1);
@@ -114,24 +119,29 @@ switch param
         val = cone.PODS(2);
     case {'spod'}
         val = cone.PODS(3);
-    case {'melpod'}
-        val = cone.PODS(4);
     case {'peaklambda', 'lambdamax'}
+        % Position with max cone absorption
+        % This can be used to simulate color anormalous
         val = cone.peakLambda;
+        
     case {'qe', 'quantalefficiency', 'quantaleff'}
         val = cone.quantalEfficiency;
+        
     case {'absorbance'}
         val = cone.absorbance;
+        
     case {'absorbtance'}
         absorbance = coneGet(cone, 'absorbance');
         wave = coneGet(cone, 'wave');
         PODs = coneGet(cone, 'PODs');
-        PODs = [PODs(4);PODs(1:3)]; % Change to K, L, M, S order
+        PODs = [0; PODs(:)]; % Change to K, L, M, S order
         val = AbsorbanceToAbsorbtance(absorbance', wave, PODs)';
+        
     case {'effetive absorbtance', 'effabsorbtance'}
         absorbtance = coneGet(cone, 'absorbtance');
         eyeTrans = coneGet(cone, 'eye trans');
         val = absorbtance .* repmat(eyeTrans, [1 size(absorbtance, 2)]);
+        
     case {'quantalfundamentals'}
         val = coneGet(cone, 'eff absorbtance');
         qe  = coneGet(cone, 'qe');
@@ -141,37 +151,8 @@ switch param
             end
         end
         val = val ./ repmat(max(val), size(val, 2));
-    case {'adaptedvolts'}
-        if isfield(cone, 'adaptVolts')
-            val = cone.adaptVolts;
-        else
-            val = [];
-            warning('Adaptation image not computed');
-        end
-    case {'adaptgain','gainmap'}
-        if isfield(cone, 'adaptGain')
-            val = cone.adaptGain;
-        else
-            val = [];
-            warning('Adaptation image not computed');
-        end
-    case {'adaptationtype', 'adapttype'}
-        val = cone.adaptType;
-    case {'adaptoffset'}
-        if isfield(cone, 'adaptOffset')
-            val = cone.adaptOffset;
-        else
-            val = [];
-            warning('Adaptation image not computed');
-        end
-        
     otherwise
-        % Try to get parameter value from the underlying sensor
-        if isempty(varargin)
-            val = sensorGet(cone.sensor, param);
-        else
-            val = sensorGet(cone.sensor, param, varargin);
-        end
+        error('Unknown parameter encountered');
 end
 
 end

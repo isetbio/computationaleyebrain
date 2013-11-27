@@ -14,31 +14,26 @@ function cone = coneSet(cone, param, val, varargin)
 %               set to new value
 %
 %  Supported parameters:
+%    {'name'}                        - name of the cone structure
 %    {'density', 'cone density'}     - density of each cone type, for
 %                                      human, it should be [K,L,M,S]
-%    {'fov', 'h fov'}                - sensor fov, scene and oi are
-%                                      accepted in varargin
 %    {'wave', 'wavelength'}          - wavelength of samples in cones
-%    {'sensor'}                      - underlying ISET sensor structure
-%    {'lens trans'}                  - lens transmittance
-%    {'lens absorption'}             - lens absorbtance
+%    {'lens'}                        - eye lens structure
+%    {'lens density'}                - lens OD
 %    {'macular', 'macular pigments'} - macular pigment structure
 %    {'mac dens','macular density'}  - macular density
-%    {'macular trans'}               - macular transmittance
-%    {'macular absorption'}          - macular absorption
 %    {'eye trans'}                   - totally transmittance for lens and
 %                                      macular pigments
-%    {'PODs','POD'}                  - PODs vector for [L,M,S,mel]
+%    {'PODs','POD'}                  - PODs vector for [L,M,S]
 %    {'LPOD'}                        - L POD density
 %    {'MPOD'}                        - M POD density
 %    {'SPOD'}                        - S POD density
-%    {'melPOD'}                      - mel POD density
 %    {'peak lambda', 'lambda max'}   - peak spectra position
 %    {'qe', 'quantal eff'}           - quantal efficiency
 %    {'absorbance'}                  - cone absorbance, not recommended to
 %                                      set this parameter directly unless
 %                                      you know what you are doing
-%    {'adaptation type','adapt type} - cone adaptation type, see
+%    {'adaptation type','adapt type'}- cone adaptation type, see
 %                                      coneAdaptation for more details
 %
 %    MORE SUPPORTED PARAMETERS CAN BE FOUND IN FUNCTION sensorSet
@@ -46,7 +41,6 @@ function cone = coneSet(cone, param, val, varargin)
 %  Example:
 %    cone = coneCreate('human');
 %    cone = coneSet('density',[0.1 0.65 0.2 0.05]);
-%    cone = coneSet('exp time', 0.02);
 %
 %  See also:
 %    coneCreate, coneGet, sensorSet
@@ -61,51 +55,50 @@ if notDefined('val'), error('new value of parameter required'); end
 %% Set parameters
 param = ieParamFormat(param);  % Lower case and remove spaces
 switch param
+    case {'name'}
+        cone.name = val;
     case {'density', 'conedensity'}
+        val = val(:);
+        if length(val) == 3 % Cone density given in [L,M,S] format
+            val = [1-sum(val); val];
+        else
+            assert(length(val)==4, 'Unknown density format encountered');
+        end
         cone.coneDensity = val;
-        cone.sensor = sensorCreateConeMosaic(cone.sensor, ...
-                   sensorGet(cone.sensor, 'size'), cone.coneDensity);
-               
-    case {'wave', 'wavelength'}
-        cone.wave = val;
-        cone.sensor  = sensorSet(cone.sensor, 'wave', val);
-        cone.macular = macular(coneGet(cone, 'mac density'), val);
-        
-    case {'sensor'}
-        cone.sensor = val;
-        
-    case {'fov', 'hfov'}
-        if ~isempty(varargin), scene = varargin{1}; end
-        if length(varargin) > 1, oi = varargin{2}; end
-        cone.sensor = sensorSetSizeToFOV(cone.sensor, val, scene, oi);
-
-    case {'lenstrans', 'lenstransmittance'}
-        cone.lensTrans = val;
-        cone.sensor = sensorSet(cone.sensor, 'color filters', ...
-            coneGet(cone, 'eff absorbtance'));
-        
-    case {'lensabsorption'}
-        %
-        cone = coneSet(cone, 'lens trans', 1 - val);
-        cone.sensor = sensorSet(cone.sensor, 'color filters', ...
-            coneGet(cone, 'eff absorbtance'));
     
-        % Macular pigment related sets
+    case {'wave', 'wavelength'}
+        val = val(:);
+        cone.wave = val;
+        cone.macular = macularSet(cone.macular, 'wave', val);
+        cone.lens    = lensSet(cone.lens, 'wave', val);
+
+    case {'lens'}
+        if strcmp(val.type, 'lens')
+            cone.lens = val;
+        else
+            error('Input value should be lens structure');
+        end
+    case {'lensdensity'}
+        % lens OD
+        cone.lens = lensSet(cone.lens, 'density', val);
+        
     case {'macular'}
-        % cone = coneSet(cone,'macular',m);
-        cone.macular = val;
+        if strcmp(val.type, 'macular')
+            cone.macular = val;
+        else
+            error('Input value should be macular structure');
+        end
         
     case {'maculardensity'}
         % cone = coneSet(cone,'macular density',val)
         % val is typically between 0 and 0.7, a range of macular pigment
         % densities.
-        %
         m    = coneGet(cone,'macular');
         m    = macularSet(m,'density',val);
         cone = coneSet(cone,'macular',m);
         
     case {'pods','pod'}
-        % Pigment optical densities for the cones and melanopsin 
+        % Pigment optical densities for the cones
         if (any(size(cone.PODs)~= size(val)))
             error('PODs size mismatch');
         end
@@ -120,9 +113,6 @@ switch param
     case {'spod'}
         if ~isscalar(val), error('val should be scaler'); end
         cone.PODS(3) = val;
-    case {'melpod'}
-        if ~isscalar(val), error('val should be scaler'); end
-        cone.PODS(4) = val;
         
     case {'peaklambda', 'lambdamax'}
         cone.peakShift = val;
@@ -142,8 +132,8 @@ switch param
             cone = coneAdapt(cone, val);
         end
         
-    otherwise % Try set the sensor parameter
-        cone.sensor = sensorSet(cone.sensor,param,val,varargin);
+    otherwise 
+        error('Unknown parameter encountered');
 end
 
 end
