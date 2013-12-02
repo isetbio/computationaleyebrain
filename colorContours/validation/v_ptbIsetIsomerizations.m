@@ -86,31 +86,12 @@ vcNewGraphWin;
 plot(wave,ptbIrradiance(:)/(1+abs(m))^2,'ro',wave,irradiance(:),'ko');
 
 %%  ISETBIO sensor absorptions
+
 cone = coneCreate;
 wave = coneGet(cone,'wave');
+cf = coneGet(cone,'effective spectral absorptance');
 
-vcNewGraphWin([],'tall');
-subplot(4,1,1)
-plot(wave,coneGet(cone,'cone spectral absorptance'));
-title('Cone spectral absorptance')
-
-subplot(4,1,2)
-lens = coneGet(cone,'lens');
-plot(wave,lensGet(lens,'transmittance'))
-title('Lens transmittance')
-
-subplot(4,1,3)
-macular = coneGet(cone,'macular')
-plot(wave,macularGet(macular,'transmittance'))
-title('Macular transmittance')
-
-subplot(4,1,4)
-plot(wave,coneGet(cone,'effective spectral absorptance'))
-title('Cone-ocular absorptance')
-
-
-%%
-
+% NOT SURE WHAT IS GOING ON HERE.  TO DISCUSS WITH HAOMIAO (BW)
 coneGet(cone,'photon fundamentals')
 
 cone = coneSet(cone, 'exp time', integrationTimeSec);

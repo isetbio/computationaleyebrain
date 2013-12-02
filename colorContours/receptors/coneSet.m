@@ -57,16 +57,19 @@ param = ieParamFormat(param);  % Lower case and remove spaces
 switch param
     case {'name'}
         cone.name = val;
-    case {'density', 'conedensity'}
+    case {'spatialdensity', 'conedensity'}
         val = val(:);
         if length(val) == 3 % Cone density given in [L,M,S] format
             val = [1-sum(val); val];
         else
             assert(length(val)==4, 'Unknown density format encountered');
         end
-        cone.coneDensity = val;
+        cone.spatialDensity = val;
     
     case {'wave', 'wavelength'}
+        % Make sure wavelengths are consistent.
+        % This is not quite enough.  We have to interpolate the data in
+        % macular and lens. !!! BW
         val = val(:);
         cone.wave = val;
         cone.macular = macularSet(cone.macular, 'wave', val);
@@ -105,26 +108,26 @@ switch param
         cone.PODs = val;
         
     case {'lpod'}
-        if ~isscalar(val), error('val should be scaler'); end
+        if ~isscalar(val), error('val should be scalar'); end
         cone.PODS(1) = val;
     case {'mpod'}
-        if ~isscalar(val), error('val should be scaler'); end
+        if ~isscalar(val), error('val should be scalar'); end
         cone.PODS(2) = val;
     case {'spod'}
-        if ~isscalar(val), error('val should be scaler'); end
+        if ~isscalar(val), error('val should be scalar'); end
         cone.PODS(3) = val;
         
-    case {'peaklambda', 'lambdamax'}
-        cone.peakShift = val;
-        cone.absorbance = StockmanSharpeNomogram(cone.wave, val)';
-        cone.absorbance = padarray(cone.absorbance,[0 1],'pre');
-        
+        %     case {'peaklambda', 'lambdamax'}
+        %         cone.peakShift = val;
+        %         cone.absorbance = StockmanSharpeNomogram(cone.wave, val)';
+        %         cone.absorbance = padarray(cone.absorbance,[0 1],'pre');
+        %
     case {'qe', 'quantalefficiency', 'quantaleff'}
-        % Is this spectral?
-        cone.quantalEfficiency = val;
+        % Peak absorptance
+        cone.peakEfficiency = val;
         
     case {'absorbance'}
-        disp('Overwrite absorbtance, please be sure what you are doing');
+        disp('Overwrite absorbance, please be sure what you are doing');
         cone.absorbance = val;
     
     case {'adaptationtype', 'adapttype'}
