@@ -81,76 +81,104 @@ switch param
         % Currently supports only 'human'
         val = cone.species;
         
-    case {'density', 'conedensity'}
+    case {'spatialdensity', 'conespatialdensity'}
         % Spatial density of the cone samples.
         % The vector should be in form [K, L, M, S]
         % Sum of the four elememts should be 1
-        val = cone.coneDensity;
+        val = cone.spatialDensity;
  
     case {'lens'}
         % Lens structure, see lensCreate and lensGet
         val = cone.lens;
     case {'lenstrans', 'lenstransmittance'}
         % Lens transmittance
-        val = lensGet(cone.lens, ' transmittance');
+        val = lensGet(coneGet(cone,'lens'), ' transmittance');
     case {'lensabsorption','lensabsorbtance'}
-        val = lensGet(cone.lens, 'absorption');
+        val = lensGet(coneGet(cone,'lens'), 'absorption');
         
-    case {'macular', 'macularpigments'}
+    case {'macular', 'macularpigment'}
+        % coneGet(cone,'macular pigment')
         val = cone.macular;
+
     case {'macdens','maculardensity'}
-        val = macularGet(cone.macular, 'density');
-    case {'maculartrans', 'mactrans'}
-        val = macularGet(cone.macular, 'transmittance');
+        val = macularGet(coneGet(cone,'macular'), 'density');
+    case {'maculartransmittance','maculartrans', 'mactrans'}
+        % coneGet(cone,'macular transmittance')
+        val = macularGet(coneGet(cone,'macular'), 'transmittance');
     case {'macularabsorption'}
-        val = macularGet(cone.macular, 'absorption');
+        % coneGet(cone,'macular absorption')
+        val = macularGet(coneGet(cone,'macular'), 'absorption');
         
-    case {'eyetrans','eyetransmittance'}
+    case {'oculartransmittance','eyetrans','eyetransmittance'}
+        % coneGet(cone,'ocular transmittance')
         % pre-retina eye transimittance, including lens and macular pigment
         val = coneGet(cone,'lens trans') .* ...
                 coneGet(cone, 'macular trans');
+            
     case {'pods','pod'}
         % pigment density inside each cone cell
         % 3-element vector, for [L,M,S] repectively
-        val = cone.PODs;
+        val = cone.opticalDensity;
     case {'lpod'}
-        val = cone.PODS(1);
+        val = cone.opticalDensity(1);
     case {'mpod'}
-        val = cone.PODS(2);
+        val = cone.opticalDensity(2);
     case {'spod'}
-        val = cone.PODS(3);
-    case {'peaklambda', 'lambdamax'}
-        % Position with max cone absorption
-        % This can be used to simulate color anormalous
-        val = cone.peakLambda;
+        val = cone.opticalDensity(3);
         
-    case {'qe', 'quantalefficiency', 'quantaleff'}
-        val = cone.quantalEfficiency;
+        %     case {'peaklambda', 'lambdamax'}
+        %         % Position with max cone absorption
+        %         % This can be used to simulate color anormalous
+        %         val = cone.peakLambda;
+        
+    case {'peakefficiency'}
+        val = cone.peakEfficiency;
         
     case {'absorbance'}
         val = cone.absorbance;
         
-    case {'absorbtance'}
+    case {'conespectralabsorptance','absorptance'}
+        % coneGet(cone,'cone spectral absorptance')
+        %
+        % This is the cone absorptance without the ocular media
         absorbance = coneGet(cone, 'absorbance');
-        wave = coneGet(cone, 'wave');
+        % wave = coneGet(cone, 'wave');
+        % absorptance = 10.^absorbance
+        % plot(wave,absorptance)
         PODs = coneGet(cone, 'PODs');
-        PODs = [0; PODs(:)]; % Change to K, L, M, S order
-        val = AbsorbanceToAbsorbtance(absorbance', wave, PODs)';
+        absorbance = absorbance*diag(PODs);
+        val = 10.^absorbance;
         
-    case {'effetive absorbtance', 'effabsorbtance'}
-        absorbtance = coneGet(cone, 'absorbtance');
-        eyeTrans = coneGet(cone, 'eye trans');
-        val = absorbtance .* repmat(eyeTrans, [1 size(absorbtance, 2)]);
+        % We think this should be AbsorbanceToAbsorptance - HJ/BW
+        % val = AbsorbanceToAbsorbtance(absorbance', wave, PODs)';
         
-    case {'quantalfundamentals'}
-        val = coneGet(cone, 'eff absorbtance');
-        qe  = coneGet(cone, 'qe');
+    case {'effectivespectralabsorptance','effectiveabsorptance', 'effabsorptance'}
+        % coneGet(cone,'effective spectral absorptance')
+        %
+        % Combines cone photopigment, ocular transmittance and peak
+        % efficiency
+        absorptance = coneGet(cone, 'absorptance');
+        eyeTrans    = coneGet(cone, 'ocular transmittance');
+        peakEfficiency = coneGet(cone,'peak efficiency');
+        
+        val = (absorptance .* repmat(eyeTrans, [1 size(absorptance, 2)]))*diag(peakEfficiency);
+        
+    case {'quantalfundamentals','photonfundamentals'}
+        % coneGet(cone,'photon fundamentals')
+        %
+        % Cone absorptance scaled by peak efficiency
+        val = coneGet(cone, 'spectral absorptance');
+        qe  = coneGet(cone, 'peak efficiency');
         if length(qe) == size(val,2)
-            for i = 1 : size(val, 2)
-                val(:,i) = val(:,i) * qe(i);
+            for ii = 1 : size(val, 2)
+                val(:,ii) = val(:,ii) * qe(ii);
             end
         end
         val = val ./ repmat(max(val), size(val, 2));
+        
+    case {'energyfundamentals'}
+        error('NYI');
+        
     otherwise
         error('Unknown parameter encountered');
 end

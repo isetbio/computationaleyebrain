@@ -1,7 +1,7 @@
 %% v_ptbIsetIsomerizations
 %
 % Confirm that when we start with the same irradiance function we get
-% the same number of estimated isomerizations
+% the same number of estimated isomerizations in PTB and ISET.
 %
 %
 % DHB/BW/HJ Copyright ISETBIO Team, 2013
@@ -87,6 +87,32 @@ plot(wave,ptbIrradiance(:)/(1+abs(m))^2,'ro',wave,irradiance(:),'ko');
 
 %%  ISETBIO sensor absorptions
 cone = coneCreate;
+wave = coneGet(cone,'wave');
+
+vcNewGraphWin([],'tall');
+subplot(4,1,1)
+plot(wave,coneGet(cone,'cone spectral absorptance'));
+title('Cone spectral absorptance')
+
+subplot(4,1,2)
+lens = coneGet(cone,'lens');
+plot(wave,lensGet(lens,'transmittance'))
+title('Lens transmittance')
+
+subplot(4,1,3)
+macular = coneGet(cone,'macular')
+plot(wave,macularGet(macular,'transmittance'))
+title('Macular transmittance')
+
+subplot(4,1,4)
+plot(wave,coneGet(cone,'effective spectral absorptance'))
+title('Cone-ocular absorptance')
+
+
+%%
+
+coneGet(cone,'photon fundamentals')
+
 cone = coneSet(cone, 'exp time', integrationTimeSec);
 cone = coneCompute(cone, oi);
 isetCones = coneGet(cone, 'spectral qe');

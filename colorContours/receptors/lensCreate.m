@@ -21,8 +21,8 @@ function lens = lensCreate(lensDensity,wave)
 % Useful formulae
 %
 %   Absorbance spectra are normalized to a peak value of 1.
-%   Absorbtance spectra are the proportion of quanta actually absorbed.
-%   Equation: absorbtanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
+%   Absorptance spectra are the proportion of quanta actually absorbed.
+%   Equation: absorptanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
 %
 % The original lens densities values were taken from PTB and/or the
 % Stockman site. Go to http://cvision.ucsd.edu, then click on Prereceptoral
@@ -39,7 +39,7 @@ function lens = lensCreate(lensDensity,wave)
 if ieNotDefined('lensDensity'), lensDensity = 1; end
 if ieNotDefined('wave'),        wave = (400:700)'; end
 
-lens.name = 'default human';
+lens.name = 'default human lens';
 lens.type = 'lens';
 lens.wave = wave;
 

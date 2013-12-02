@@ -28,8 +28,8 @@ function m = macularCreate(macDensity,wave)
 % Useful formulae
 %
 %   Absorbance spectra are normalized to a peak value of 1.
-%   Absorbtance spectra are the proportion of quanta actually absorbed.
-%   Equation: absorbtanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
+%   Absorptance spectra are the proportion of quanta actually absorbed.
+%   Equation: absorptanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
 %
 % The original macular densities values were taken from the Stockman site.
 % Go to http://cvision.ucsd.edu, then click on Prereceptoral filters.  At
@@ -50,7 +50,7 @@ function m = macularCreate(macDensity,wave)
 if ieNotDefined('macDensity'), macDensity = 0.28; end
 if ieNotDefined('wave'), wave = [400:700]'; end
 
-m.name = 'default macular';
+m.name = 'default human macular pigment';
 m.type = 'macular';
 m.wave = wave;
 
