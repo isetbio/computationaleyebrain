@@ -37,33 +37,53 @@ switch param
         val = m.type;
     case 'wave'
         val = m.wave;
-        
-        
-        %   Absorbance spectra are normalized to a peak value of 1.
-        %   Absorbtance spectra are the proportion of quanta actually absorbed.
-        %   Equation: absorbtanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
-    case {'absorbance','unitdensity'}
+    
+    %   Absorbance spectra are normalized to a peak value of 1.
+    %   Absorbtance spectra are the proportion of quanta actually absorbed.
+    %   Equation: absorptanceSpectra = 1 - 10.^(-OD * absorbanceSpectra)
+    case {'absorbance', 'unitdensity'}
         % This is defined by Sharp, 1999.  To load use
         % ieReadSpectra('macularPigment.mat',wave);
         % See macularCreate.
-        val = m.unitDensity;
+        % We accept user defined wavelength in varargin
+        if isempty(varargin)
+            val = m.unitDensity;
+        else
+            wave = varargin{1};
+            val = interp1(macularGet(m, 'wave'), m.unitDensity, wave);
+        end
+        
     case 'density'
         % Assumed density for this instance
+        % This should be single scaler
         val = m.density;
 
     case {'spectraldensity'}
         % Unit density times the density for this structure
-        u = macularGet(m,'unit density');
-        d = macularGet(m,'density');
-        val = u*d;
+        if isempty(varargin)
+            u = macularGet(m, 'unit density');
+        else
+            u = macularGet(m, 'unit density', varargin{1});
+        end
+        d = macularGet(m, 'density');
+        val = u * d;
         
     case 'transmittance'
         % Proportion of quanta transmitted
-        val = 10.^(-macularGet(m,'spectral density'));
+        % accpet user defined wavelength in varargin{1}
+        if isempty(varargin)
+            val = 10.^(-macularGet(m, 'spectral density'));
+        else
+            val = 10.^(-macularGet(m, 'spectral density', varargin{1}));
+        end
         
     case {'absorbtance','absorption'}
         % Proportion of quanta absorbed
-        val = 1 - 10.^(-macularGet(m,'spectral density'));
+        if isempty(varargin)
+            val = 1 - macularGet(m, 'transmittance');
+        else
+            val = 1 - macularGet(m, 'transmittance', varargin{1});
+        end
         
     otherwise
         error('Unknown parameter %s\n',param);

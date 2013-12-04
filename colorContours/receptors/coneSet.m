@@ -68,29 +68,30 @@ switch param
     
     case {'wave', 'wavelength'}
         % Make sure wavelengths are consistent.
-        % This is not quite enough.  We have to interpolate the data in
-        % macular and lens. !!! BW
+        % We interpolate the unit density data in lens and macular by
+        % calling lensSet(lens, 'wave') and macularSet(...)
         val = val(:);
         cone.wave = val;
         cone.macular = macularSet(cone.macular, 'wave', val);
         cone.lens    = lensSet(cone.lens, 'wave', val);
 
     case {'lens'}
-        if strcmp(val.type, 'lens')
-            cone.lens = val;
-        else
-            error('Input value should be lens structure');
-        end
+        % Set the lens structure
+        % We should first make sure that val is actually a lens structure
+        % and it has the same sampling wavelength as the cone structure
+        assert(strcmp(val.type, 'lens'), 'val should be lens structure');
+        cone.lens = lensSet(val, 'wave', coneGet(cone, 'wave'));
+        
     case {'lensdensity'}
         % lens OD
         cone.lens = lensSet(cone.lens, 'density', val);
         
     case {'macular'}
-        if strcmp(val.type, 'macular')
-            cone.macular = val;
-        else
-            error('Input value should be macular structure');
-        end
+        % Set macular structure
+        % We should first make sure that val is actually a macular
+        % structure and it has the same wavelength as the cone
+        assert(strcmp(val.type, 'macular'),'val should be macular struct');
+        cone.macular = macularSet(val, 'wave', coneGet(cone, 'wave'));
         
     case {'maculardensity'}
         % cone = coneSet(cone,'macular density',val)
