@@ -73,8 +73,9 @@ switch param
     case {'name'}
         val = cone.name;
     case {'type', 'visualfield'}
-        val = cone.type;
-        case {'wave', 'wavelength'}
+        val = cone.type; % Should always be 'cone'
+    
+    case {'wave', 'wavelength'}
         val = cone.wave;
     case {'species', 'kind'}
         % Animal species.

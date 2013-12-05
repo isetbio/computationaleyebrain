@@ -15,20 +15,18 @@ function cone = coneSet(cone, param, val, varargin)
 %
 %  Supported parameters:
 %    {'name'}                        - name of the cone structure
-%    {'density', 'cone density'}     - density of each cone type, for
+%    {'spatial density'}             - density of each cone type, for
 %                                      human, it should be [K,L,M,S]
 %    {'wave', 'wavelength'}          - wavelength of samples in cones
 %    {'lens'}                        - eye lens structure
 %    {'lens density'}                - lens OD
-%    {'macular', 'macular pigments'} - macular pigment structure
-%    {'mac dens','macular density'}  - macular density
-%    {'eye trans'}                   - totally transmittance for lens and
-%                                      macular pigments
+%    {'macular'}                     - macular pigment structure
+%    {'macular density'}             - macular density
 %    {'PODs','POD'}                  - PODs vector for [L,M,S]
 %    {'LPOD'}                        - L POD density
 %    {'MPOD'}                        - M POD density
 %    {'SPOD'}                        - S POD density
-%    {'peak lambda', 'lambda max'}   - peak spectra position
+%    {'peak lambda', 'lambda max'}   - peak spectra position, nomogram
 %    {'qe', 'quantal eff'}           - quantal efficiency
 %    {'absorbance'}                  - cone absorbance, not recommended to
 %                                      set this parameter directly unless
@@ -40,7 +38,7 @@ function cone = coneSet(cone, param, val, varargin)
 %
 %  Example:
 %    cone = coneCreate('human');
-%    cone = coneSet('density',[0.1 0.65 0.2 0.05]);
+%    cone = coneSet('spatial density',[0.1 0.65 0.2 0.05]);
 %
 %  See also:
 %    coneCreate, coneGet, sensorSet

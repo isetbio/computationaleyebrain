@@ -33,6 +33,7 @@ switch species
         
         cone.species = 'human';
         cone.type    = 'cone';
+        cone.name    = 'default human cone';
         cone.wave    = (400:10:700)';
         
         % Default macular pigment has density of 0.28.
@@ -52,16 +53,12 @@ switch species
         % cone.peakLambda = modelParams.peakLambda;
         
         
-        %         vcNewGraphWin;
-        %         plot(wave,absorbance)
-        %
-        %         % Normalized spectral absorption (absorbance) of the three cone
-        %         % types.  We NEED TO GET THIS RIGHT, not load the stockmanQuanta.
-        %         % We should load the Sharpe absorbance data like PTB.
-        %         absorptance = ieReadSpectra('stockmanQuanta',cone.wave);
-        %
-        %         % cone.absorbance = log10(1 - absorptance)/-cone.opticalDensity;
-        %         cone.absorbance = log10(1 - absorptance)*diag( 1 ./ -cone.opticalDensity);
+        % Normalized spectral absorption (absorbance) of the three cone
+        % types.  We NEED TO GET THIS RIGHT, not load the stockmanQuanta.
+        % We should load the Sharpe absorbance data like PTB.
+        %    absorptance = ieReadSpectra('stockmanQuanta',cone.wave);
+        % cone.absorbance = log10(1 - absorptance)*...
+        %                               diag( 1 ./ -cone.opticalDensity);
 
         cone.absorbance = ieReadSpectra('coneAbsorbance',cone.wave);
         
@@ -76,7 +73,6 @@ end
 
 
 %% Over-write default parameters with what user sent in
-
 % Check that we have an even number of arguments
 n = length(varargin);
 if isodd(n), error('Must have param,val pairs'); end
