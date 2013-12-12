@@ -82,13 +82,12 @@ sensor = sensorCompute(sensor,oi);
 %% Compute sensor image samples
 %  If needed, eye-movement should be set up here
 %  Now, we set it with no eye-movement
-sensor = sensorSet(sensor,'movement positions', [0 0]);
-sensor =  sensorSet(sensor,'frames per position', nSamples);
-vcAddAndSelectObject('scene',scene);
-vcAddAndSelectObject('oi', oi);
+% sensor = sensorSet(sensor,'movement positions', [0 0]);
+% sensor =  sensorSet(sensor,'frames per position', nSamples);
+% vcAddAndSelectObject('scene',scene);
+% vcAddAndSelectObject('oi', oi);
 
 %  Compute photon cone absorptions
-%  We do not show the waitbar for the sake of parellel computation
-sensor = coneAbsorptions(sensor, oi, false);
+sensor = coneAbsorptions(sensor, oi);
 
 end
