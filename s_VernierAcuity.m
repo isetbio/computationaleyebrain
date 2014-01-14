@@ -9,8 +9,8 @@
 %% Init Parameters
 ppi = 100;          % Display property: points per inch
 vDist = 1:0.1:2.0;  % Viewing distance in meters
-nFrames = 500;      % Number of samples for each case
-imgSz = [20 10];    % Row / columns of image in pixels
+nFrames = 100;      % Number of samples for each case
+imgSz = [12 12];    % Row / columns of image in pixels
 
 %% Create virtual display
 display = displayCreate('LCD-Apple');
@@ -19,11 +19,21 @@ display = displaySet(display, 'dpi', ppi);
 %% Create Scene
 scene = cell(2, 1);
 img = zeros(imgSz);            % Init to black
-img(:, round(imgSz(2)/2)) = 1; % Draw vertical straight line in the middle
+img(:, round(imgSz(2)/2)) = .99; % Draw vertical straight line in the middle
 scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
 
-img(1:imgSz(1)/2, :) = circshift(img(1:imgSz(1)/2, :), [0 1]);
+%img(1:imgSz(1)/2, :) = circshift(img(1:imgSz(1)/2, :), [0 1]);
+img = circshift(img, [0 2]);
 scene{2} = sceneFromFile(img, 'rgb', [], display);
+
+% set scene fov
+dist = 1.0;
+fov = 2*atand(max(imgSz)*25.4 / ppi / 1000 /dist/2);
+
+for ii = 1 : 2
+    scene{ii} = sceneSet(scene{ii}, 'h fov', fov);
+    scene{ii} = sceneSet(scene{ii}, 'distance', dist);
+end
 
 %% Create Sensor
 sensor = sensorCreate('human');
@@ -60,10 +70,6 @@ for indxDist = 1: length(vDist)
         % Update scene information
         scene{ii} = sceneSet(scene{ii}, 'distance', dist);
         ncols = sceneGet(scene{ii}, 'ncols');
-        
-        % compute field of view
-        fov = 2*atan(max(imgSz)*25.4 / 1000 /dist/2);
-        scene{ii} = sceneSet(scene{ii}, 'h fov', fov);
     end
     
     sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, oi);
@@ -89,3 +95,14 @@ for indxDist = 1: length(vDist)
     err(indxDist) = accuracy(2);
     acc(indxDist) = accuracy(1);
 end
+
+% sensor = sensorComputeNoiseFree(sensor, OIs{2});
+% sensor = sensorSet(sensor, 'exp time', 0.05);
+% sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, OIs{1});
+% sensor = sensorComputeNoiseFree(sensor, OIs{1});
+% sensor = sensorCompute(sensor, OIs{2});
+% p2 = sensorGet(sensor, 'photons');
+% for curCol = 1 : 35
+% tmpL2(curCol) = mean(p2(find(coneType(:,curCol) == 2),curCol));
+% end;
+% plot(tmpL); hold on; plot(tmpL2, 'r');
