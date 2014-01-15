@@ -7,10 +7,8 @@
 % (HJ) Jan, 2014
 
 %% Init Parameters
-ppi = 100;          % Display property: points per inch
-vDist = 1:0.1:2.0;  % Viewing distance in meters
-nFrames = 100;      % Number of samples for each case
-imgSz = [12 12];    % Row / columns of image in pixels
+ppi = 900;          % Display property: points per inch
+imgSz = [64 64];    % Row / columns of image in pixels
 
 %% Create virtual display
 display = displayCreate('LCD-Apple');
@@ -23,7 +21,7 @@ img(:, round(imgSz(2)/2)) = .99; % Draw vertical straight line in the middle
 scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
 
 %img(1:imgSz(1)/2, :) = circshift(img(1:imgSz(1)/2, :), [0 1]);
-img = circshift(img, [0 2]);
+img = circshift(img, [0 1]);
 scene{2} = sceneFromFile(img, 'rgb', [], display);
 
 % set scene fov
@@ -52,57 +50,70 @@ oi     = wvf2oi(wvf,'shift invariant');
 % Compute optical image
 % Actually, we could wait to compute it in coneSamples
 % But, we compute it here to do sanity check
+vcAddAndSelectObject('scene', scene{1});
 OIs{1} = oiCompute(scene{1}, oi);
+vcAddAndSelectObject('scene', scene{2});
 OIs{2} = oiCompute(scene{2}, oi);
 % vcAddAndSelectObject('oi', OIs{1}); oiWindow;
 % vcAddAndSelectObject('oi', OIs{2}); oiWindow;
 
-%% Loop over viewing distance
-absorptions = cell(2, 1);
-acc = zeros(length(vDist), 1); % classification accuracy
-err = zeros(length(vDist), 1); % classification std error
-svmOpts = '-s 0 -q';
+%% Compute cone absorption (noise free)
+sensor = sensorSet(sensor, 'exp time', 0.05);
+sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, OIs{1});
+sensor = sensorComputeNoiseFree(sensor, OIs{1});
+p1 = sensorGet(sensor, 'photons'); 
 
-for indxDist = 1: length(vDist)
-    % Compute cone absorptions
-    dist = vDist(indxDist);
-    for ii = 1 : 2
-        % Update scene information
-        scene{ii} = sceneSet(scene{ii}, 'distance', dist);
-        ncols = sceneGet(scene{ii}, 'ncols');
-    end
-    
-    sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, oi);
-    sensor = sensorSet(sensor, 'exp time', 0.01); % 10 ms for each
-    sensor = ctInitEyeMovements(sensor, scene{1}, oi, 5*nFrames);
-    
-    for ii = 1 : 2
-        sensor = coneSamples(scene{ii}, nFrames, sensor, oi);
-        absorptions{ii} = double(sensorGet(sensor, 'photons'));
-    end
-    
-    % Do classification
-    nFolds = 10;
-    labels = [ones(nFrames,1); -1*ones(nFrames,1)];
-    indx = randperm(5*nFrames);
-    refPhotons   = RGB2XWFormat(absorptions{1});
-    szN = size(refPhotons, 1);
-    refPhotons = sum(reshape(refPhotons(:,indx), [szN, nFrames, 5]),3)';
-    matchPhotons = RGB2XWFormat(absorptions{2});
-    matchPhotons = sum(reshape(matchPhotons(:,indx), [szN, nFrames, 5]),3)';
-    accuracy = svmClassifyAcc(cat(1,refPhotons, matchPhotons), ...
-        labels, nFolds, 'svm', svmOpts);
-    err(indxDist) = accuracy(2);
-    acc(indxDist) = accuracy(1);
+sensor = sensorSetSizeToFOV(sensor, fov, scene{2}, OIs{2});
+sensor = sensorComputeNoiseFree(sensor, OIs{2});
+p2 = sensorGet(sensor, 'photons');
+
+coneType = sensorGet(sensor, 'cone type');
+coneL1 = zeros(size(p1, 2), 1); coneL2 = coneL1;
+for curCol = 1 : size(p1, 2)
+    coneL1(curCol) = mean(p1(coneType(:,curCol) == 2,curCol));
+    coneL2(curCol) = mean(p2(coneType(:,curCol) == 2,curCol));
 end
 
-% sensor = sensorComputeNoiseFree(sensor, OIs{2});
-% sensor = sensorSet(sensor, 'exp time', 0.05);
-% sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, OIs{1});
-% sensor = sensorComputeNoiseFree(sensor, OIs{1});
-% sensor = sensorCompute(sensor, OIs{2});
-% p2 = sensorGet(sensor, 'photons');
-% for curCol = 1 : 35
-% tmpL2(curCol) = mean(p2(find(coneType(:,curCol) == 2),curCol));
-% end;
-% plot(tmpL); hold on; plot(tmpL2, 'r');
+% plot
+vcNewGraphWin; plot(coneL1); hold on; plot(coneL2, 'r');
+title('Cone absorption for a horizontal line in two scenes');
+
+%% Add some Gaussian blur (for eye-movement)
+G = fspecial('gaussian', [16 1], 8); % eye movement is around 8 cones wide
+coneLG1 = imfilter(coneL1, G, 'same'); 
+coneLG2 = imfilter(coneL2, G, 'same');
+
+% plot
+vcNewGraphWin; plot(coneLG1); hold on; plot(coneLG2, 'r');
+title('Cone absorption for a horizontal line in two scenes with eye move');
+
+%% Compute error rate
+%  This is the error rate from the ideal observer model
+%  It uses only the information from one horizontal line of L cones
+%  However, the accuracy can still be extremely high
+errRate = 1/2 * exp(-1/4 * sum((coneLG1-coneLG2).^2 ./ ...
+                sqrt(coneLG1 + coneLG2)));
+
+%% Generate noise samples 
+%  Init some parameters
+nFrames = 500; % number of samples to be generated
+
+%  Randomly set eye-movement
+sensor = sensorSet(sensor, 'exp time', 0.01);
+
+sensor = ctInitEyeMovements(sensor, scene{1}, OIs{1}, 5*nFrames);
+sensor = coneAbsorptions(sensor, OIs{1});
+pSamples1 = sensorGet(sensor, 'photons');
+
+
+sensor = ctInitEyeMovements(sensor, scene{2}, OIs{2}, 5*nFrames);
+sensor = coneAbsorptions(sensor, OIs{2});
+pSamples2 = sensorGet(sensor, 'photons');
+
+%  Fit Gaussian
+gMu1 = mean(pSamples1, 3); gMu2 = mean(pSamples2, 3);
+
+%  Compute error rate
+
+
+%% Do it by SVM
