@@ -7,8 +7,8 @@
 % (HJ) Jan, 2014
 
 %% Init Parameters
-ppi = 900;          % Display property: points per inch
-imgSz = [64 64];    % Row / columns of image in pixels
+ppi = 500;          % Display property: points per inch
+imgSz = [32 32];    % Row / columns of image in pixels
 
 %% Create virtual display
 display = displayCreate('LCD-Apple');
@@ -16,12 +16,12 @@ display = displaySet(display, 'dpi', ppi);
 
 %% Create Scene
 scene = cell(2, 1);
-img = zeros(imgSz);            % Init to black
-img(:, round(imgSz(2)/2)) = .99; % Draw vertical straight line in the middle
+img = ones(imgSz)*0.5;            % Init to black
+img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in the middle
 scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
 
-%img(1:imgSz(1)/2, :) = circshift(img(1:imgSz(1)/2, :), [0 1]);
-img = circshift(img, [0 1]);
+img(1:imgSz(1)/2, :) = circshift(img(1:imgSz(1)/2, :), [0 1]);
+%img = circshift(img, [0 1]);
 scene{2} = sceneFromFile(img, 'rgb', [], display);
 
 % set scene fov
@@ -61,11 +61,11 @@ OIs{2} = oiCompute(scene{2}, oi);
 sensor = sensorSet(sensor, 'exp time', 0.05);
 sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, OIs{1});
 sensor = sensorComputeNoiseFree(sensor, OIs{1});
-p1 = sensorGet(sensor, 'photons'); 
+p1 = double(sensorGet(sensor, 'photons')); 
 
 sensor = sensorSetSizeToFOV(sensor, fov, scene{2}, OIs{2});
 sensor = sensorComputeNoiseFree(sensor, OIs{2});
-p2 = sensorGet(sensor, 'photons');
+p2 = double(sensorGet(sensor, 'photons'));
 
 coneType = sensorGet(sensor, 'cone type');
 coneL1 = zeros(size(p1, 2), 1); coneL2 = coneL1;
@@ -96,19 +96,19 @@ errRate = 1/2 * exp(-1/4 * sum((coneLG1-coneLG2).^2 ./ ...
 
 %% Generate noise samples 
 %  Init some parameters
-nFrames = 500; % number of samples to be generated
+nFrames = 1000; % number of samples to be generated
 
 %  Randomly set eye-movement
 sensor = sensorSet(sensor, 'exp time', 0.01);
 
 sensor = ctInitEyeMovements(sensor, scene{1}, OIs{1}, 5*nFrames);
 sensor = coneAbsorptions(sensor, OIs{1});
-pSamples1 = sensorGet(sensor, 'photons');
+pSamples1 = double(sensorGet(sensor, 'photons'));
 
 
 sensor = ctInitEyeMovements(sensor, scene{2}, OIs{2}, 5*nFrames);
 sensor = coneAbsorptions(sensor, OIs{2});
-pSamples2 = sensorGet(sensor, 'photons');
+pSamples2 = double(sensorGet(sensor, 'photons'));
 
 %  Fit Gaussian
 gMu1 = mean(pSamples1, 3); gMu2 = mean(pSamples2, 3);
@@ -117,3 +117,17 @@ gMu1 = mean(pSamples1, 3); gMu2 = mean(pSamples2, 3);
 
 
 %% Do it by SVM
+% Classification
+svmOpts = '-s 0 -q';
+
+nFolds = 10;
+labels = [ones(nFrames,1); -1*ones(nFrames,1)];
+indx = randperm(5*nFrames);
+refPhotons   = RGB2XWFormat(pSamples1);
+szN = size(refPhotons, 1);
+refPhotons = sum(reshape(refPhotons(:,indx), [szN, nFrames, 5]),3)';
+matchPhotons = RGB2XWFormat(pSamples2);
+matchPhotons = sum(reshape(matchPhotons(:,indx), [szN, nFrames, 5]),3)';
+
+acc = svmClassifyAcc(cat(1,refPhotons, matchPhotons), ...
+    labels, nFolds, 'svm', svmOpts);

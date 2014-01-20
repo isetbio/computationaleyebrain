@@ -43,8 +43,9 @@ end
 % [0.02, 0.03] * sqrt(expTime)/sqrt(25)
 % (BW)
 center = [0 0];
-sigmaX = 0.02 * sqrt(2);
+%sigmaX = 0.02 / sqrt(5);
 %sigmaY = 0.03 / sqrt(5); % Could be changed to correlation matrix later
+sigmaX = 0;
 sigmaY = 0;
 % (BW)
 %s = sqrt(sensorGet(sensor,'exp time','ms')/25);
