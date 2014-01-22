@@ -96,21 +96,30 @@ errRate = 1/2 * exp(-1/4 * sum((coneLG1-coneLG2).^2 ./ ...
 
 %% Generate noise samples 
 %  Init some parameters
-nFrames = 1000; % number of samples to be generated
+params.center   = [0,0];
+params.sigmaX   = 0.1;   % Deg of visual angle
+params.sigmaY   = 0.1;
+params.nSamples = 1000;
+params.fov      = sensorGet(sensor,'fov',scene{1},oi);
 
-%  Randomly set eye-movement
+%  Set exposure time to 10 ms
 sensor = sensorSet(sensor, 'exp time', 0.01);
 
-sensor = ctInitEyeMovements(sensor, scene{1}, OIs{1}, 5*nFrames);
+% Set up the eye movement properties
+sensor = emInit('fixation',sensor,params);
+
+% Compute the cone absopritons
 sensor = coneAbsorptions(sensor, OIs{1});
+
+% Store the photon samples
 pSamples1 = double(sensorGet(sensor, 'photons'));
 
-
-sensor = ctInitEyeMovements(sensor, scene{2}, OIs{2}, 5*nFrames);
+% Compute cone absorptions for the second stimulus and store photon
+% absorptions
 sensor = coneAbsorptions(sensor, OIs{2});
 pSamples2 = double(sensorGet(sensor, 'photons'));
 
-%  Fit Gaussian
+%  Fit Gaussian mean for ideal observer calculation.
 gMu1 = mean(pSamples1, 3); gMu2 = mean(pSamples2, 3);
 
 %  Compute error rate
@@ -131,3 +140,6 @@ matchPhotons = sum(reshape(matchPhotons(:,indx), [szN, nFrames, 5]),3)';
 
 acc = svmClassifyAcc(cat(1,refPhotons, matchPhotons), ...
     labels, nFolds, 'svm', svmOpts);
+
+
+%%
