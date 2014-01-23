@@ -30,61 +30,62 @@ if ieNotDefined('sensor'), error('sensor required.'); end
 if ieNotDefined('params'), error('parameters required.'); end
 
 % Initialize random number generation
-if isfield(params,'randSeed'), rng(randSeed);
-else
-    % Figure out how to return the random number condition that will
-    % produce the same result.  Stick it in params.randSeed.
-    rng('shuffle');
+if ~isfield(params, 'center'), params.center = [0 0]; end
+if ~isfield(params, 'Sigma')
+    warning('Covariance matrix for eye movement missing. Use default(.01)');
+    params.Sigma = 0.01 * eye(2);
+end
+if ~isfield(params, 'nSamples'), params.nSamples = 1000; end
+if ~isfield(params, 'fov'), error('Field of view in params required'); end
+
+if isfield(params,'randSeed') % Set up random seed
+    rng(randSeed);
+else % Store the newly generated random seed
+    params.randSeed = rng('shuffle');
 end
 
+%% Initialize eye movements
 % Each case builds the (x,y) and count variables for every position
 emType = ieParamFormat(emType);
 switch emType
     case {'fixation'}
-        
-        % Algorithm description to be placed here.  Probably should change
-        % the algorithm for deltaX, deltaY steps and thus continuity of the
-        % path.
-        
-        % Init parameters for Gaussian RV.  Should check for existence.
-        center   = params.center;
-        sigmaX   = params.sigmaX;
-        sigmaY   = params.sigmaY;
-        nSamples = params.nSamples;
-        fov      = params.fov;
+        % The eye wanders around the center. The positions are random in a
+        % disk around the center. the distances here are in deg of visual
+        % angle. 
+        % Eye movement is simulated by Brownian motion with increment of
+        % Gaussian N(0, Sigma). The initial value is given by params.center
         
         % Compute sensor fov and size
         sz  = sensorGet(sensor, 'size');
         
-        %% Initialize eye movements
+        % Generate gaussian move
+        pos  = ieMvnrnd(params.center, params.Sigma, params.nSamples);
         
-        % This should be a case, we might call it 'fixating'.
-        %
-        % The eye wanders around the center. The positions are random in a
-        % disk around the center. the distances here are in deg of visual
-        % angle.
-        x    = randn(nSamples,1)*sigmaX + center(1);
-        y    = randn(nSamples,1)*sigmaY + center(2);
+        % Adding up to form brownian motion
+        % It's a little tricky here. If using brownian motion, we could
+        % goes to a very fall distance with high probability. So, we should
+        % make it bounce back to center if it gets too large
+        %pos = cumsum(pos - repmat(params.center, [params.nSamples,1]))+...
+        %       repmat(params.center, [params.nSamples,1]);
         
         % For efficiency, we round the calculations
         % that are centered less than 1 detector's width.
-        xPos = round((x/fov)*sz(1)) * fov/sz(1);
-        yPos = round((y/fov)*sz(2)) * fov/sz(2);
+        pos  = round((pos/params.fov).*repmat(sz, [params.nSamples,1])).*...
+            params.fov ./ repmat(sz, [params.nSamples, 1]);
         
         % Group the same positions
-        [~,~,ic]  = unique([xPos yPos],'rows');
+        [pos,~,ic]  = unique(pos,'rows');
         
         % Compute frame per position
         f    = hist(ic,unique(ic));      % frames per position
-        f(1) = f(1) + nSamples - sum(f); % make sure sum(f) == nSamples
+        f(1) = f(1) + params.nSamples - sum(f); % make sure sum(f)=nSamples
         
     otherwise
         error('Unknown emType %s\n',emType);
 end
 
 % Set sensor movement positions.
-sensor = sensorSet(sensor,'movement positions',[xPos yPos]);
+sensor = sensorSet(sensor,'movement positions', pos);
 sensor = sensorSet(sensor,'frames per position',f);
-
 
 end

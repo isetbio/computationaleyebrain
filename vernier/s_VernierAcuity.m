@@ -7,8 +7,13 @@
 % (HJ) Jan, 2014
 
 %% Init Parameters
-ppi = 500;          % Display property: points per inch
-imgSz = [32 32];    % Row / columns of image in pixels
+if notDefined('ppi'), ppi = 500; end            % points per inch
+if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
+if notDefined('nFrames'), nFrames = 1000; end   % Number of samples
+
+vDist  = 1.0;                                   % viewing distance (meter)
+imgSz  = round(tand(imgFov)*vDist*39.37*ppi);   % number of pixels in image
+imgFov = atand(max(imgSz)/ppi/39.37/vDist);     % Actual fov
 
 %% Create virtual display
 display = displayCreate('LCD-Apple');
@@ -17,20 +22,17 @@ display = displaySet(display, 'dpi', ppi);
 %% Create Scene
 scene = cell(2, 1);
 img = ones(imgSz)*0.5;            % Init to black
-img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in the middle
+img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in middle
 scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
 
-img(1:imgSz(1)/2, :) = circshift(img(1:imgSz(1)/2, :), [0 1]);
+img(1:round(imgSz(1)/2), :) = circshift(img(1:round(imgSz(1)/2), :),[0 1]);
 %img = circshift(img, [0 1]);
 scene{2} = sceneFromFile(img, 'rgb', [], display);
 
 % set scene fov
-dist = 1.0;
-fov = 2*atand(max(imgSz)*25.4 / ppi / 1000 /dist/2);
-
 for ii = 1 : 2
-    scene{ii} = sceneSet(scene{ii}, 'h fov', fov);
-    scene{ii} = sceneSet(scene{ii}, 'distance', dist);
+    scene{ii} = sceneSet(scene{ii}, 'h fov', imgFov);
+    scene{ii} = sceneSet(scene{ii}, 'distance', vDist);
 end
 
 %% Create Sensor
@@ -58,48 +60,47 @@ OIs{2} = oiCompute(scene{2}, oi);
 % vcAddAndSelectObject('oi', OIs{2}); oiWindow;
 
 %% Compute cone absorption (noise free)
-sensor = sensorSet(sensor, 'exp time', 0.05);
-sensor = sensorSetSizeToFOV(sensor, fov, scene{1}, OIs{1});
-sensor = sensorComputeNoiseFree(sensor, OIs{1});
-p1 = double(sensorGet(sensor, 'photons')); 
-
-sensor = sensorSetSizeToFOV(sensor, fov, scene{2}, OIs{2});
-sensor = sensorComputeNoiseFree(sensor, OIs{2});
-p2 = double(sensorGet(sensor, 'photons'));
-
-coneType = sensorGet(sensor, 'cone type');
-coneL1 = zeros(size(p1, 2), 1); coneL2 = coneL1;
-for curCol = 1 : size(p1, 2)
-    coneL1(curCol) = mean(p1(coneType(:,curCol) == 2,curCol));
-    coneL2(curCol) = mean(p2(coneType(:,curCol) == 2,curCol));
-end
+% sensor = sensorSet(sensor, 'exp time', 0.05);
+% sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
+% sensor = sensorComputeNoiseFree(sensor, OIs{1});
+% p1 = double(sensorGet(sensor, 'photons')); 
+% 
+% sensor = sensorSetSizeToFOV(sensor, imgFov, scene{2}, OIs{2});
+% sensor = sensorComputeNoiseFree(sensor, OIs{2});
+% p2 = double(sensorGet(sensor, 'photons'));
+% 
+% coneType = sensorGet(sensor, 'cone type');
+% coneL1 = zeros(size(p1, 2), 1); coneL2 = coneL1;
+% for curCol = 1 : size(p1, 2)
+%     coneL1(curCol) = mean(p1(coneType(:,curCol) == 2,curCol));
+%     coneL2(curCol) = mean(p2(coneType(:,curCol) == 2,curCol));
+% end
 
 % plot
-vcNewGraphWin; plot(coneL1); hold on; plot(coneL2, 'r');
-title('Cone absorption for a horizontal line in two scenes');
+% vcNewGraphWin; plot(coneL1); hold on; plot(coneL2, 'r');
+% title('Cone absorption for a horizontal line in two scenes');
 
 %% Add some Gaussian blur (for eye-movement)
-G = fspecial('gaussian', [16 1], 8); % eye movement is around 8 cones wide
-coneLG1 = imfilter(coneL1, G, 'same'); 
-coneLG2 = imfilter(coneL2, G, 'same');
+% G = fspecial('gaussian', [16 1], 8); % eye movement is around 8 cones wide
+% coneLG1 = imfilter(coneL1, G, 'same'); 
+% coneLG2 = imfilter(coneL2, G, 'same');
 
 % plot
-vcNewGraphWin; plot(coneLG1); hold on; plot(coneLG2, 'r');
-title('Cone absorption for a horizontal line in two scenes with eye move');
+% vcNewGraphWin; plot(coneLG1); hold on; plot(coneLG2, 'r');
+% title('Cone absorption for a horizontal line in two scenes with eye move');
 
 %% Compute error rate
 %  This is the error rate from the ideal observer model
 %  It uses only the information from one horizontal line of L cones
 %  However, the accuracy can still be extremely high
-errRate = 1/2 * exp(-1/4 * sum((coneLG1-coneLG2).^2 ./ ...
-                sqrt(coneLG1 + coneLG2)));
+% errRate = 1/2 * exp(-1/4 * sum((coneLG1-coneLG2).^2 ./ ...
+%                 sqrt(coneLG1 + coneLG2)));
 
 %% Generate noise samples 
 %  Init some parameters
 params.center   = [0,0];
-params.sigmaX   = 0.1;   % Deg of visual angle
-params.sigmaY   = 0.1;
-params.nSamples = 1000;
+params.Sigma    = 0.02^2 * eye(2) / 5;
+params.nSamples = 5*nFrames;
 params.fov      = sensorGet(sensor,'fov',scene{1},oi);
 
 %  Set exposure time to 10 ms
