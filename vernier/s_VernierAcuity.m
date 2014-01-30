@@ -35,9 +35,9 @@ for ii = 1 : 2
     scene{ii} = sceneSet(scene{ii}, 'distance', vDist);
 end
 
-%% Create Sensor
-sensor = sensorCreate('human');
-sensor = sensorSet(sensor, 'exp time', 0.05);
+% Show radiance image (scene)
+% vcAddAndSelectObject('scene', scene{1});
+% vcAddAndSelectObject('scene', scene{2}); sceneWindow;
 
 %% Create Human Lens
 %  Create a typical human lens
@@ -56,27 +56,37 @@ vcAddAndSelectObject('scene', scene{1});
 OIs{1} = oiCompute(scene{1}, oi);
 vcAddAndSelectObject('scene', scene{2});
 OIs{2} = oiCompute(scene{2}, oi);
-% vcAddAndSelectObject('oi', OIs{1}); oiWindow;
-% vcAddAndSelectObject('oi', OIs{2}); oiWindow;
+
+% Show irradiance (optical image) 
+%vcAddAndSelectObject('oi', OIs{1}); oiWindow;
+%vcAddAndSelectObject('oi', OIs{2}); oiWindow;
+
+%% Create Sensor
+sensor = sensorCreate('human');
+sensor = sensorSet(sensor, 'exp time', 0.05);
 
 %% Compute cone absorption (noise free)
-% sensor = sensorSet(sensor, 'exp time', 0.05);
-% sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
-% sensor = sensorComputeNoiseFree(sensor, OIs{1});
-% p1 = double(sensorGet(sensor, 'photons')); 
-% 
-% sensor = sensorSetSizeToFOV(sensor, imgFov, scene{2}, OIs{2});
-% sensor = sensorComputeNoiseFree(sensor, OIs{2});
-% p2 = double(sensorGet(sensor, 'photons'));
-% 
-% coneType = sensorGet(sensor, 'cone type');
-% coneL1 = zeros(size(p1, 2), 1); coneL2 = coneL1;
-% for curCol = 1 : size(p1, 2)
-%     coneL1(curCol) = mean(p1(coneType(:,curCol) == 2,curCol));
-%     coneL2(curCol) = mean(p2(coneType(:,curCol) == 2,curCol));
-% end
+%  Compute for scene 1
+sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
+sensor = sensorComputeNoiseFree(sensor, OIs{1});
+p1 = double(sensorGet(sensor, 'photons')); 
+% show cone absorptions
+% vcAddAndSelectObject(sensor); sensorWindow;
 
-% plot
+% Compute for scene 2
+sensor = sensorSetSizeToFOV(sensor, imgFov, scene{2}, OIs{2});
+sensor = sensorComputeNoiseFree(sensor, OIs{2});
+p2 = double(sensorGet(sensor, 'photons'));
+% show cone absorptions
+% vcAddAndSelectObject(sensor); sensorWindow;
+
+coneType = sensorGet(sensor, 'cone type');
+coneL1 = zeros(size(p1, 2), 1); coneL2 = coneL1;
+for curCol = 1 : size(p1, 2)
+    coneL1(curCol) = mean(p1(coneType(:,curCol) == 2,curCol));
+    coneL2(curCol) = mean(p2(coneType(:,curCol) == 2,curCol));
+end
+% Plot
 % vcNewGraphWin; plot(coneL1); hold on; plot(coneL2, 'r');
 % title('Cone absorption for a horizontal line in two scenes');
 
