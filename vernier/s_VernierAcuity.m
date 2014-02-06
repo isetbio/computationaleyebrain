@@ -106,15 +106,17 @@ end
 % errRate = 1/2 * exp(-1/4 * sum((coneLG1-coneLG2).^2 ./ ...
 %                 sqrt(coneLG1 + coneLG2)));
 
-%% Generate noise samples 
-%  Init some parameters
-params.center   = [0,0];
-params.Sigma    = 0.02^2 * eye(2) / 5;
-params.nSamples = 5*nFrames;
-params.fov      = sensorGet(sensor,'fov',scene{1},oi);
-
+%% Generate noise samples
 %  Set exposure time to 10 ms
-sensor = sensorSet(sensor, 'exp time', 0.01);
+emDuration = 0.01;
+sensor = sensorSet(sensor, 'exp time', emDuration);
+
+%  Init some parameters
+%  Simga is etimated from Jon's data fitted by Brownian motion
+params.center   = [0,0];
+params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
+params.nSamples = round(0.05 / emDuration)*nFrames;
+params.fov      = sensorGet(sensor,'fov',scene{1},oi);
 
 % Set up the eye movement properties
 sensor = emInit('fixation',sensor,params);

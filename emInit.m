@@ -25,15 +25,14 @@ function [sensor, params] = emInit(emType, sensor, params)
 % (HJ) Copyright PDCSOFT TEAM 2013
 
 %% Check inputs and Init
-if ieNotDefined('emType'), error('eye movement type required'); end
-if ieNotDefined('sensor'), error('sensor required.'); end
-if ieNotDefined('params'), error('parameters required.'); end
+if notDefined('emType'), error('eye movement type required'); end
+if notDefined('sensor'), error('sensor required.'); end
+if notDefined('params'), error('parameters required.'); end
 
 % Initialize random number generation
 if ~isfield(params, 'center'), params.center = [0 0]; end
 if ~isfield(params, 'Sigma')
-    warning('Covariance matrix for eye movement missing. Use default(.01)');
-    params.Sigma = 0.01 * eye(2);
+    error('Covariance matrix for eye movement missing');
 end
 if ~isfield(params, 'nSamples'), params.nSamples = 1000; end
 if ~isfield(params, 'fov'), error('Field of view in params required'); end
@@ -65,8 +64,24 @@ switch emType
         % It's a little tricky here. If using brownian motion, we could
         % goes to a very fall distance with high probability. So, we should
         % make it bounce back to center if it gets too large
-        %pos = cumsum(pos - repmat(params.center, [params.nSamples,1]))+...
-        %       repmat(params.center, [params.nSamples,1]);
+        pos = cumsum(pos - repmat(params.center, [params.nSamples,1]))+...
+               repmat(params.center, [params.nSamples,1]); % in degree
+           
+        % Now we need to set the bounce back. When human eye gets too far
+        % away from the fixation point, it will jump back to the fixation
+        % point
+        boundV = min(params.fov / 2, 0.6);
+        indx = find(pos > boundV | pos < -boundV, 1, 'first');
+        while ~isempty(indx)
+            if pos(indx) > boundV
+                pos(indx:end) = pos(indx:end) - pos(indx) + ...
+                    mod(pos(indx), boundV);
+            else
+                pos(indx:end) = pos(indx:end) - pos(indx) + ...
+                    mod(pos(indx), -boundV);
+            end
+            indx = find(pos > boundV | pos < -boundV, 1, 'first');
+        end
         
         % For efficiency, we round the calculations
         % that are centered less than 1 detector's width.
