@@ -51,6 +51,6 @@ cone   = coneSet(cone, 'sensor', sensor);
 %% Cone adaptation
 %  Compute cone adaptation using isetbio routine coneAdaptation
 %  I hope the interface of coneAdaptation could be simplified
-cone = coneAdapt(cone);
+cone = coneAdaptation(cone);
 
 end
