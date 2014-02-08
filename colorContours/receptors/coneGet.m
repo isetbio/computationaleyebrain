@@ -143,17 +143,10 @@ switch param
         %
         % This is the cone absorptance without the ocular media
         absorbance = coneGet(cone, 'absorbance');
-        % wave = coneGet(cone, 'wave');
-        % absorptance = 10.^absorbance
-        % plot(wave,absorptance)
         PODs = coneGet(cone, 'PODs');
-        absorbance = absorbance*diag(PODs);
-        val = 10.^absorbance;
+        val = 1-10.^(-absorbance*diag(PODs));
         
-        % We think this should be AbsorbanceToAbsorptance - HJ/BW
-        % val = AbsorbanceToAbsorbtance(absorbance', wave, PODs)';
-        
-    case {'effectivespectralabsorptance','effectiveabsorptance', 'effabsorptance'}
+    case {'effectivespectralabsorptance', 'effectiveabsorptance'}
         % coneGet(cone,'effective spectral absorptance')
         %
         % Combines cone photopigment, ocular transmittance and peak
@@ -162,23 +155,40 @@ switch param
         eyeTrans    = coneGet(cone, 'ocular transmittance');
         peakEfficiency = coneGet(cone,'peak efficiency');
         
-        val = (absorptance .* repmat(eyeTrans, [1 size(absorptance, 2)]))*diag(peakEfficiency);
+        val = (absorptance.*repmat(eyeTrans, [1 size(absorptance,2)]))* ...
+            diag(peakEfficiency);
         
     case {'quantalfundamentals','photonfundamentals'}
         % coneGet(cone,'photon fundamentals')
         %
         % Cone absorptance scaled by peak efficiency
-        val = coneGet(cone, 'spectral absorptance');
+        % Note that this is for pure cones, without any oclus absorptance
+        val = coneGet(cone, 'cone spectral absorptance');
         qe  = coneGet(cone, 'peak efficiency');
         if length(qe) == size(val,2)
             for ii = 1 : size(val, 2)
                 val(:,ii) = val(:,ii) * qe(ii);
             end
         end
-        val = val ./ repmat(max(val), size(val, 2));
+        val = val ./ repmat(max(val), [size(val, 1) 1]);
         
     case {'energyfundamentals'}
-        error('NYI');
+        % coneGet(cone, 'energy fundamentals')
+        %
+        % cone absorptance in energy
+        % Note that this is for pure cones, without any oclus absorptance
+        val = coneGet(cone, 'quantal fundamentals');
+        % Get constants
+        h = vcConstants('planck');
+        c = vcConstants('speed of light');
+        wave = coneGet(cone, 'wave');
+        % Convert to energy. Note that the sensitivity is the inverse of
+        % spetral absorption. Thus, we use conversion of energy to quanta
+        % on quantal fundamentals
+        val = val / (h*c) .* (1e-9 * repmat(wave, [1 size(val, 2)])); 
+        
+        % Normalize
+        val = val ./ repmat(max(val), [size(val, 1) 1]);
         
     otherwise
         error('Unknown parameter encountered');

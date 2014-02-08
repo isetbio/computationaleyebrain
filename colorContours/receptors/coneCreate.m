@@ -53,17 +53,23 @@ switch species
         % cone.peakLambda = modelParams.peakLambda;
         
         
-        % Normalized spectral absorption (absorbance) of the three cone
-        % types.  We NEED TO GET THIS RIGHT, not load the stockmanQuanta.
         % We should load the Sharpe absorbance data like PTB.
-        %    absorptance = ieReadSpectra('stockmanQuanta',cone.wave);
+        %    absorptance = 10.^ieReadSpectra('coneAbsorbance',cone.wave);
+        %
+        % Note that the original data is from Stockman Sharp and it's in
+        % log10 mode. Thus, we need to convert it back.
+        %
+        % The relationship between absorbance and absorptance is as below:
         % cone.absorbance = log10(1 - absorptance)*...
         %                               diag( 1 ./ -cone.opticalDensity);
 
-        cone.absorbance = ieReadSpectra('coneAbsorbance',cone.wave);
+        cone.absorbance = 10.^ieReadSpectra('coneAbsorbance',cone.wave);
         
-        % peak absorptance efficiency
-        cone.peakEfficiency = [.3 .3 .3];
+        % Peak absorptance efficiency
+        % Note that the actual peak efficiency is the product of this value
+        % and the opticalDensity. The effective value should be around .3
+        % for all three types of cones
+        cone.peakEfficiency = [2 2 2]/3;
 
         cone.spatialDensity = [0 .6 .3 .1];  % No blanks, L,M,S
         

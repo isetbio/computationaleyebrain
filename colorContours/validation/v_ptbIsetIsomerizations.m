@@ -68,8 +68,8 @@ m = opticsGet(optics,'magnification',sceneGet(scene,'distance'));
     pupilDiameterMm, focalLengthMm, integrationTimeSec,0);
 
 % ptb effective absorbtance
-ptbCones = ptbPhotoreceptors.effectiveAbsorbtance'; % Appropriate for quanta
-ptbCones = [zeros(size(ptbCones,1),1),ptbCones];
+ptbCones = ptbPhotoreceptors.isomerizationAbsorbtance'; % Appropriate for quanta
+%ptbCones = [zeros(size(ptbCones,1),1),ptbCones];
 
 %% Compare the irradiances 
 
@@ -86,17 +86,8 @@ vcNewGraphWin;
 plot(wave,ptbIrradiance(:)/(1+abs(m))^2,'ro',wave,irradiance(:),'ko');
 
 %%  ISETBIO sensor absorptions
-
 cone = coneCreate;
-wave = coneGet(cone,'wave');
-cf = coneGet(cone,'effective spectral absorptance');
-
-% NOT SURE WHAT IS GOING ON HERE.  TO DISCUSS WITH HAOMIAO (BW)
-coneGet(cone,'photon fundamentals')
-
-cone = coneSet(cone, 'exp time', integrationTimeSec);
-cone = coneCompute(cone, oi);
-isetCones = coneGet(cone, 'spectral qe');
+isetCones = coneGet(cone, 'effective absorptance');
 
 %% Compare PTB sensor spectral responses with ISETBIO
 vcNewGraphWin; plot(wave, isetCones);
