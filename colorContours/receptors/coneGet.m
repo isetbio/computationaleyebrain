@@ -17,14 +17,12 @@ function val = coneGet(cone, param, varargin)
 %    {'density', 'cone density'}     - density of each cone type, for
 %                                      human, it should be [K,L,M,S]
 %    {'wave', 'wavelength'}          - wavelength of samples in cones
-%    {'type', 'visual field'}        - visual field of eye, can be 'fovea'
-%                                      or 'periphery'
 %    {'lens'}                        - underlying lens structure
-%    {'lens trans'}                  - lens transmittance
+%    {'lens transmittance'}          - lens transmittance
 %    {'lens absorption'}             - lens absorbtance
 %    {'macular', 'macular pigments'} - macular pigment structure
 %    {'mac dens','macular density'}  - macular density
-%    {'macular trans'}               - macular transmittance
+%    {'macular transmittance'}       - macular transmittance
 %    {'macular absorption'}          - macular absorption
 %    {'eye trans'}                   - totally transmittance for lens and
 %                                      macular pigments
@@ -32,31 +30,21 @@ function val = coneGet(cone, param, varargin)
 %    {'LPOD'}                        - L pigment density
 %    {'MPOD'}                        - M pigment density
 %    {'SPOD'}                        - S pigment density
-%    {'peak lambda', 'lambda max'}   - peak spectra position
-%    {'qe', 'quantal eff'}           - quantal efficiency
+%    {'peak efficiency'}             - quantal efficiency
 %    {'absorbance'}                  - cone absorbance
-%    {'absorbtance'}                 - cone absorbtance without any
+%    {'absorptance'}                 - cone absorbtance without any
 %                                      pre-receprocal transimitance
-%    {'effetive absorbtance'}        - cone absorbtance with lens and
+%    {'effetive absorptance'}        - cone absorbtance with lens and
 %                                      macular pigment transmittance
 %    {'quantal fundamentals'}        - quantal fundamentals of the cones
-%    {'adapted volts'}               - volts image after cone adaptation,
-%                                      which could be used for rgc
-%                                      computation
-%    {'adapt gain','gain map'}       - cone adaptation gain map
-%    {'adaptation type','adapt type} - cone adaptation type, see
-%                                      coneAdaptation for more details
-%    {'adapt offset'}                - cone adaptation offset
 %
-%    MORE PARAMETERS ABOUT UNDERLYING SENSOR CAN BE FOUND IN sensorGet
-%    FUNCTION
 %
 %  Example:
 %    cone = coneCreate('human');
 %    expTime = coneGet(cone, 'species');
 %
 %  See also:
-%    coneSet, coneCreate, sensorGet
+%    coneSet, coneCreate
 %
 %  TODO:
 %    For most parameters, we should accept a third parameter as wavelength

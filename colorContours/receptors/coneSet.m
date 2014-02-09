@@ -27,7 +27,7 @@ function cone = coneSet(cone, param, val, varargin)
 %    {'MPOD'}                        - M POD density
 %    {'SPOD'}                        - S POD density
 %    {'peak lambda', 'lambda max'}   - peak spectra position, nomogram
-%    {'qe', 'quantal eff'}           - quantal efficiency
+%    {'qe', 'peak efficiency'}       - quantal efficiency
 %    {'absorbance'}                  - cone absorbance, not recommended to
 %                                      set this parameter directly unless
 %                                      you know what you are doing
@@ -121,7 +121,7 @@ switch param
         %         cone.absorbance = StockmanSharpeNomogram(cone.wave, val)';
         %         cone.absorbance = padarray(cone.absorbance,[0 1],'pre');
         %
-    case {'qe', 'quantalefficiency', 'quantaleff'}
+    case {'peak efficiency', 'qe', 'quantalefficiency'}
         % Peak absorptance
         cone.peakEfficiency = val;
         
