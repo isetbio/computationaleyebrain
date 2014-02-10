@@ -10,7 +10,7 @@
 if notDefined('ppi'), ppi = 500; end            % points per inch
 if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
 if isscalar(imgFov), imgFov = [imgFov imgFov];end
-if notDefined('nFrames'), nFrames = 10000; end  % Number of samples
+if notDefined('nFrames'), nFrames = 1000; end   % Number of samples
 
 vDist  = 1.0;                                   % viewing distance (meter)
 imgSz  = round(tand(imgFov)*vDist*39.37*ppi);   % number of pixels in image
@@ -117,14 +117,14 @@ p2 = double(sensorGet(sensor, 'photons'));
 %% Generate noise samples
 %  Set exposure time to 1 ms
 expTime = sensorGet(sensor, 'exp time');
-emDuration = 0.001;
+emDuration = 0.01;
 sensor = sensorSet(sensor, 'exp time', emDuration);
 sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
 
 %  Init some parameters
 %  Simga is etimated from Jon's data fitted by Brownian motion
 params.center   = [0,0];
-params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
+params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000*0;
 %params.nSamples = round(0.05 / emDuration)*nFrames;
 emPerExposure = round(expTime / emDuration);
 params.nSamples = nFrames + emPerExposure;
@@ -170,7 +170,7 @@ matchPhotons = cumsum(matchPhotons, 2);
 matchPhotons = matchPhotons(:, emPerExposure + 1:end) - ...
              matchPhotons(:, 1:end-emPerExposure);
 
-acc = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
+acc = svmClassifyAcc(cat(1,refPhotons, matchPhotons), ...
     labels, nFolds, 'svm', svmOpts);
 
 

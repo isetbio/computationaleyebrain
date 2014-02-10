@@ -6,7 +6,7 @@
 %% Init Parameters
 if notDefined('ppi'), ppi = 500; end            % points per inch
 if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
-if notDefined('nFrames'), nFrames = 5000; end   % Number of samples
+if notDefined('nFrames'), nFrames = 2000; end   % Number of samples
 
 vDist  = 1.0;                                   % viewing distance (meter)
 imgSz  = round(tand(imgFov)*vDist*39.37*ppi);   % number of pixels in image

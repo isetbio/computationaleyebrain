@@ -1,4 +1,4 @@
-function lens = lensCreate(lensDensity,wave)
+function lens = lensCreate(lensDensity,wave, varargin)
 % Returns a human lens structure
 %
 %     lens = lensCreate(lensDensity,wave)
@@ -36,8 +36,8 @@ function lens = lensCreate(lensDensity,wave)
 % HJ/BW ISETBIO Team 2013.
 
 %% 
-if ieNotDefined('lensDensity'), lensDensity = 1; end
-if ieNotDefined('wave'),        wave = (400:700)'; end
+if notDefined('lensDensity'), lensDensity = 1; end
+if notDefined('wave'),        wave = (400:700)'; end
 
 lens.name = 'default human lens';
 lens.type = 'lens';
