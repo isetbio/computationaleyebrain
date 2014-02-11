@@ -1,4 +1,5 @@
 function [sensor,ic] = ctInitEyeMovements(sensor, scene, oi, nSamples, randSeed)
+% THIS FUNCTION IS NOT IN USE ANYMORE. PLEASE USE EMINIT INSTEAD
 % Init eye movement parameters in the sensor structure
 %
 %   sensor = ctInitEyeMovements(sensor, scene, oiD, nSamples, eyeMoveType, randSeed)

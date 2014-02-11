@@ -1,17 +1,30 @@
-%% s_emFitParameters
-%    This script is used to analyze the eye movement data from Jonathan
+function [mu, Sigma] = emFitParameters(fileName)
+%% function [mu, sigma] = emFitParameters(fileName)
+%    This function is used to analyze the eye movement data from Jonathan
 %    Winawerb.
 %
 %    In this script, we will fit a Bronian motion model with bounce back
 %
+%  Inputs:
+%    fileName  - data file name, or if it's a matrix, we will use it as eye
+%                movement data
+%  
+%  Outputs:
+%    mu        - 2 element vector containing the mean position
+%    Sigma     - 2-by-2 matrix, covariance matrix of eye movement
+%
 %  (HJ) Jan, 2014
 
-%% Clean up
-clear all; close all; clc;
+%% Check Inputs
+if notDefined('fileName'), error('file name required'); end
 
 %% Load Data
 %  Load original data
-emData = importdata('jon1_samples.txt');
+if ischar(fileName)
+    emData = importdata(fileName);
+elseif isnumeric(fileName) % Now emData is supplied directly
+    emData = fileName;
+end
 
 %  Get X, Y position
 xPos = emData(:,2); yPos = emData(:,3);
