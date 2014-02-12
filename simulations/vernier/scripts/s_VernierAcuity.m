@@ -131,7 +131,7 @@ params.nSamples = nFrames + emPerExposure;
 params.fov      = sensorGet(sensor,'fov',scene{1},oi);
 
 % Set up the eye movement properties
-sensor = emInit('fixation', sensor, params);
+sensor = emInit('fixation gaussian', sensor, params);
 
 % Compute the cone absopritons
 sensor = coneAbsorptions(sensor, OIs{1}, 2);

@@ -3,7 +3,7 @@ function [sensor, params] = emInit(emType, sensor, params)
 %
 %   [sensor, params] = emInit(emType, sensor, params)
 %
-% emType:  Eye movement type (fixation, ....)
+% emType:  Eye movement type {fixation brownian, fixation gaussian}
 % sensor:  The sensor
 % params:  Depends on type
 %   fixation:  sdx, sdy, center, nSamples, randSeed (optional).  The sd
@@ -47,7 +47,7 @@ end
 % Each case builds the (x,y) and count variables for every position
 emType = ieParamFormat(emType);
 switch emType
-    case {'fixation'}
+    case {'fixationbrownian'}
         % The eye wanders around the center. The positions are random in a
         % disk around the center. the distances here are in deg of visual
         % angle. 
@@ -85,7 +85,7 @@ switch emType
         
         % For efficiency, we round the calculations
         % that are centered less than 1 detector's width.
-        pos  = round((pos/params.fov).*repmat(sz, [params.nSamples,1])).*...
+        pos  = round((pos/params.fov).*repmat(sz,[params.nSamples,1])).*...
             params.fov ./ repmat(sz, [params.nSamples, 1]);
         
         % Group the same positions
@@ -94,7 +94,23 @@ switch emType
         % Compute frame per position
         f    = hist(ic,unique(ic));      % frames per position
         f(1) = f(1) + params.nSamples - sum(f); % make sure sum(f)=nSamples
+    case 'fixationgaussian'
+        sz  = sensorGet(sensor, 'size');
         
+        % Generate gaussian move
+        pos  = ieMvnrnd(params.center, params.Sigma, params.nSamples);
+        
+        % For efficiency, we round the calculations
+        % that are centered less than 1 detector's width.
+        pos  = round((pos/params.fov).*repmat(sz,[params.nSamples,1])).*...
+            params.fov ./ repmat(sz, [params.nSamples, 1]);
+        
+        % Group the same positions
+        [pos,~,ic]  = unique(pos,'rows');
+        
+        % Compute frame per position
+        f    = hist(ic,unique(ic));      % frames per position
+        f(1) = f(1) + params.nSamples - sum(f); % make sure sum(f)=nSamples
     otherwise
         error('Unknown emType %s\n',emType);
 end
