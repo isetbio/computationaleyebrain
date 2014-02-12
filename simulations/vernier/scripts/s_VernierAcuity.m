@@ -10,7 +10,7 @@
 if notDefined('ppi'), ppi = 500; end            % points per inch
 if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
 if isscalar(imgFov), imgFov = [imgFov imgFov];end
-if notDefined('nFrames'), nFrames = 10000; end  % Number of samples
+if notDefined('nFrames'), nFrames = 3000; end   % Number of samples
 
 vDist  = 1.0;                                   % viewing distance (meter)
 imgSz  = round(tand(imgFov)*vDist*39.37*ppi);   % number of pixels in image
@@ -47,8 +47,8 @@ wvf    = wvfCreate('wave',wave);
 pupilDiameterMm = 3;
 sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
 wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-wvf    = wvfComputePSF(wvf);
-oi     = wvf2oi(wvf,'shift invariant');
+wvf    = wvfComputePSF(wvf, false);
+oi     = wvf2oi(wvf,'shift invariant', false);
 
 % Compute optical image
 % Actually, we could wait to compute it in coneSamples
@@ -75,16 +75,16 @@ sensor = sensorSet(sensor, 'filter spectra', effAbsorption);
 
 %% Compute cone absorption (noise free)
 %  Compute for scene 1
-sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
-sensor = sensorComputeNoiseFree(sensor, OIs{1});
-p1 = double(sensorGet(sensor, 'photons')); 
+%sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
+%sensor = sensorComputeNoiseFree(sensor, OIs{1});
+%p1 = double(sensorGet(sensor, 'photons')); 
 % % show cone absorptions
 % % vcAddAndSelectObject(sensor); sensorWindow;
 % 
 % % Compute for scene 2
-sensor = sensorSetSizeToFOV(sensor, imgFov, scene{2}, OIs{2});
-sensor = sensorComputeNoiseFree(sensor, OIs{2});
-p2 = double(sensorGet(sensor, 'photons'));
+%sensor = sensorSetSizeToFOV(sensor, imgFov, scene{2}, OIs{2});
+%sensor = sensorComputeNoiseFree(sensor, OIs{2});
+%p2 = double(sensorGet(sensor, 'photons'));
 % % show cone absorptions
 % % vcAddAndSelectObject(sensor); sensorWindow;
 % 
@@ -134,14 +134,14 @@ params.fov      = sensorGet(sensor,'fov',scene{1},oi);
 sensor = emInit('fixation', sensor, params);
 
 % Compute the cone absopritons
-sensor = coneAbsorptions(sensor, OIs{1});
+sensor = coneAbsorptions(sensor, OIs{1}, 2);
 
 % Store the photon samples
 pSamples1 = double(sensorGet(sensor, 'photons'));
 
 % Compute cone absorptions for the second stimulus and store photon
 % absorptions
-sensor = coneAbsorptions(sensor, OIs{2});
+sensor = coneAbsorptions(sensor, OIs{2}, 2);
 pSamples2 = double(sensorGet(sensor, 'photons'));
 
 %  Fit Gaussian mean for ideal observer calculation.
@@ -152,6 +152,7 @@ pSamples2 = double(sensorGet(sensor, 'photons'));
 
 %% Do it by SVM
 % Classification
+fprintf('Start SVM Classification\n');
 svmOpts = '-s 0 -q';
 
 nFolds = 10;

@@ -1,5 +1,7 @@
 %% t_scene2coneAbsorption
 %    This is the tutorial script for Psych 221 project
+%  In this script, we illustrate how to build up a scene based on a
+%  calibrated display and generate cone absorption samples
 %
 % (HJ) Feb, 2014
 

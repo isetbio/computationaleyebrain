@@ -1,14 +1,16 @@
 %% Test and Plot for different ppi of display
 %   test svm performance for Vernier acuity under different ppi and patch
 %   size
-ppiRange = 300:50:1200;
+ppiRange = 300:100:800;
 nSamples = 3000;
-fovRange = [0.2 : 0.1 : 1.2; 0.2:0.1:1.2]';
+fovRange = [0.05 : 0.05 : 0.2; 0.05:0.05:0.2]'; % 3 minutes to 12 minutes
 accPPI   = zeros(length(fovRange), length(ppiRange));
 errPPI   = accPPI;
 
 for iFov = 1 : length(fovRange)
     for iPPI = 1 : length(ppiRange)
+        fprintf('Exp for FOV: %.2f\t PPI:%d\n', ...
+            fovRange(iFov,1), ppiRange(iPPI));
         imgFov = fovRange(iFov, :);
         ppi    = ppiRange(iPPI);
         s_VernierAcuity;
@@ -21,6 +23,6 @@ end
 save expResults.mat ppiRange nSamples fovRange accPPI errPPI
 
 vcNewGraphWin; hold on;
-for iFov = 1 : 6
+for iFov = 1 : length(fovRange)
     plot(ppiRange, accPPI(iFov, :));
 end
