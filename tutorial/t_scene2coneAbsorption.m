@@ -75,7 +75,7 @@ params.fov      = sensorGet(sensor,'fov',scene,oi);
 sensor = sensorSet(sensor, 'exp time', 0.001);
 
 % Set up the eye movement properties
-sensor = emInit('fixation', sensor, params);
+sensor = emInit('fixation brownian', sensor, params);
 
 % Compute the cone absopritons
 sensor = coneAbsorptions(sensor, oi);
