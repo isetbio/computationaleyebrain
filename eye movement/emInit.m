@@ -43,6 +43,10 @@ else % Store the newly generated random seed
     params.randSeed = rng('shuffle');
 end
 
+if ~isfield(params, 'samplesPerTrial')
+    params.samplesPerTrial = params.nSamples;
+end
+
 %% Initialize eye movements
 % Each case builds the (x,y) and count variables for every position
 emType = ieParamFormat(emType);
@@ -64,9 +68,12 @@ switch emType
         % It's a little tricky here. If using brownian motion, we could
         % goes to a very fall distance with high probability. So, we should
         % make it bounce back to center if it gets too large
-        pos = cumsum(pos - repmat(params.center, [params.nSamples,1]))+...
-               repmat(params.center, [params.nSamples,1]); % in degree
-           
+        for cPos = 1 : params.samplesPerTrial : params.nSamples
+            indx = cPos:min(cPos + param.samplesPerTrial, params.nSamples);
+            pos(indx,:) = cumsum(pos(indx,:) - ...
+                repmat(params.center, [length(indx),1]))+...
+                repmat(params.center, [length(indx),1]); % in degree
+        end   
         % Now we need to set the bounce back. When human eye gets too far
         % away from the fixation point, it will jump back to the fixation
         % point
