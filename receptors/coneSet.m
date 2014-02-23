@@ -18,10 +18,6 @@ function cone = coneSet(cone, param, val, varargin)
 %    {'spatial density'}             - density of each cone type, for
 %                                      human, it should be [K,L,M,S]
 %    {'wave', 'wavelength'}          - wavelength of samples in cones
-%    {'lens'}                        - eye lens structure
-%    {'lens density'}                - lens OD
-%    {'macular'}                     - macular pigment structure
-%    {'macular density'}             - macular density
 %    {'PODs','POD'}                  - PODs vector for [L,M,S]
 %    {'LPOD'}                        - L POD density
 %    {'MPOD'}                        - M POD density
@@ -33,8 +29,6 @@ function cone = coneSet(cone, param, val, varargin)
 %                                      you know what you are doing
 %    {'adaptation type','adapt type'}- cone adaptation type, see
 %                                      coneAdaptation for more details
-%
-%    MORE SUPPORTED PARAMETERS CAN BE FOUND IN FUNCTION sensorSet
 %
 %  Example:
 %    cone = coneCreate('human');
@@ -70,34 +64,6 @@ switch param
         % calling lensSet(lens, 'wave') and macularSet(...)
         val = val(:);
         cone.wave = val;
-        cone.macular = macularSet(cone.macular, 'wave', val);
-        cone.lens    = lensSet(cone.lens, 'wave', val);
-
-    case {'lens'}
-        % Set the lens structure
-        % We should first make sure that val is actually a lens structure
-        % and it has the same sampling wavelength as the cone structure
-        assert(strcmp(val.type, 'lens'), 'val should be lens structure');
-        cone.lens = lensSet(val, 'wave', coneGet(cone, 'wave'));
-        
-    case {'lensdensity'}
-        % lens OD
-        cone.lens = lensSet(cone.lens, 'density', val);
-        
-    case {'macular'}
-        % Set macular structure
-        % We should first make sure that val is actually a macular
-        % structure and it has the same wavelength as the cone
-        assert(strcmp(val.type, 'macular'),'val should be macular struct');
-        cone.macular = macularSet(val, 'wave', coneGet(cone, 'wave'));
-        
-    case {'maculardensity'}
-        % cone = coneSet(cone,'macular density',val)
-        % val is typically between 0 and 0.7, a range of macular pigment
-        % densities.
-        m    = coneGet(cone,'macular');
-        m    = macularSet(m,'density',val);
-        cone = coneSet(cone,'macular',m);
         
     case {'pods','pod'}
         % Pigment optical densities for the cones
@@ -115,12 +81,6 @@ switch param
     case {'spod'}
         if ~isscalar(val), error('val should be scalar'); end
         cone.PODS(3) = val;
-        
-        %     case {'peaklambda', 'lambdamax'}
-        %         cone.peakShift = val;
-        %         cone.absorbance = StockmanSharpeNomogram(cone.wave, val)';
-        %         cone.absorbance = padarray(cone.absorbance,[0 1],'pre');
-        %
     case {'peak efficiency', 'qe', 'quantalefficiency'}
         % Peak absorptance
         cone.peakEfficiency = val;

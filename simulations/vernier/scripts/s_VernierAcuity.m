@@ -69,9 +69,9 @@ sensor = sensorSet(sensor, 'exp time', 0.05);
 % Now sensor is created with color filer of normalized cone fundamentals.
 % We want to replace it with the effective cone absorptions. Also, we will
 % take lens transmittance, macular pigment transmittance into account.
-cone = coneCreate('human');
-effAbsorption = coneGet(cone, 'effective absorptance');
-sensor = sensorSet(sensor, 'filter spectra', effAbsorption);
+%cone = coneCreate('human');
+%effAbsorption = coneGet(cone, 'effective absorptance');
+%sensor = sensorSet(sensor, 'filter spectra', effAbsorption);
 
 %% Compute cone absorption (noise free)
 %  Compute for scene 1

@@ -3,7 +3,7 @@
 %   size
 ppiRange = 300:100:800;
 nSamples = 3000;
-fovRange = [0.05 : 0.05 : 0.2; 0.05:0.05:0.2]'; % 3 minutes to 12 minutes
+fovRange = [0.02 : 0.02 : 0.1; 0.02:0.02:0.1]'; % 3 minutes to 12 minutes
 accPPI   = zeros(length(fovRange), length(ppiRange));
 errPPI   = accPPI;
 
