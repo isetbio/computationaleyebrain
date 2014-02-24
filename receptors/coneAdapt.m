@@ -13,13 +13,13 @@ function [sensor, gain, offset] = coneAdapt(sensor, typeAdapt)
 % Conversely, cone absorptions below the mean cause an on-cell to decrease
 % and an off-cell to increase.
 %
-% The discussion in Rodieck p. 177 and thereabouts for ideas about cone
-% signals. The physiological question is what is the meaning of the offset
-% or zero mean. Rodieck describes the effect of light as setting the mean
-% transmitter release. In the dark, there is a relatively large dynamic
-% range. As the light is on steadily, the release decreases and the range
-% available for another flash also decreases. If you darken from the
-% mean, however, the rate can increase.
+% The discussion in Rodieck book - The first steps in seeing - p. 177 and
+% thereabouts for ideas about cone signals. The physiological question is
+% what is the meaning of the offset or zero mean. Rodieck describes the
+% effect of light as setting the mean transmitter release. In the dark,
+% there is a relatively large dynamic range. As the light is on steadily,
+% the release decreases and the range available for another flash also
+% decreases. If you darken from the mean, however, the rate can increase.
 %
 % The way in which the mean is set must depend on a combination of the
 % photoisomerizations and the recycling rate, probably through some
@@ -28,8 +28,8 @@ function [sensor, gain, offset] = coneAdapt(sensor, typeAdapt)
 % background gets brighter.  This is how the value of the offset gets set.
 %
 % In addition to Rodieck's discussion, there are famous papers by Boynton
-% and others at SRI expressing such a model based on cone ERPs, and
-% probably Rushton and others (van Norren?).
+% (e.g. adaptation in cones) and others at SRI expressing such a model
+% based on cone ERPs, and probably Rushton.
 %
 % The other issue is the total gain.  The cones can only modulate over a
 % dynamic range around the mean.  So, we set the gain as well to keep the
@@ -105,7 +105,8 @@ switch typeAdapt
         error('unknown adaptation type');
 end
 
-% Set the zero level as the median.  See discussion in the header.
+% Set the zero level as the median.  See discussion in the header
+% It seems unreasonable to me, anyway.
 offset      = median(adaptedData(:));
 adaptedData = adaptedData - offset;
 
