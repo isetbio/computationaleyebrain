@@ -1,7 +1,7 @@
-function [sensor, gain, offset] = coneAdapt(sensor, typeAdapt)
+function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt)
 %% Cone adaptation
 %
-%   [sensor, gain, offset] = coneAdaptation(sensor, typeAdapt)
+%   [sensor, adaptedData] = coneAdaptation(sensor, typeAdapt)
 %
 % Implement adaptation models to produce the cone volts. Cone absorption
 % sampels should be computed and stored in sensorGet(sensor, volts).
@@ -18,25 +18,26 @@ function [sensor, gain, offset] = coneAdapt(sensor, typeAdapt)
 % what is the meaning of the offset or zero mean. Rodieck describes the
 % effect of light as setting the mean transmitter release. In the dark,
 % there is a relatively large dynamic range. As the light is on steadily,
-% the release decreases and the range available for another flash also
-% decreases. If you darken from the mean, however, the rate can increase.
+% the release decreases and the range available for another flash. If you
+% darken from the mean, the rate can increase.
 %
-% The way in which the mean is set must depend on a combination of the
+% The way to compute the mean must depend on a combination of the
 % photoisomerizations and the recycling rate, probably through some
-% equilibrium equation.  The recycling rate depends on the isomerization
+% equilibrium equation. The recycling rate depends on the isomerization
 % rate and they set an equilibrium that is slower and slower as the mean
-% background gets brighter.  This is how the value of the offset gets set.
+% when background gets brighter.
 %
 % In addition to Rodieck's discussion, there are famous papers by Boynton
-% (e.g. adaptation in cones) and others at SRI expressing such a model
-% based on cone ERPs, and probably Rushton.
+% (e.g. adaptation in cones) expressing such a model based on cone ERPs.
 %
 % The other issue is the total gain.  The cones can only modulate over a
 % dynamic range around the mean.  So, we set the gain as well to keep the
-% modulation within some range, such as +/- 50 mV of the mean.
+% modulation within some range, such as +/- 40 mV of the mean (deplorizing
+% voltage).
 %
 % The third issue is whether all the cones are the same, or there is
-% space-variant adaptation.  That is for the future.
+% space-variant adaptation. We now here consider the difference between
+% different cone types, but we think it's spatial invariant.
 %
 % Inputs:
 %  sensor:     ISETBio sensor with cone absorption computed and stored
@@ -44,26 +45,32 @@ function [sensor, gain, offset] = coneAdapt(sensor, typeAdapt)
 %   typeAdapt= 0 - no adaptation
 %   typeAdapt= 1 - a single gain map for the whole cone array
 %   typeAdapt= 2 - one gain map computed for each cone class
-%   typeAdapt= 3 - cone by cone adaptation (NYI)
+%   typeAdapt= 3 - non-linear cone adapt for each type of cone
+%   typeAdapt= 4 - cone by cone adaptation (NYI)
 %
 % Output:
-%   sensor:   ISETBio sensor with cone adapted volts set
+%   sensor:        ISETBio sensor with cone adaptation parameters set. The
+%                  parameters include gain and offset. You could retrieve
+%                  the adaptation parameters and data by sensorGet
+%                  function calls.
+%   adaptedData:   Adapted voltage 3D matrix, would be in same size as
+%                  volts image in sensor.
 %
 %
-% ALERT:  The amount of adaptation is hard coded at this moment.  It should
-% be a parameter somewhere.  Worse yet, the amount of adaptation differs
-% between types 1 and 2. Fix this.
+% ALERT:  The amount of adaptation is hard coded at this moment. Maybe we
+%         should accept a third input parameter to set it.
 %
 % In the future, we will look at the time series and have a time-varying
-% adaptation function.
+% adaptation function. Generally, cones take 200ms and rods take 800ms for
+% adaptation.
 %
 % Examples:
 %   sensor = coneAdapt(sensor, 1);
+%   adaptedData = sensorGet(sensor, 'adapted volts');
+%   gain = sensorGet(sensor, 'adaptation gain');
+%   offset = sensorGet(sensor, 'adaptation volts');
 %
-% (c) Stanford VISTA lab, 2014
-
-%% Why are there 4 adaptation terms?
-%  When one is black, it shouldn't become adapated
+% (c) Stanford VISTA Lab, 2014
 
 %% Check inputs and Init
 if notDefined('sensor'),      error('sensor is required'); end
@@ -71,46 +78,69 @@ if ~sensorCheckHuman(sensor), error('unsupported species'); end
 if notDefined('typeAdapt'),   typeAdapt = 2; end
 
 %% Compute cone adaptations
-vSwing = pixelGet(sensorGet(sensor,'pixel'),'voltageSwing');
 volts  = sensorGet(sensor, 'volts');
 
 if isempty(volts), error('cone absorptions should be pre-computed'); end
 
 switch typeAdapt
-    case 0 % no adaptation 
-        gain = 1;
+    case 0 % no adaptation
+        gainMap = 1;
+        offset  = 0;
     case 1
-        % Method 1: same gain for all cone type
+        % Use same gain for all cone type
         
-        % Set the gain so that the returned mean voltage is 1/2 of voltage
-        % swing.  This adaptation has not dynamic, sigh.
-        gainMap = (0.8*vSwing) / mean(volts(:));
+        % Set the gain so that the max - min get scaled to 80 mV
+        gainMap = 0.08 / (max(volts(:)) - min(volts(:)));
         adaptedData = gainMap * volts;
         
-    case 2 
-        % Method 2 : different gain for each cone type
+        % Set the zero level as the median. Actually, we could use mean,
+        % but to avoid some extreme bright points, we use median
+        offset  = median(adaptedData(:));
+    case 2
+        % Use different gains for each cone type
         % For human, the cone types in sensor are 1~4 for K, L, M, S
         gainMap = ones(4, 1);
         
         for ii = 2 : 4 % L,M,S and we don't need to compute for K
             v = sensorGet(sensor,'volts',ii);
-            gainMap(ii) = (vSwing/2)/mean(v(:));
+            gainMap(ii) = 0.08 / (max(v) - min(v));
         end
         
         nSamples = size(volts, 3);
         gainMap = gainMap(sensorGet(sensor, 'cone type'));
         
         adaptedData = volts .* repmat(gainMap, [1 1 nSamples]);
+        % Set the zero level as the median
+        offset      = median(adaptedData(:));
+    case 3
+        % Use non-linear cone adaptation for each cone type
+        % Formula:
+        %   R(Is|Ia) = R(p(Ia)Is|0) - R(p(Ia)Ia|0)
+        %   R(Is|0)  = Is^n R_max / (Is^n + Kr^n)
+        %   p(Ia)    = Kd / (Ia + Kd)
+        % For human:
+        %   n = 0.7; R_max = 40 mV;
+        %   Kr = 166; Kd = 194; (units: trolands)
+        % See Dawis (1982) paper for more details
+        
+        % Question: Does it make sense to use the same Kr and Kd for all
+        % the three cone types?
+        
+        % From the idea of chromatic adaptation, we should scale the three
+        % channels differently to make the adapted white point "white". If
+        % we took median of cone absorptions as white point and as
+        % adaptation offset, then we should be fine with chromatic
+        % adaptation.
+        error('NYI');
     otherwise
         error('unknown adaptation type');
 end
 
-% Set the zero level as the median.  See discussion in the header
-% It seems unreasonable to me, anyway.
-offset      = median(adaptedData(:));
+% Compute adapted data
 adaptedData = adaptedData - offset;
 
-% Set adapted data back to sensor
-sensor = sensorSet(sensor, 'volts', adaptedData);
+% Set adaptation parameters back to sensor
+sensor = sensorSet(sensor, 'adaptation gain', gainMap);
+sensor = sensorSet(sensor, 'adaptation offset', offset);
 
 end
