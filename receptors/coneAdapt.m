@@ -78,7 +78,7 @@ if ~sensorCheckHuman(sensor), error('unsupported species'); end
 if notDefined('typeAdapt'),   typeAdapt = 2; end
 
 %% Compute cone adaptations
-volts  = sensorGet(sensor, 'volts');
+volts  = double(sensorGet(sensor, 'volts'));
 
 if isempty(volts), error('cone absorptions should be pre-computed'); end
 
@@ -131,7 +131,38 @@ switch typeAdapt
         % we took median of cone absorptions as white point and as
         % adaptation offset, then we should be fine with chromatic
         % adaptation.
-        error('NYI');
+        n = 0.7; R_max = 0.04;
+        
+        % Compute white point for L,M,S
+        adaptPoint  = zeros(4,1);
+        for ii = 2 : 4 % ii = 1 is for K, which is ignored
+            v = double(sensorGet(sensor, 'volts', ii));
+            adaptPoint(ii) = median(v);
+        end
+        
+        % Convert unit for Kr and Kd
+        % Kr = 166; Kd = 194; in units of trolands
+        % Here, the conversion is just an approximation.
+        pixel = sensorGet(sensor, 'pixel');
+        photon2volts = pixelGet(pixel, 'conversion gain');         
+        Kr = 16.6 * photon2volts; Kd = 19.4 * photon2volts;
+        
+        coneType = sensorGet(sensor, 'cone type');
+        adaptPoint = adaptPoint(coneType);
+        adaptPoint = repmat(adaptPoint, [1 1 size(volts,3)]);
+        
+        % Compute equivalent gain by R(p(Ia)Is|0)
+        gainMap = volts .* Kd ./ (adaptPoint + Kd); % compute p(Ia)Is
+        gainMap = gainMap .^ (n-1) * R_max ./ (gainMap.^n + Kr.^n);
+        
+        % Compute offset map by R(p(Ia)Ia|0)
+        offset = adaptPoint .* Kd ./ (adaptPoint + Kd);
+        offset = offset.^n * R_max ./ (offset.^n + Kr.^n);
+        
+        % Compute adapted data
+        adaptedData = volts .* gainMap;
+        adaptedData(isnan(adaptedData)) = 0;
+        % error('NYI');
     otherwise
         error('unknown adaptation type');
 end
