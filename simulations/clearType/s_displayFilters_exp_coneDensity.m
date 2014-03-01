@@ -26,7 +26,13 @@ for ii = 1 : 2
 end
 
 %% Create Sensor
-sensor = sensorCreate('human');
+if exist('humanConeDensities', 'var')
+    pparams.humanConeDensities = humanConeDensities;
+else
+    pparams = [];
+end
+
+sensor = sensorCreate('human', [], pparams);
 sensor = sensorSet(sensor, 'exp time', 0.05);
 
 %% Create Human Lens
@@ -38,10 +44,6 @@ wvf    = wvfCreate('wave',wave);
 pupilDiameterMm = 3;
 sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
 wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-
-if exist('defocus', 'var')
-    wvf    = wvfSet(wvf, 'calc observer focus correction', defocus);
-end
 wvf    = wvfComputePSF(wvf, false);
 oi     = wvf2oi(wvf,'shift invariant', false);
 

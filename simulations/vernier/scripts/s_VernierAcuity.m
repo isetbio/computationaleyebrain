@@ -157,7 +157,6 @@ svmOpts = '-s 0 -q';
 
 nFolds = 10;
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
-indx = randperm(5*nFrames);
 refPhotons   = RGB2XWFormat(pSamples1);
 % Add 50 samples to 1 to form the 50ms integration time
 % We do use moving sum here
