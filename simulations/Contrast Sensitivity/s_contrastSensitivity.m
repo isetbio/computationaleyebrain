@@ -6,16 +6,16 @@
 %  (HJ) March, 2014
 
 %% Set parameters
-if notDefined('dpi'), ppi = 400; end % 100 pixel per inch
-if notDefined('ppc'), ppc = 3;   end % pixels per half cycle
-if notDefined('sceneSz'), sceneSz = 0.025; end % 6 minuts of arg
+if notDefined('dpi'), ppi = 200; end % 100 pixel per inch
+if notDefined('ppc'), ppc = 7;   end % pixels per half cycle
+if notDefined('sceneSz'), sceneSz = 0.15; end % 6 minuts of arg
 if notDefined('refColor'), refColor = 0.5; end
-if notDefined('testColor'), testColor = 0.4; end
+if notDefined('testColor'), testColor = 0.48; end
 if notDefined('viewingDst'), viewingDst = 1; end % 1 meter
 if notDefined('density'), density = [0 .6 .3 .1]; end % cone density
 if notDefined('expTime'), expTime = 0.05; end % eye integration time
-if notDefined('emDuration'), emDuration = 0.001; end % eye saccade duration
-if notDefined('nFrames'), nFrames = 2000; end
+if notDefined('emDuration'), emDuration = 0.01; end % eye saccade duration
+if notDefined('nFrames'), nFrames = 1000; end
 
 %% Create display model
 display = displayCreate('LCD-Apple');
@@ -82,14 +82,21 @@ OI{2} = oiCompute(scene{2}, oi);
 %
 
 % generate human photoreceptors structure
-sensor = sensorCreate('human');
+if exist('density', 'var')
+    pparams.humanConeDensities = density;
+else
+    pparams = [];
+end
+
+sensor = sensorCreate('human', [], pparams);
 sensor = sensorSetSizeToFOV(sensor, sceneSz, scene{1}, OI{1});
 sensor = sensorSet(sensor, 'exp time', emDuration);
 
 params.center   = [0,0];
 params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
+%params.Sigma = zeros(2);
 emPerExposure = round(expTime / emDuration);
-params.nSamples = nFrames + emPerExposure;
+params.nSamples = nFrames * emPerExposure;
 params.fov      = sensorGet(sensor,'fov',scene{1}, OI{1});
 
 % Set up the eye movement properties
@@ -101,9 +108,13 @@ sensor = emInit('fixation gaussian', sensor, params);
 %  The absorptions for the two groups are normalized to have same mean
 %
 absorptions = cell(2, 1);
+vcAddAndSelectObject('oi', OI{1});
 for ii = 1 : 2
     sensor = coneAbsorptions(sensor, OI{ii}, 2);
     absorptions{ii} = double(sensorGet(sensor, 'photons'));
+    % take a small portion out
+    % this should not be hard coded, change it (HJ)
+    absorptions{ii} = absorptions{ii}(7:11, :, :);
 end
 
 %% SVM Classification
@@ -114,14 +125,17 @@ svmOpts = '-s 0 -q';
 nFolds = 10;
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
 refPhotons   = RGB2XWFormat(absorptions{1});
-refPhotons = cumsum(refPhotons, 2);
-refPhotons = refPhotons(:, emPerExposure + 1:end) - ...
-    refPhotons(:, 1:end-emPerExposure);
+%refPhotons = cumsum(refPhotons, 2);
+%refPhotons = refPhotons(:, emPerExposure + 1:end) - ...
+%    refPhotons(:, 1:end-emPerExposure);
+sz = size(refPhotons);
+refPhotons = sum(reshape(refPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
 
 matchPhotons = RGB2XWFormat(absorptions{2});
-matchPhotons = cumsum(matchPhotons, 2);
-matchPhotons = matchPhotons(:, emPerExposure + 1:end) - ...
-    matchPhotons(:, 1:end-emPerExposure);
+%matchPhotons = cumsum(matchPhotons, 2);
+%matchPhotons = matchPhotons(:, emPerExposure + 1:end) - ...
+%    matchPhotons(:, 1:end-emPerExposure);
+matchPhotons = sum(reshape(matchPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
 
 accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
     labels, nFolds, 'svm', svmOpts);
