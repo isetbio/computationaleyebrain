@@ -1,4 +1,4 @@
- filter = [2 6];
+ filter = [2 3];
  %hold on;
  totAcc = zeros(4,14);
  totErr = zeros(4,14);
