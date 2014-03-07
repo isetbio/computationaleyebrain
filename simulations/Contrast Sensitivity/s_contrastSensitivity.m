@@ -7,15 +7,15 @@
 
 %% Set parameters
 if notDefined('dpi'), ppi = 200; end % 100 pixel per inch
-if notDefined('ppc'), ppc = 7;   end % pixels per half cycle
-if notDefined('sceneSz'), sceneSz = 0.15; end % 6 minuts of arg
+if notDefined('ppc'), ppc = 1;   end % pixels per half cycle
+if notDefined('sceneSz'), sceneSz = 0.5; end % scene field of view
 if notDefined('refColor'), refColor = 0.5; end
 if notDefined('testColor'), testColor = 0.48; end
 if notDefined('viewingDst'), viewingDst = 1; end % 1 meter
 if notDefined('density'), density = [0 .6 .3 .1]; end % cone density
 if notDefined('expTime'), expTime = 0.05; end % eye integration time
 if notDefined('emDuration'), emDuration = 0.01; end % eye saccade duration
-if notDefined('nFrames'), nFrames = 1000; end
+if notDefined('nFrames'), nFrames = 1500; end
 
 %% Create display model
 display = displayCreate('LCD-Apple');
@@ -29,7 +29,7 @@ display = displaySet(display, 'dpi', ppi);
 
 % compute patch size in number of pixels
 patchSz = 2 * tand(sceneSz/2) * viewingDst * 39.37 * ppi;
-patchSz = round(patchSz);
+patchSz = round(patchSz/2/ppc)*2*ppc;
 sceneSz = atand(patchSz/2/viewingDst/39.37/ppi)*2;
 
 % create image to be shown on virtual display
@@ -108,14 +108,19 @@ sensor = emInit('fixation gaussian', sensor, params);
 %  The absorptions for the two groups are normalized to have same mean
 %
 absorptions = cell(2, 1);
+sensorSz = sensorGet(sensor, 'size');
+sensorC = round(sensorSz/2);
 vcAddAndSelectObject('oi', OI{1});
 for ii = 1 : 2
     sensor = coneAbsorptions(sensor, OI{ii}, 2);
     absorptions{ii} = double(sensorGet(sensor, 'photons'));
     % take a small portion out
     % this should not be hard coded, change it (HJ)
-    absorptions{ii} = absorptions{ii}(7:11, :, :);
+    absorptions{ii} = absorptions{ii}(sensorC(1)-2:sensorC(1)+2, ...
+            round(sensorC(2)/2):round(sensorC(2)*3/2), :);
 end
+
+absorptions{1} = absorptions{1} * sum(absorptions{2}(:)) / sum(absorptions{1}(:));
 
 %% SVM Classification
 %  Do classification
