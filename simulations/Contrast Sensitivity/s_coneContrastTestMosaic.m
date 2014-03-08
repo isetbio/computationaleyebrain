@@ -3,7 +3,7 @@
 %
 
 density = [0 0.3 0.6 0.1];
-cRange = [0 0.2 0.3 0.4 0.42 0.44 0.45 0.46 0.47 0.48];
+cRange = [0 0.2 0.3 0.4 0.42 0.44 0.45 0.46 0.47 0.48 0.49];
 resultA = zeros(7, length(cRange));
 resultE = zeros(7, length(cRange));
 for ppc = 7:-1:1

@@ -7,7 +7,7 @@
 
 %% Set parameters
 if notDefined('dpi'), ppi = 200; end % 100 pixel per inch
-if notDefined('ppc'), ppc = 1;   end % pixels per half cycle
+if notDefined('ppc'), ppc = 7;   end % pixels per half cycle
 if notDefined('sceneSz'), sceneSz = 0.5; end % scene field of view
 if notDefined('refColor'), refColor = 0.5; end
 if notDefined('testColor'), testColor = 0.48; end
@@ -33,14 +33,15 @@ patchSz = round(patchSz/2/ppc)*2*ppc;
 sceneSz = atand(patchSz/2/viewingDst/39.37/ppi)*2;
 
 % create image to be shown on virtual display
-image = ones(patchSz) * refColor;
+% image = ones(patchSz) * refColor;
 
 % create image with spatially varying patterns
 nPeriod = floor(patchSz/2/ppc);
 assert(nPeriod > 0, 'Frequency is too low.');
-for ii = 1 : nPeriod
-    image(:, (ii-1)*ppc*2+1: ii*ppc*2 - ppc) = testColor;
-end
+image = repmat(refColor + (refColor-testColor)*cos((1:patchSz)/ppc*pi) ,[patchSz, 1]);
+%for ii = 1 : nPeriod
+%    image(:, (ii-1)*ppc*2+1: ii*ppc*2 - ppc) = testColor;
+%end
 
 % create scene for patterned image
 scene{1} = sceneFromFile(image, 'rgb', [], display);

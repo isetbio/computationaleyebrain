@@ -8,7 +8,7 @@
 if notDefined('letter'),     letter = 'v'; end
 if notDefined('fontFamily'), fontFamily = 'Georgia'; end
 if notDefined('fontSize'),   fontSize   = 13; end
-if notDefined('vDist'),      vDist = 0.6:0.1:1.6; end
+if notDefined('vDist'),      vDist = 0.4:0.1:1; end
 if notDefined('nFrames'),    nFrames = 1000; end
 
 %% Create virtual display
@@ -23,7 +23,7 @@ stim = stimCreate;
 stim = stimSet(stim,'letter',letter);
 stim = stimSet(stim,'font Family',fontFamily);
 stim = stimSet(stim,'font Size',fontSize);
-dpi = 72;
+dpi = 300;
 stim = stimSet(stim,'font dpi',dpi);
 
 %% Create Sensor
