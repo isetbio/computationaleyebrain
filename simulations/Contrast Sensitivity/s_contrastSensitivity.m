@@ -1,6 +1,7 @@
 %% s_contrastSensitivity
 %
-%
+%  Calculate the contrast sensitivity functions of the computational
+%  observer based on the cone absorptions.
 %
 %
 %  (HJ) March, 2014
@@ -43,16 +44,35 @@ image = repmat(refColor + (refColor-testColor)*cos((1:patchSz)/ppc*pi) ,[patchSz
 %    image(:, (ii-1)*ppc*2+1: ii*ppc*2 - ppc) = testColor;
 %end
 
-% create scene for patterned image
-scene{1} = sceneFromFile(image, 'rgb', [], display);
-scene{1} = sceneSet(scene{1}, 'distance', viewingDst);
-scene{1} = sceneSet(scene{1}, 'h fov', sceneSz);
+%%
+params.freq = 40;   % Per FOV
+params.contrast = 1;
+params.ph = pi;
+params.ang = 0;
+params.row = 192; parsams.col = 192;
+params.GaborFlag = .2;
+clear scene
 
-% create uniform patch scene
-image(:) = mean(image(:));
-scene{2} = sceneFromFile(image, 'rgb', [], display);
-scene{2} = sceneSet(scene{2}, 'distance', viewingDst);
-scene{2} = sceneSet(scene{2}, 'h fov', sceneSz);
+scene{1} = sceneCreate('harmonic',params);
+scene{1} = sceneSet(scene{1},'fov',1);
+scene{1} = sceneAdjustLuminance(scene{1},0.1);
+vcAddObject(scene{1}); sceneWindow;
+
+params.contrast = 0;
+scene{2} = sceneCreate('harmonic',params);
+scene{2} = sceneSet(scene{2},'fov',1);
+scene{2} = sceneAdjustLuminance(scene{2},0.1);
+
+% % create scene for patterned image
+% scene{1} = sceneFromFile(image, 'rgb', [], display);
+% scene{1} = sceneSet(scene{1}, 'distance', viewingDst);
+% scene{1} = sceneSet(scene{1}, 'h fov', sceneSz);
+% 
+% % create uniform patch scene
+% image(:) = mean(image(:));
+% scene{2} = sceneFromFile(image, 'rgb', [], display);
+% scene{2} = sceneSet(scene{2}, 'distance', viewingDst);
+% scene{2} = sceneSet(scene{2}, 'h fov', sceneSz);
 
 %% Create Human Optics
 %  create lens for standard human observer
@@ -126,7 +146,8 @@ absorptions{1} = absorptions{1} * sum(absorptions{2}(:)) / sum(absorptions{1}(:)
 %% SVM Classification
 %  Do classification
 %
-svmOpts = '-s 0 -q';
+% svmOpts = '-s 0 -q';
+svmOpts = '-q';
 
 nFolds = 10;
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
@@ -143,7 +164,12 @@ matchPhotons = RGB2XWFormat(absorptions{2});
 %    matchPhotons(:, 1:end-emPerExposure);
 matchPhotons = sum(reshape(matchPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
 
+% accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
+%     labels, nFolds, 'svm', svmOpts);
 accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-    labels, nFolds, 'svm', svmOpts);
+    labels, nFolds, 'linear', svmOpts);
+
 err = accuracy(2);
 acc = accuracy(1);
+
+%% END
