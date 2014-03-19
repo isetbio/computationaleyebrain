@@ -2,21 +2,28 @@
 %
 %
 
-cRange = [0 0.2 0.3 0.4 0.42 0.44 0.45 0.46 0.47 0.48 0.49];
-resultA = zeros(7, length(cRange));
-resultE = zeros(7, length(cRange));
-for ppc = 7:-1:1
-    fprintf('ppc:%d\n', ppc);
-    for colorIndx = 1 : length(cRange)
-        testColor = cRange(colorIndx);
-        fprintf('testColor: %f\n', testColor);
-        for iter = 1 : 2
-            s_contrastSensitivity;
-            resultA(ppc, colorIndx) = resultA(ppc, colorIndx) + acc/2;
-            resultE(ppc, colorIndx) = resultE(ppc, colorIndx) + err/2;
-        end
-        fprintf('ppc:%d\t color:%f\t acc:%f\n', ppc, testColor, resultA(ppc, colorIndx));
+totContrast{1} = [.1 .05 .04 .03 .02 .01 .005 0.004 0.003 .002];
+totContrast{2} = [.4 .2 .1 .05 .04 .03 .02 .01 .005 0.004];
+totContrast{3} = [.8 .6 .4 .2 .1 .05 .04 .03 .02 .01 .005];
+totContrast{4} = [1 .8 .6 .4 .2 .1 .05 .02 .01];
+totContrast{5} = [1 .8 .6 .4 .2 .1 .05];
+totContrast{6} = [1 .8 .6 .4 .2];
+totContrast{7} = [1 .8 .6 .4];
+totContrast{8} = [1 .8 .6 .4];
+resultA = cell(8, 1);
+resultE = cell(8, 1);
+fqIndx = 1;
+for frequency = [5 10 12 15 17 20 30 40]
+    fprintf('frequency:%d\n', frequency);
+    for colorIndx = 1 : length(totContrast{fqIndx})
+        contrast = totContrast{fqIndx}(colorIndx);
+        fprintf('testColor: %f\n', contrast);
+        s_contrastSensitivity;
+        resultA{fqIndx}(colorIndx) = acc;
+        resultE{fqIndx}(colorIndx) = err;
+        fprintf('freq:%d\t contrast:%f\t acc:%f\n', frequency, contrast, acc);
     end
+    fqIndx = fqIndx + 1;
 end
 
 save resultALM2.mat resultA resultE

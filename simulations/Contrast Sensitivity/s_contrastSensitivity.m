@@ -7,72 +7,35 @@
 %  (HJ) March, 2014
 
 %% Set parameters
-if notDefined('dpi'), ppi = 200; end % 100 pixel per inch
-if notDefined('ppc'), ppc = 7;   end % pixels per half cycle
-if notDefined('sceneSz'), sceneSz = 0.5; end % scene field of view
-if notDefined('refColor'), refColor = 0.5; end
-if notDefined('testColor'), testColor = 0.48; end
-if notDefined('viewingDst'), viewingDst = 1; end % 1 meter
+if notDefined('sceneSz'), sceneSz = 0.5; end % scene field of view (degree)
+if notDefined('frequency'), frequency = 30; end % spatial frequency (cpd)
+if notDefined('contrast'), contrast = 1; end % contrast
 if notDefined('density'), density = [0 .6 .3 .1]; end % cone density
 if notDefined('expTime'), expTime = 0.05; end % eye integration time
 if notDefined('emDuration'), emDuration = 0.01; end % eye saccade duration
-if notDefined('nFrames'), nFrames = 1500; end
-
-%% Create display model
-display = displayCreate('LCD-Apple');
-display = displaySet(display, 'gTable', 'linear');
-display = displaySet(display, 'dpi', ppi);
+if notDefined('nFrames'), nFrames = 3000; end
 
 %% Create scene
 %  scene{1} - patch with spatially varying patterns
 %  scene{2} - uniform patch
 %
 
-% compute patch size in number of pixels
-patchSz = 2 * tand(sceneSz/2) * viewingDst * 39.37 * ppi;
-patchSz = round(patchSz/2/ppc)*2*ppc;
-sceneSz = atand(patchSz/2/viewingDst/39.37/ppi)*2;
-
-% create image to be shown on virtual display
-% image = ones(patchSz) * refColor;
-
-% create image with spatially varying patterns
-nPeriod = floor(patchSz/2/ppc);
-assert(nPeriod > 0, 'Frequency is too low.');
-image = repmat(refColor + (refColor-testColor)*cos((1:patchSz)/ppc*pi) ,[patchSz, 1]);
-%for ii = 1 : nPeriod
-%    image(:, (ii-1)*ppc*2+1: ii*ppc*2 - ppc) = testColor;
-%end
-
-%%
-params.freq = 40;   % Per FOV
-params.contrast = 1;
-params.ph = pi;
-params.ang = 0;
-params.row = 192; parsams.col = 192;
-params.GaborFlag = .2;
-clear scene
+params.freq = frequency;    % spatial frequency
+params.contrast = contrast; % contrast
+params.ph = pi; % phase, 0 - black in center, pi - white in center
+params.ang = 0; % direction, 0 - vertical
+params.row = 192; params.col = 192; % sample size 
+params.GaborFlag = .2; % Gabor blur
 
 scene{1} = sceneCreate('harmonic',params);
 scene{1} = sceneSet(scene{1},'fov',1);
-scene{1} = sceneAdjustLuminance(scene{1},0.1);
-vcAddObject(scene{1}); sceneWindow;
+% scene{1} = sceneAdjustLuminance(scene{1},0.1);
+% vcAddObject(scene{1}); sceneWindow;
 
 params.contrast = 0;
 scene{2} = sceneCreate('harmonic',params);
 scene{2} = sceneSet(scene{2},'fov',1);
-scene{2} = sceneAdjustLuminance(scene{2},0.1);
-
-% % create scene for patterned image
-% scene{1} = sceneFromFile(image, 'rgb', [], display);
-% scene{1} = sceneSet(scene{1}, 'distance', viewingDst);
-% scene{1} = sceneSet(scene{1}, 'h fov', sceneSz);
-% 
-% % create uniform patch scene
-% image(:) = mean(image(:));
-% scene{2} = sceneFromFile(image, 'rgb', [], display);
-% scene{2} = sceneSet(scene{2}, 'distance', viewingDst);
-% scene{2} = sceneSet(scene{2}, 'h fov', sceneSz);
+% scene{2} = sceneAdjustLuminance(scene{2},0.1);
 
 %% Create Human Optics
 %  create lens for standard human observer
@@ -137,11 +100,11 @@ for ii = 1 : 2
     absorptions{ii} = double(sensorGet(sensor, 'photons'));
     % take a small portion out
     % this should not be hard coded, change it (HJ)
-    absorptions{ii} = absorptions{ii}(sensorC(1)-2:sensorC(1)+2, ...
+    absorptions{ii} = absorptions{ii}(round(sensorC(1)/2):round(sensorC(1)*3/2), ...
             round(sensorC(2)/2):round(sensorC(2)*3/2), :);
 end
 
-absorptions{1} = absorptions{1} * sum(absorptions{2}(:)) / sum(absorptions{1}(:));
+%absorptions{1} = absorptions{1} * sum(absorptions{2}(:)) / sum(absorptions{1}(:));
 
 %% SVM Classification
 %  Do classification
