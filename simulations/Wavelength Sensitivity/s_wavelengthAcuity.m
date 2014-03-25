@@ -10,7 +10,7 @@ jndWave = zeros(length(refWave), 1);
 
 for ii = 1 : length(refWave)
     fprintf('refWave:%d\t\t', refWave(ii));
-    jndWave(ii) = wavelengthAcuity(refWave(ii));
+    [jndWave(ii), acc, err] = wavelengthAcuity(refWave(ii));
     fprintf('jndWave:%.1f\t dist:%.1f\n', jndWave(ii), jndWave(ii)-refWave(ii));
 end
 

@@ -35,17 +35,21 @@ try nFrames = params.nFrames; catch, nFrames = 3000; end
 try direction = params.direction; catch, direction = 'up'; end
 try threshold = params.threshold; catch, threshold = 0.8; end
 
-wave   = 380 : 4 : 780;
+wave   = 380 : 780;
 pupilDiameterMm = 3;
-svmOpts = '-q';
+svmOpts = '-s 0 -q';
 nFolds = 10;
 
 %% Create reference scene
 %  scene{1} - uniform patch with reference wavelength
 scene{1} = sceneCreate('uniform monochromatic', refWave, 128);
 scene{1} = sceneSet(scene{1}, 'fov', sceneSz);
+
+% XYZ = ieReadSpectra('XYZ', 380:780);
+% adjLum = XYZ(wave==refWave,2) / XYZ(wave==550, 2) * 100;
+% scene{1} = sceneAdjustLuminance(scene{1}, adjLum);
+scene{1} = sceneAdjustLuminance(scene{1}, 1);
 vcAddAndSelectObject('scene', scene{1});
-% scene{1} = sceneAdjustLuminance(scene{1}, 100);
 % sceneWindow;
 
 %% Create Human Optics
@@ -85,7 +89,7 @@ sensor = sensorSet(sensor,'frames per position', nFrames);
 %  Compute samples of cone absorptions
 %  The absorptions for the two groups are normalized to have same mean
 %
-sampleWave = [1 2 4 8 13 18 24 28 32 36 40 50 60 70 80];
+sampleWave = [1 2 4 8 13 18 24 28 32];
 switch direction
     case 'up'
         wave = refWave + sampleWave;
@@ -116,15 +120,20 @@ for ii = 1 : length(sampleWave)
     % accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
     %     labels, nFolds, 'svm', svmOpts);
     accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-        labels, nFolds, 'linear', svmOpts);
+        labels, nFolds, 'svm', svmOpts);
     
     err(ii) = accuracy(2);
     acc(ii) = accuracy(1);
 end
 
 %% Identify JND wavelength
-[~, ind] = sort(acc);
-jndWave = interp1(acc(ind), wave(ind), threshold, 'linear');
+jndWave = 0;
+try
+    [~, ind] = sort(acc);
+    jndWave = interp1(acc(ind), wave(ind), threshold, 'linear');
+catch
+    warning('JND wave cannot be found');
+end
 
 end
 %% END
