@@ -34,7 +34,8 @@ try density = params.coneDensity; catch, density = [0 .6 .3 .1]; end
 try expTime = params.expTime; catch, expTime = 0.05; end % integration time
 try emDuration = params.emDuration; catch, emDuration = 0.01; end
 try nFrames = params.nFrames; catch, nFrames = 3000; end
-try meanLum = params.meanLuminance; catch, meanLum = 100; end 
+try meanLum = params.meanLuminance; catch, meanLum = 100; end
+try sceneWave = params.sceneWave; catch, sceneWave = 380:780; end
 
 if isfield(params, 'testContrast')
     tContrast = params.testContrast;
@@ -42,28 +43,26 @@ else
     tContrast = [.1 .05 .04 .03 .02 .01 .005 0.004 0.003 .002];
 end
 
+svmOpts = '-s 0 -q';
+nFolds = 10;
+labels = [ones(nFrames,1); -1*ones(nFrames,1)];
+acc = zeros(length(tContrast), 1);
+err = zeros(length(tContrast), 1);
 
 %% Create scene
-%  scene{1} - patch with spatially varying patterns
-%  scene{2} - uniform patch
-%
+%  scene{1} - uniform patch
+%  scene{2} - patch with spatially varying patterns
 
 pparams.freq = frequency;    % spatial frequency
-pparams.contrast = contrast; % contrast
 pparams.ph = pi; % phase, 0 - black in center, pi - white in center
 pparams.ang = 0; % direction, 0 - vertical
 pparams.row = 192; pparams.col = 192; % sample size 
 pparams.GaborFlag = .2; % Gabor blur
 
-scene{1} = sceneCreate('harmonic',pparams);
+pparams.contrast = 0;
+scene{1} = sceneCreate('harmonic',pparams, sceneWave);
 scene{1} = sceneSet(scene{1},'fov',1);
 scene{1} = sceneAdjustLuminance(scene{1}, meanLum);
-% vcAddObject(scene{1}); sceneWindow;
-
-pparams.contrast = 0;
-scene{2} = sceneCreate('harmonic',pparams);
-scene{2} = sceneSet(scene{2},'fov',1);
-scene{2} = sceneAdjustLuminance(scene{2}, meanLum);
 
 %% Create Human Optics
 %  create lens for standard human observer
@@ -72,7 +71,7 @@ scene{2} = sceneAdjustLuminance(scene{2}, meanLum);
 %
 
 % generate human optics structure
-wave   = 380 : 4 : 780;
+wave   = 380 : 780;
 wvf    = wvfCreate('wave',wave);
 pupilDiameterMm = 3;
 sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
@@ -84,8 +83,6 @@ oi     = wvf2oi(wvf,'shift invariant', false);
 % compute optical image
 vcAddAndSelectObject('scene', scene{1});
 OI{1} = oiCompute(scene{1}, oi);
-vcAddAndSelectObject('scene', scene{2});
-OI{2} = oiCompute(scene{2}, oi);
 
 %% Create Human Photoreceptors (cones)
 %  create standard human photoreceptors  
@@ -114,48 +111,54 @@ sensor = emInit('fixation gaussian', sensor, params);
 %  Compute samples of cone absorptions
 %  The absorptions for the two groups are normalized to have same mean
 %
-absorptions = cell(2, 1);
 sensorSz = sensorGet(sensor, 'size');
 sensorC = round(sensorSz/2);
 vcAddAndSelectObject('oi', OI{1});
-for ii = 1 : 2
-    sensor = coneAbsorptions(sensor, OI{ii}, 2);
-    absorptions{ii} = double(sensorGet(sensor, 'photons'));
-    % take a small portion out
-    % this should not be hard coded, change it (HJ)
-    absorptions{ii} = absorptions{ii}(round(sensorC(1)/2):round(sensorC(1)*3/2), ...
-            round(sensorC(2)/2):round(sensorC(2)*3/2), :);
-end
 
-%absorptions{1} = absorptions{1} * sum(absorptions{2}(:)) / sum(absorptions{1}(:));
+sensor = coneAbsorptions(sensor, OI{1}, 2);
+refPhotons = double(sensorGet(sensor, 'photons'));
 
-%% SVM Classification
-%  Do classification
-%
-% svmOpts = '-s 0 -q';
-svmOpts = '-q';
-
-nFolds = 10;
-labels = [ones(nFrames,1); -1*ones(nFrames,1)];
-refPhotons   = RGB2XWFormat(absorptions{1});
-%refPhotons = cumsum(refPhotons, 2);
-%refPhotons = refPhotons(:, emPerExposure + 1:end) - ...
-%    refPhotons(:, 1:end-emPerExposure);
+% take a small portion out
+refPhotons = refPhotons(round(sensorC(1)/2):round(sensorC(1)*3/2), ...
+    round(sensorC(2)/2):round(sensorC(2)*3/2), :);
+refPhotons   = RGB2XWFormat(refPhotons);
 sz = size(refPhotons);
 refPhotons = sum(reshape(refPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
 
-matchPhotons = RGB2XWFormat(absorptions{2});
-%matchPhotons = cumsum(matchPhotons, 2);
-%matchPhotons = matchPhotons(:, emPerExposure + 1:end) - ...
-%    matchPhotons(:, 1:end-emPerExposure);
-matchPhotons = sum(reshape(matchPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
 
-% accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-%     labels, nFolds, 'svm', svmOpts);
-accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-    labels, nFolds, 'linear', svmOpts);
+for ii = 1 : length(tContrast)
+    vcDeleteSelectedObject('scene');
+    pparams.contrast = tContrast(ii); % contrast
+    scene{2} = sceneCreate('harmonic',pparams, sceneWave);
+    scene{2} = sceneSet(scene{2},'fov',1);
+    scene{2} = sceneAdjustLuminance(scene{2}, meanLum);
 
-err = accuracy(2);
-acc = accuracy(1);
+    vcAddAndSelectObject('scene', scene{2});
+    OI{2} = oiCompute(scene{2}, oi);
+    
+    sensor = coneAbsorptions(sensor, OI{2}, 2);
+    matchPhotons = double(sensorGet(sensor, 'photons'));
+    matchPhotons = matchPhotons(round(sensorC(1)/2):round(sensorC(1)*3/2), ...
+        round(sensorC(2)/2):round(sensorC(2)*3/2), :);
+    
+    matchPhotons = RGB2XWFormat(matchPhotons);
+    matchPhotons = sum(reshape(matchPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
+    
+    accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
+        labels, nFolds, 'svm', svmOpts);
+    
+    err(ii) = accuracy(2);
+    acc(ii) = accuracy(1);
+end
 
+% Find JND
+try
+    [~, ind] = sort(acc);
+    jndContrast = interp1(acc(ind), tContrast(ind), threshold, 'linear');
+catch
+    tRange = min(tContrast):(min(tContrast)/100):max(tContrast);
+    interpolatedAcc = interp1(tContrast, acc, tRange, 'linear');
+    [~, ind] = min(abs(interpolatedAcc - threshold));
+    jndContrast = tRange(ind);
+end
 %% END

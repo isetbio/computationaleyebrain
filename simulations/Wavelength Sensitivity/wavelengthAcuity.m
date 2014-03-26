@@ -7,13 +7,14 @@ function [jndWave, acc, err, wave] = wavelengthAcuity(refWave, params)
 %  Inputs:
 %    refWave  - reference wavelength
 %    params   - parameter structure, could contain
-%      .threshold - percentage of correctness of JND, default 0.8
-%      .sceneSz   - scene fov in degrees, default 0.1
-%      .direction - searching direction, could be 'up', 'down'
-%                   for 'up', it finds jndWave that is larger than wave
-%      .density   - human cone spatial density, default [0 .6 .3 .1]
-%      .expTime   - human cone integration time, default 0.05 seconds
-%      .nFrames   - number of samples to be used in classification
+%      .threshold  - percentage of correctness of JND, default 0.8
+%      .sceneSz    - scene fov in degrees, default 0.1
+%      .direction  - searching direction, could be 'up', 'down'
+%                    for 'up', it finds jndWave that is larger than wave
+%      .density    - human cone spatial density, default [0 .6 .3 .1]
+%      .expTime    - human cone integration time, default 0.05 seconds
+%      .nFrames    - number of samples to be used in classification
+%      .wavelength - wavelength of harmonic scene
 %
 %  Outputs:
 %    jndWave  - wavelength of light that is barely noticable to reference
