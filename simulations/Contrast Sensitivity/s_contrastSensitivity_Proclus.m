@@ -15,12 +15,9 @@ totContrast{6} = [1 .8 .6 .4 .2];
 totContrast{7} = [1 .8 .6 .4];
 totContrast{8} = [1 .8 .6 .4];
 
-try
+
     cmd = 'params.testContrast = totContrast{jobindex};';
     cmd = [cmd '[jndContrast, acc, err, tContrast] =' ...
             'coContrastSensitivity(frequency(jobindex), params);'];
-    cmd = [cmd 'save sprintf(''~/CSF%d.mat'', jobindex);'];
+    cmd = [cmd 'save(sprintf(''~/CSF%d.mat'', jobindex));'];
     sgerun2(cmd,'coCSF',1, 1:length(frequency));
-catch me
-    fprintf('Error:%s', me);
-end
