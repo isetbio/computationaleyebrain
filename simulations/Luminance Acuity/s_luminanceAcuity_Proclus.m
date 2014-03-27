@@ -15,4 +15,4 @@ cmd = 'params.tIntensity = totIntensity{jobindex};';
 cmd = [cmd '[jndIntensity, acc, err, tIntensity] =' ...
             'coLuminanceAcuity(intensity(jobindex), params);'];
 cmd = [cmd 'save(sprintf(''~/luminance%d.mat'', jobindex));'];
-sgerun2(cmd,'coLuminanceAcuity',1, 1:length(frequency));
+sgerun2(cmd,'coLuminanceAcuity',1, 1:length(intensity));
