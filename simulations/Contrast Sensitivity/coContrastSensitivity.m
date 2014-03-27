@@ -36,6 +36,7 @@ try emDuration = params.emDuration; catch, emDuration = 0.01; end
 try nFrames = params.nFrames; catch, nFrames = 3000; end
 try meanLum = params.meanLuminance; catch, meanLum = 100; end
 try sceneWave = params.sceneWave; catch, sceneWave = 380:780; end
+try threshold = params.threshold; catch, threshold = 0.8; end
 
 if isfield(params, 'testContrast')
     tContrast = params.testContrast;
