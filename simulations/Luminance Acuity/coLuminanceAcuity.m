@@ -40,6 +40,7 @@ try density = params.coneDensity; catch, density = [0 .6 .3 .1]; end
 try expTime = params.expTime; catch, expTime = 0.05; end % integration time
 try emDuration = params.emDuration; catch, emDuration = 0.01; end
 try nFrames = params.nFrames; catch, nFrames = 3000; end
+try threshold = params.threshold; catch, threshold = 0.8; end
 
 if isfield(params, 'tIntensity')
     tIntensity = params.tIntensity;
