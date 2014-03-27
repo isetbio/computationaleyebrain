@@ -11,8 +11,8 @@ function [jndIntensity, acc, err, tIntensity] = coLuminanceAcuity(intensity, par
 %      expTime       - eye integration time
 %      emDuration    - eye saccade duration
 %      nFrames       - number of samples per scene
-%      threshold     - threshold used to compute jndContrast, default 80%
-%      testIntensity - array of contrast to be tested
+%      threshold     - threshold used to compute jndIntensity, default 80%
+%      testIntensity - array of test intensity to be tested
 %
 %  Outputs:
 %      jndIntensity  - JND of intensity
@@ -41,8 +41,8 @@ try expTime = params.expTime; catch, expTime = 0.05; end % integration time
 try emDuration = params.emDuration; catch, emDuration = 0.01; end
 try nFrames = params.nFrames; catch, nFrames = 3000; end
 
-if isfield(params, 'testContrast')
-    tIntensity = params.testContrast;
+if isfield(params, 'tIntensity')
+    tIntensity = params.tIntensity;
 else
     tIntensity = intensity + [.01 .02 .04 .08 .15 .3 .45 0.6 0.8 1 2 4];
 end
@@ -142,10 +142,10 @@ end
 % Find JND
 try
     [~, ind] = sort(acc);
-    jndIntensity = interp1(acc(ind), tContrast(ind), threshold, 'linear');
+    jndIntensity = interp1(acc(ind), tIntensity(ind), threshold, 'linear');
 catch
     tRange = min(tIntensity):(min(tIntensity-intensity)/100):max(tIntensity);
-    interpolatedAcc = interp1(tContrast, acc, tRange, 'linear');
+    interpolatedAcc = interp1(tIntensity, acc, tRange, 'linear');
     [~, ind] = min(abs(interpolatedAcc - threshold));
     jndIntensity = tRange(ind);
 end

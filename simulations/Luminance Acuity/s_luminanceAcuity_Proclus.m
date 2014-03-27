@@ -5,9 +5,9 @@
 %  (HJ) March, 2014
 
 intensity = [10 15 20 30 40 50 60 70 80 90 100];
-totContrast = cell(totContrast, 1);
+totIntensity = cell(length(intensity), 1);
 for ii = 1 : length(intensity)
-    totContrast{ii} = intensity(ii)*[1.002 1.005 1.008 1.01 1.02 1.04 1.08 1.1 1.2];
+    totIntensity{ii} = intensity(ii)*[1.002 1.005 1.008 1.01 1.02 1.04 1.08 1.1 1.2];
 end
 
 
