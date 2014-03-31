@@ -1,5 +1,5 @@
-function [jndWave, acc, err, wave] = wavelengthAcuity(refWave, params)
-%% function wavelengthAcuity(wave, [params])
+function [jndWave, acc, err, wave] = wavelengthDiscrimination(refWave, params)
+%% function wavelengthDiscrimination(wave, [params])
 %    This function calculates the acuity for given wavelength. The acuity
 %    is given by wavelength distance of two just noiticable difference
 %    lights
@@ -26,15 +26,22 @@ function [jndWave, acc, err, wave] = wavelengthAcuity(refWave, params)
 %  (HJ) March, 2014
 
 %% Set parameters
+if notDefined('refWave'), error('reference wavelength required'); end
 if notDefined('params'), params = []; end
-assert(isscalar(refWave), 'reference wave should be scalar');
+if isscalar(refWave), warning('10nm band assumed'); end
 
-try sceneSz = params.sceneSz; catch, sceneSz = 0.05;end % scene fov
+try sceneSz = params.sceneSz; catch, sceneSz = 0.1;end % scene fov
 try density = params.density; catch, density = [0 .6 .3 .1]; end  % KLMS
 try expTime = params.expTime; catch, expTime = 0.05; end % integration time
 try nFrames = params.nFrames; catch, nFrames = 3000; end
 try direction = params.direction; catch, direction = 'up'; end
 try threshold = params.threshold; catch, threshold = 0.8; end
+
+if isfield(params, 'tWave')
+    tWave = params.tWave;
+else
+    tWave = [1 2 3 4 6 8 10 13];
+end
 
 wave   = 380 : 780;
 pupilDiameterMm = 3;
@@ -49,7 +56,7 @@ scene{1} = sceneSet(scene{1}, 'fov', sceneSz);
 % XYZ = ieReadSpectra('XYZ', 380:780);
 % adjLum = XYZ(wave==refWave,2) / XYZ(wave==550, 2) * 100;
 % scene{1} = sceneAdjustLuminance(scene{1}, adjLum);
-scene{1} = sceneAdjustLuminance(scene{1}, 1);
+scene{1} = sceneAdjustLuminance(scene{1}, 100);
 vcAddAndSelectObject('scene', scene{1});
 % sceneWindow;
 
@@ -84,39 +91,47 @@ sensor = sensorSetSizeToFOV(sensor, sceneSz, scene{1}, OI{1});
 sensor = sensorSet(sensor,'movement positions', [0 0]);
 sensor = sensorSet(sensor,'frames per position', nFrames);
 
+sensorSz = sensorGet(sensor, 'size');
+sensorC = round(sensorSz/2);
 
 
 %% Compute Human cone absorptions & Classification
 %  Compute samples of cone absorptions
 %  The absorptions for the two groups are normalized to have same mean
 %
-sampleWave = [1 2 4 8 13 18 24 28 32];
+[X,Y] = meshgrid(refWave, tWave);
 switch direction
     case 'up'
-        wave = refWave + sampleWave;
+        wave = X + Y;
     case 'down'
-        wave = refWave - sampleWave;
+        wave = X - Y;
     otherwise
         error('Unknown direction');
 end
 
 sensor = coneAbsorptions(sensor, OI{1}, 0);
-refPhotons = RGB2XWFormat(double(sensorGet(sensor, 'photons')));
+refPhotons = double(sensorGet(sensor, 'photons'));
+refPhotons = refPhotons(sensorC(1)-2 : sensorC(1)+2, ...
+    sensorC(2)-2 : sensorC(2)+2, :);
+refPhotons = RGB2XWFormat(refPhotons);
 
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
-acc = zeros(length(sampleWave), 1);
-err = zeros(length(sampleWave), 1);
+acc = zeros(length(tWave), 1);
+err = zeros(length(tWave), 1);
 
-for ii = 1 : length(sampleWave)
+for ii = 1 : length(tWave)
     vcDeleteSelectedObject('scene');
-    scene{2} = sceneCreate('uniform monochromatic', wave(ii), 128);
+    scene{2} = sceneCreate('uniform monochromatic', wave(ii,:), 128);
     scene{2} = sceneSet(scene{2}, 'fov', sceneSz);
     vcAddAndSelectObject('scene', scene{2});
     vcDeleteSelectedObject('oi');
     OI{2} = oiCompute(scene{2}, oi);
     vcAddAndSelectObject('oi', OI{2});
     sensor = coneAbsorptions(sensor, OI{2}, 0);
-    matchPhotons = RGB2XWFormat(double(sensorGet(sensor, 'photons')));
+    matchPhotons = double(sensorGet(sensor, 'photons'));
+    matchPhotons = matchPhotons(sensorC(1)-2 : sensorC(1)+2, ...
+        sensorC(2)-2 : sensorC(2)+2, :);
+    matchPhotons = RGB2XWFormat(matchPhotons);
     
     % accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
     %     labels, nFolds, 'svm', svmOpts);
