@@ -65,7 +65,7 @@ for indxDist = 1: length(vDist)
     scene{2} = ctCreateFontScene(vDisp, dist, stim, false);
     
     % Compute cone absorptions
-    fov = atand(tand(0.1) * 0.6 / dist) * 2;
+    fov = atand(tand(0.3371/2) * 0.6 / dist) * 2;
     for ii = 1 : 2
         % compute field of view
         % fov = 2*atan(ncols /oSamples * fontSize * 0.3514 / 1000 /dist/2);
