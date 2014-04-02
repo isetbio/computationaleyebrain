@@ -1,5 +1,5 @@
-function [jndWave, acc, err, wave] = wavelengthDiscrimination(refWave, params)
-%% function wavelengthDiscrimination(wave, [params])
+function [jndWave, acc, err, wave] = coWaveDiscrimination(refWave, params)
+%% function coWaveDiscrimination(wave, [params])
 %    This function calculates the acuity for given wavelength. The acuity
 %    is given by wavelength distance of two just noiticable difference
 %    lights
@@ -40,7 +40,7 @@ try threshold = params.threshold; catch, threshold = 0.8; end
 if isfield(params, 'tWave')
     tWave = params.tWave;
 else
-    tWave = [1 2 3 4 6 8 10 13];
+    tWave = [0.05 0.1 0.2 0.3 0.4 0.6 0.8 1 1.3];
 end
 
 wave   = 380 : 780;
@@ -133,6 +133,7 @@ for ii = 1 : length(tWave)
         sensorC(2)-2 : sensorC(2)+2, :);
     matchPhotons = RGB2XWFormat(matchPhotons);
     
+    matchPhotons = matchPhotons * mean(refPhotons(:))/ mean(matchPhotons(:));
     % accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
     %     labels, nFolds, 'svm', svmOpts);
     accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
