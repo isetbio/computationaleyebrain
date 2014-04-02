@@ -4,7 +4,7 @@
 %
 %  (HJ) March, 2014
 
-barWidth = [1 2 3 5 8 10 15 20];
+barWidth = [15 18 20 22 25 30 32 35 38 40 45];
 cmd = 'params.barWidth = barWidth(jobindex);';
 cmd = [cmd '[jndDist, acc, err, tDist] =' ...
             'coVernierAcuity(params);'];

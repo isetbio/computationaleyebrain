@@ -34,10 +34,10 @@ function [jndDist, acc, err, tDist] = coVernierAcuity(params)
 %% Check inputs & Init Parameters
 if notDefined('params'), params = []; end
 
-try sceneFov = params.sceneFov; catch, sceneFov = .1; end
+try sceneFov = params.sceneFov; catch, sceneFov = .2; end
 try nFrames  = params.nFrames; catch, nFrames = 3000; end
-try barWidth = params.barWidth; catch, barWidth = 1; end 
-try tDist    = params.tDist; catch, tDist = (12:4:32)/3600; end
+try barWidth = params.barWidth; catch, barWidth = 5; end 
+try tDist    = params.tDist; catch, tDist = ([2 6 12:4:40])/3600; end
 try density  = params.coneDensity; catch, density = [0 .6 .3 .1]; end
 try expTime  = params.expTime; catch, expTime = 0.05; end % integration time
 try emDuration = params.emDuration; catch, emDuration = 0.01; end
@@ -45,10 +45,12 @@ try meanLum = params.meanLuminance; catch, meanLum = 100; end
 try threshold = params.threshold; catch, threshold = 0.8; end
 
 % This method is not the best trial, but I think it should be fine (HJ)
-sceneSz = ceil(sceneFov/min(tDist));
+sceneSz = ceil(sceneFov/min(tDist)*2);
 if sceneSz > 10000, warning('scene resolution too high required'); end
-offset = round(tDist * sceneSz);
-tDist  = offset / sceneSz;
+offset = round(tDist / sceneFov * sceneSz);
+tDist  = offset / sceneSz * sceneFov;
+
+if barWidth < min(offset), warning('barwidth is too small'); end
 
 % Init classification parameters
 svmOpts = '-s 0 -q';
@@ -95,8 +97,9 @@ sensor = sensorSetSizeToFOV(sensor, sceneFov, scene{1}, OI{1});
 sensor = sensorSet(sensor, 'exp time', emDuration);
 
 params.center   = [0,0];
-params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
-
+%params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
+params.Sigma    = 1e-4 *[0.3280 0.0; 0.0 0.0]*emDuration*1000;
+%params.Sigma = zeros(2);
 emPerExposure = round(expTime / emDuration);
 params.nSamples = nFrames * emPerExposure;
 params.fov      = sensorGet(sensor,'fov',scene{1}, OI{1});
@@ -115,12 +118,15 @@ refPhotons = sum(reshape(refPhotons, ...
 
 for ii = 1 : length(tDist)
     vcDeleteSelectedObject('scene');
+    vcDeleteSelectedObject('oi');
+    
     scene{2} = sceneCreate('vernier', sceneSz, barWidth, offset(ii));
     scene{2} = sceneSet(scene{2},'h fov',sceneFov);
     scene{2} = sceneAdjustLuminance(scene{2}, meanLum);
 
     vcAddAndSelectObject('scene', scene{2});
     OI{2} = oiCompute(scene{2}, oi);
+    vcAddAndSelectObject('oi', OI{2});
     
     sensor = coneAbsorptions(sensor, OI{2}, 2);
     matchPhotons = RGB2XWFormat(double(sensorGet(sensor, 'photons')));
