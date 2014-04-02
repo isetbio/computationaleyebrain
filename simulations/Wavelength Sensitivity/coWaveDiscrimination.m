@@ -1,5 +1,5 @@
 function [jndWave, acc, err, wave] = coWaveDiscrimination(refWave, params)
-%% function coWaveDiscrimination(wave, [params])
+%% function coWaveDiscrimination(refWave, [params])
 %    This function calculates the acuity for given wavelength. The acuity
 %    is given by wavelength distance of two just noiticable difference
 %    lights
@@ -40,7 +40,7 @@ try threshold = params.threshold; catch, threshold = 0.8; end
 if isfield(params, 'tWave')
     tWave = params.tWave;
 else
-    tWave = [0.05 0.1 0.2 0.3 0.4 0.6 0.8 1 1.3];
+    tWave = [0.05 0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2 2.5 3 4 6 8];
 end
 
 wave   = 380 : 780;
@@ -144,12 +144,14 @@ for ii = 1 : length(tWave)
 end
 
 %% Identify JND wavelength
-jndWave = 0;
 try
     [~, ind] = sort(acc);
     jndWave = interp1(acc(ind), wave(ind), threshold, 'linear');
 catch
-    warning('JND wave cannot be found');
+    tRange = min(wave):(min(wave)/100):max(wave);
+    interpolatedAcc = interp1(wave, acc, tRange, 'linear');
+    [~, ind] = min(abs(interpolatedAcc - threshold));
+    jndWave = tRange(ind);
 end
 
 end
