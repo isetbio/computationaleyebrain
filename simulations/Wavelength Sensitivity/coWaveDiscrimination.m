@@ -40,7 +40,7 @@ try threshold = params.threshold; catch, threshold = 0.8; end
 if isfield(params, 'tWave')
     tWave = params.tWave;
 else
-    tWave = [0.05 0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2 2.5 3 4 6 8];
+    tWave = [0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10];
 end
 
 wave   = 380 : 780;
