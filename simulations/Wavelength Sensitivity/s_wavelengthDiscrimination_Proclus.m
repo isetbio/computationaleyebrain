@@ -6,6 +6,6 @@
 
 refWave = 400:10:700;
 cmd = ['[jndWave, acc, err, tWave] =' ...
-            'coWaveDiscrimination([refWave(jobindex) refWave(jobindx)+0.01]);'];
+            'coWaveDiscrimination([refWave(jobindex) refWave(jobindex)+0.01]);'];
 cmd = [cmd 'save(sprintf(''~/waveDisc%d.mat'', jobindex));'];
 sgerun2(cmd,'waveDiscrimination',1, 1:length(refWave));

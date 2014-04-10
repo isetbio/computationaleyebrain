@@ -45,7 +45,7 @@ try meanLum = params.meanLuminance; catch, meanLum = 100; end
 try threshold = params.threshold; catch, threshold = 0.8; end
 
 % This method is not the best trial, but I think it should be fine (HJ)
-sceneSz = ceil(sceneFov/min(tDist)*2);
+sceneSz = ceil(sceneFov/min(tDist));
 if sceneSz > 10000, warning('scene resolution too high required'); end
 offset = round(tDist / sceneFov * sceneSz);
 tDist  = offset / sceneSz * sceneFov;
@@ -62,8 +62,11 @@ err = zeros(length(tDist), 1);
 %% Create Scene
 %  scene{1} - scene with no misalignment
 %  scene{2} - two bars with offset
+params.offset = 0;
+params.barWidth = barWidth;
+params.sceneSz = sceneSz;
 
-scene{1} = sceneCreate('vernier', sceneSz, barWidth, 0);
+scene{1} = sceneCreate('vernier', 'object', params);
 scene{1} = sceneSet(scene{1}, 'h fov', sceneFov);
 scene{1} = sceneAdjustLuminance(scene{1}, meanLum);
 
@@ -120,7 +123,8 @@ for ii = 1 : length(tDist)
     vcDeleteSelectedObject('scene');
     vcDeleteSelectedObject('oi');
     
-    scene{2} = sceneCreate('vernier', sceneSz, barWidth, offset(ii));
+    params.offset = offset(ii);
+    scene{2} = sceneCreate('vernier', 'object', params);
     scene{2} = sceneSet(scene{2},'h fov',sceneFov);
     scene{2} = sceneAdjustLuminance(scene{2}, meanLum);
 

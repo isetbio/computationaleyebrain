@@ -7,7 +7,7 @@
 % (HJ) Jan, 2014
 
 %% Init Parameters
-if notDefined('ppi'), ppi = 500; end            % points per inch
+if notDefined('ppi'), ppi = 1000; end            % points per inch
 if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
 if isscalar(imgFov), imgFov = [imgFov imgFov];end
 if notDefined('nFrames'), nFrames = 3000; end   % Number of samples
@@ -22,13 +22,21 @@ display = displaySet(display, 'dpi', ppi);
 
 %% Create Scene
 scene = cell(2, 1);
-img = ones(imgSz)*0.5;            % Init to black
-img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in middle
-scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
+% img = ones(imgSz)*0.5;            % Init to black
+% img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in middle
+% scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
+params.display = display;
+params.sceneSz = imgSz;
+params.offset  = 0;
+params.barWidth = 1;
+params.bgColor = 0.5;
+scene{1} = sceneCreate('vernier', 'display', params);
 
-img(1:round(imgSz(1)/2), :) = circshift(img(1:round(imgSz(1)/2), :),[0 1]);
+% img(1:round(imgSz(1)/2), :) = circshift(img(1:round(imgSz(1)/2), :),[0 1]);
 %img = circshift(img, [0 1]);
-scene{2} = sceneFromFile(img, 'rgb', [], display);
+% scene{2} = sceneFromFile(img, 'rgb', [], display);
+params.offset = 1;
+scene{2} = sceneCreate('vernier', 'display', params);
 
 % set scene fov
 for ii = 1 : 2
@@ -37,8 +45,8 @@ for ii = 1 : 2
 end
 
 % Show radiance image (scene)
-% vcAddAndSelectObject('scene', scene{1});
-% vcAddAndSelectObject('scene', scene{2}); sceneWindow;
+vcAddAndSelectObject('scene', scene{1});
+vcAddAndSelectObject('scene', scene{2}); sceneWindow;
 
 %% Create Human Lens
 %  Create a typical human lens
@@ -173,5 +181,9 @@ matchPhotons = matchPhotons(:, emPerExposure + 1:end) - ...
 acc = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
     labels, nFolds, 'svm', svmOpts);
 
+fprintf('SVM acc:%f\n',acc);
 
-%%
+%% Do it by KMean
+idx = kmeans(cat(1,refPhotons', matchPhotons'),2);
+idx = idx * 2 - 3;
+fprintf('kmeans accuracy: %f\n',sum(idx == labels) / length(labels));
