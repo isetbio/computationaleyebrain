@@ -202,13 +202,12 @@ end
 %% Identify JND wavelength
 wave = wave(:,1);
 try
-    [~, ind] = sort(acc);
-    jndWave = interp1(acc(ind), wave(ind), threshold, 'linear');
-catch
     tRange = min(wave):(min(wave)/100):max(wave);
     interpolatedAcc = interp1(wave, acc, tRange, 'linear');
     [~, ind] = min(abs(interpolatedAcc - threshold));
     jndWave = tRange(ind);
+catch
+    jndWave = 0;
 end
 
 end
