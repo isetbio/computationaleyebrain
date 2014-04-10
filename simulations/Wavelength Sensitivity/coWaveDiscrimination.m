@@ -40,7 +40,7 @@ try threshold = params.threshold; catch, threshold = 0.8; end
 if isfield(params, 'tWave')
     tWave = params.tWave;
 else
-    tWave = [0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10];
+    tWave = []; %[0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10];
 end
 
 wave   = 380 : 780;
@@ -99,15 +99,6 @@ sensorC = round(sensorSz/2);
 %  Compute samples of cone absorptions
 %  The absorptions for the two groups are normalized to have same mean
 %
-[X,Y] = meshgrid(refWave, tWave);
-switch direction
-    case 'up'
-        wave = X + Y;
-    case 'down'
-        wave = X - Y;
-    otherwise
-        error('Unknown direction');
-end
 
 sensor = coneAbsorptions(sensor, OI{1}, 0);
 refPhotons = double(sensorGet(sensor, 'photons'));
@@ -118,6 +109,68 @@ refPhotons = RGB2XWFormat(refPhotons);
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
 acc = zeros(length(tWave), 1);
 err = zeros(length(tWave), 1);
+
+% Now if the test wave values are not given, we should find a proper range
+% for it by ourselves
+% The general process for doing this is as below:
+%   1) find a wave w_min with accuracy between 70~threshold
+%   2) find a wave w_max with accuracy between threshold~90
+%   3) linear interpolate between w_min and w_max
+if isempty(tWave)
+    w_min = 0; acc_min = 0.5;
+    w_max = 16; acc_max = 1;
+    iter = 1;
+    while true
+        wave = refWave + (w_min + w_max) / 2;
+        vcDeleteSelectedObject('scene');
+        scene{2} = sceneCreate('uniform monochromatic', wave, 128);
+        scene{2} = sceneSet(scene{2}, 'fov', sceneSz);
+        vcAddAndSelectObject('scene', scene{2});
+        vcDeleteSelectedObject('oi');
+        OI{2} = oiCompute(scene{2}, oi);
+        vcAddAndSelectObject('oi', OI{2});
+        sensor = coneAbsorptions(sensor, OI{2}, 0);
+        matchPhotons = double(sensorGet(sensor, 'photons'));
+        matchPhotons = matchPhotons(sensorC(1)-2 : sensorC(1)+2, ...
+            sensorC(2)-2 : sensorC(2)+2, :);
+        matchPhotons = RGB2XWFormat(matchPhotons);
+        
+        matchPhotons = matchPhotons * mean(refPhotons(:))/ mean(matchPhotons(:));
+        % accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
+        %     labels, nFolds, 'svm', svmOpts);
+        accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
+            labels, nFolds, 'svm', svmOpts);
+        acc = accuracy(1);
+        fprintf('wave: %f\t acc:%f\n', (w_min + w_max)/2, acc);
+        if acc < threshold
+            w_min = (w_min + w_max)/2;
+            acc_min = acc;
+        else
+            w_max = (w_min + w_max)/2;
+            acc_max = acc;
+        end
+        
+        % Make sure it will not loop infinitely
+        iter = iter + 1;
+        assert(iter < 20, 'Cannot find proper tWave range');
+        
+        if acc_min > 0.7 && acc_min < threshold && ...
+                acc_max > threshold && acc_max < 0.9
+            tWave = (w_min-0.5):0.1:(w_max+0.5);
+            break;
+        end
+    end
+end
+
+[X,Y] = meshgrid(refWave, tWave);
+switch direction
+    case 'up'
+        wave = X + Y;
+    case 'down'
+        wave = X - Y;
+    otherwise
+        error('Unknown direction');
+end
 
 for ii = 1 : length(tWave)
     vcDeleteSelectedObject('scene');
@@ -144,6 +197,7 @@ for ii = 1 : length(tWave)
 end
 
 %% Identify JND wavelength
+wave = wave(:,1);
 try
     [~, ind] = sort(acc);
     jndWave = interp1(acc(ind), wave(ind), threshold, 'linear');
