@@ -40,7 +40,7 @@ try threshold = params.threshold; catch, threshold = 0.8; end
 if isfield(params, 'tWave')
     tWave = params.tWave;
 else
-    tWave = []; %[0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10];
+    tWave = [];
 end
 
 wave   = 380 : 780;
@@ -152,7 +152,10 @@ if isempty(tWave)
         
         % Make sure it will not loop infinitely
         iter = iter + 1;
-        assert(iter < 20, 'Cannot find proper tWave range');
+        if iter > 8
+            tWave = [0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10];
+            break;
+        end
         
         if acc_min > 0.7 && acc_min < threshold && ...
                 acc_max > threshold && acc_max < 0.9
