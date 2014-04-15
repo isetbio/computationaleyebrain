@@ -146,13 +146,12 @@ end
 
 % Find JND
 try
-    [~, ind] = sort(acc);
-    jndDist = interp1(acc(ind), tDist(ind), threshold, 'linear');
-catch
     tRange = min(tDist):(min(tDist)/100):max(tDist);
     interpolatedAcc = interp1(tDist, acc, tRange, 'linear');
     [~, ind] = min(abs(interpolatedAcc - threshold));
     jndDist = tRange(ind);
+catch
+    jndDist = 0;
 end
 
 
