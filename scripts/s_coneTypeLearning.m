@@ -36,6 +36,7 @@ imData = im2double(imread(imFName));
 imData = imresize(imData, 0.1);
 scene = sceneFromFile(imData, 'rgb', [], d);
 scene = sceneSet(scene, 'fov', fov);
+vcAddAndSelectObject('scene', scene);
 
 oi = oiCompute(scene, oi);
 sensor = sensorSetSizeToFOV(sensor, fov, scene, oi);
@@ -46,6 +47,7 @@ voltsImage = zeros([21*21 length(imageS)]);
 
 for ii = 1 : length(imageS)
     fprintf('Loading image %d...\n', ii);
+    vcDeleteSelectedObject('scene');
     imFName = fullfile(imageDir, imageS(ii).name);
     imData = im2double(imread(imFName));
     imData = imresize(imData, 0.1);
@@ -53,6 +55,7 @@ for ii = 1 : length(imageS)
     imData(imData > 1) = 1;
     scene = sceneFromFile(imData, 'rgb', [], d);
     scene = sceneSet(scene, 'fov', fov);
+    vcAddAndSelectObject('scene', scene);
     
     oi = oiCompute(scene, oi);
     
