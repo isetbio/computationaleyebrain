@@ -4,21 +4,25 @@
 %  (HJ) April, 2014
 
 %% Init
-totTime = 1000; % 1000 ms
+totTime = 50; % 1000 ms
 expTime = 0.001; % 1 ms
 wave = 400:10:700; % wavelengths samples
 pupilDiameterMm = 3; % pupil diameter
 fov = 1; % scene field of view
-nFrames = 10; % This number is too small, but it's how much we can have
+nFrames = 2; % This number is too small, but it's how much we can have
 imageSz = 256;
 display = displayCreate('LCD-Apple');
 
 %% Load real human data
 dataDir = fullfile(frontendRootPath, 'data', 'cone-connection');
 data = load(fullfile(dataDir, 'rgcConeConnections.mat'));
+indx = (data.rgcType == 3);
+data.rgcType = data.rgcType(indx);
+data.coneWeights = data.coneWeights(:, indx);
 
 %% Load cone temperal inpulse response
 coneIR = load(fullfile(frontendRootPath, 'data', 'coneIR.mat'));
+coneIR.tIRF = coneIR.tIRF * 50;
 
 %% Create first scene
 %  This scene is just used to estimate sensor size
@@ -39,7 +43,7 @@ oi = oiCompute(scene, oi);
 
 %% Create sensor for human cones
 density = sum(data.coneType-2)/length(data.coneType);
-pparams.humanConeDensities = [0 1-density density 0];
+pparams.rgbDensities = [0 1-density density 0];
 sensor = sensorCreate('human', [], pparams);
 sensor = sensorSet(sensor, 'exp time', expTime);
 sensor = sensorSetSizeToFOV(sensor, fov, scene, oi);
@@ -48,14 +52,13 @@ sensor = sensorSetSizeToFOV(sensor, fov, scene, oi);
 xy = sensorGet(sensor, 'xy');
 coneType = sensorGet(sensor, 'cone type');
 coneType = coneType(:);
-indxL = (coneType == 2); xyL = data.conePos(indxL, :);
-indxM = (coneType == 3); xyM = data.conePos(indxM, :);
+indxL = (data.coneType == 2); xyL = data.conePos(indxL, :);
+indxM = (data.coneType == 3); xyM = data.conePos(indxM, :);
 
 % Set eye movement parameters
 params.center   = [0,0];
 params.Sigma    = 1e-4 *[0.3280 0.0; 0.0 0.0];
 
-emPerExposure = round(expTime / emDuration);
 params.nSamples = nFrames;
 params.fov      = sensorGet(sensor,'fov',scene, oi);
 
@@ -66,32 +69,35 @@ curV = zeros(length(data.rgcType), nFrames);
 spikes = zeros([size(rgcVolts) nFrames]);
 
 for ts = 1: totTime
+    fprintf('Computing %d\n',ts);
     % Renew scene
-    vcDeleteSelectedObject('scene');
-    I(:, 1:round(ts/totTime*imageSz)) = 1;
+    % I(:, 1:round(ts/totTime*imageSz)) = 1;
+    I(:) = 1;
     scene = sceneFromFile(I, 'rgb', [], display);
-    vcAddAndSelectObject('scene', scene);
+    scene = sceneSet(scene, 'h fov', fov);
     
     % Renew eye movement
     sensor = emInit('fixation gaussian', sensor, params);
     
     % Compute cone absorptions
     oi = oiCompute(scene, oi);
-    sensor = sensorCompute(sensor, oi);
+    sensor = coneAbsorptions(sensor, oi, 0);
     
     % Get cone absorptions and interpolate
-    v = sensorGet(sensor, 'volts');
+    v = double(sensorGet(sensor, 'volts'));
     v = reshape(v, [size(xy, 1) size(v, 3)]);
     
     for ii = 1 : size(v, 2)
         % interpolate for each cone type
         % in EJ's data, we only have L and M cones
         indx = (coneType == 2);
-        volts(indxL) = (interp2(xy(indx, 1), xy(indx, 2), ...
-                    v(indx,ii), xyL(:,1), xyL(:,2)));
+        F = scatteredInterpolant(xy(indx, 1), xy(indx, 2), ...
+                    v(indx,ii), 'linear', 'nearest');
+        volts(indxL) = F(xyL(:,1), xyL(:,2));
         indx = (coneType == 3);
-        volts(indxM) = (interp2(xy(indx, 1), xy(indx, 2), ...
-                    v(indx,ii), xyM(:,1), xyM(:,2)));
+        F = scatteredInterpolant(xy(indx, 1), xy(indx, 2), ...
+                    v(indx,ii), 'linear', 'nearest');
+        volts(indxM) = F(xyM(:,1), xyM(:,2));
                 
         % Compute volts after rgc summing up
         % Logically, we should first compute all time sequence data,
@@ -106,12 +112,14 @@ for ts = 1: totTime
                             coneIR.tIRF(1:ts-startT+1,1);
     end
     % We need to figure out how to set parameter for sigmoidal function
-    threshold = sigmf(curV, [2 mean(curV(:))]);
+    % alpha = -log(1/0.95-1)/(quantile(curV(:), 0.9)-mean(curV(:)));
+    % alpha = min(alpha, 100);
+    threshold = sigmf(curV, [10 3]);
     accIndx = rand(length(data.rgcType), nFrames) < threshold;
     curV(accIndx) = 0;
     spikes(:,ts,:) = accIndx;
 end
 
-spikes = sparse(spikes);
+% spikes = sparse(spikes);
 
 %% Visualize
