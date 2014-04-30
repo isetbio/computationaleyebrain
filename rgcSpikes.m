@@ -4,12 +4,12 @@
 %  (HJ) April, 2014
 
 %% Init
-totTime = 50; % 1000 ms
+totTime = 250; % 1000 ms
 expTime = 0.001; % 1 ms
 wave = 400:10:700; % wavelengths samples
 pupilDiameterMm = 3; % pupil diameter
 fov = 1; % scene field of view
-nFrames = 2; % This number is too small, but it's how much we can have
+nFrames = 1; % This number is too small, but it's how much we can have
 imageSz = 256;
 display = displayCreate('LCD-Apple');
 
@@ -19,6 +19,10 @@ data = load(fullfile(dataDir, 'rgcConeConnections.mat'));
 indx = (data.rgcType == 3);
 data.rgcType = data.rgcType(indx);
 data.coneWeights = data.coneWeights(:, indx);
+data.coneWeights = data.coneWeights - ...
+              repmat(mean(data.coneWeights), size(data.coneWeights, 1), 1);
+data.coneWeights = data.coneWeights ./ ...
+              repmat(sum(abs(data.coneWeights)), size(data.coneWeights, 1), 1);
 
 %% Load cone temperal inpulse response
 coneIR = load(fullfile(frontendRootPath, 'data', 'coneIR.mat'));
@@ -71,8 +75,8 @@ spikes = zeros([size(rgcVolts) nFrames]);
 for ts = 1: totTime
     fprintf('Computing %d\n',ts);
     % Renew scene
-    % I(:, 1:round(ts/totTime*imageSz)) = 1;
-    I(:) = 1;
+    I(:, 1:round(ts/totTime*imageSz)) = 1;
+    % I(:) = 1;
     scene = sceneFromFile(I, 'rgb', [], display);
     scene = sceneSet(scene, 'h fov', fov);
     
@@ -114,7 +118,7 @@ for ts = 1: totTime
     % We need to figure out how to set parameter for sigmoidal function
     % alpha = -log(1/0.95-1)/(quantile(curV(:), 0.9)-mean(curV(:)));
     % alpha = min(alpha, 100);
-    threshold = sigmf(curV, [10 3]);
+    threshold = sigmf(curV, [200 0.01]);
     accIndx = rand(length(data.rgcType), nFrames) < threshold;
     curV(accIndx) = 0;
     spikes(:,ts,:) = accIndx;
@@ -123,3 +127,29 @@ end
 % spikes = sparse(spikes);
 
 %% Visualize
+figure; hold on;
+plot(xyL(:,1), xyL(:,2), 'r.');
+plot(xyM(:,1), xyM(:,2), 'g.');
+
+% Compute pos for rgc
+rgcPos = zeros(length(data.rgcType), 2);
+for ii = 1 : length(data.rgcType)
+    w = abs(data.coneWeights(:,ii));
+    indx = (w > quantile(w, 0.9));
+    abs(data.coneWeights(:,ii))
+    rgcPos(ii,:) = mean(data.conePos(indx, :));
+    plot(rgcPos(ii,1), rgcPos(ii,2), 'ko');
+end
+xx = xlim; yy = ylim;
+
+% Make a movie
+figure; axis tight manual;
+for ts = 1 : totTime
+    indx = (spikes(:,ts,1) == 1);
+    plot(rgcPos(indx,1), rgcPos(indx, 2), 'ko');
+    axis([xx yy]);
+    M(ts) = getframe;
+end
+movie(M);
+
+%% Classification
