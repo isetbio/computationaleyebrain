@@ -6,12 +6,12 @@
 %% Init
 totTime = 250; % 1000 ms
 expTime = 0.001; % 1 ms
-wave = 400:10:700; % wavelengths samples
+wave = (400:10:700)'; % wavelengths samples
 pupilDiameterMm = 3; % pupil diameter
 fov = 1; % scene field of view
 nFrames = 1; % This number is too small, but it's how much we can have
 imageSz = 256;
-display = displayCreate('LCD-Apple');
+display = displayCreate('LCD-Apple', wave);
 
 %% Load real human data
 dataDir = fullfile(frontendRootPath, 'data', 'cone-connection');
@@ -88,7 +88,8 @@ for ts = 1: totTime
     sensor = coneAbsorptions(sensor, oi, 0);
     
     % Get cone absorptions and interpolate
-    v = double(sensorGet(sensor, 'volts'));
+    [~, v] = coneAdapt(sensor);
+    % v = double(sensorGet(sensor, 'volts'));
     v = reshape(v, [size(xy, 1) size(v, 3)]);
     
     for ii = 1 : size(v, 2)
@@ -118,7 +119,7 @@ for ts = 1: totTime
     % We need to figure out how to set parameter for sigmoidal function
     % alpha = -log(1/0.95-1)/(quantile(curV(:), 0.9)-mean(curV(:)));
     % alpha = min(alpha, 100);
-    threshold = sigmf(curV, [200 0.01]);
+    threshold = sigmf(curV, [100 0.5]);
     accIndx = rand(length(data.rgcType), nFrames) < threshold;
     curV(accIndx) = 0;
     spikes(:,ts,:) = accIndx;
@@ -127,29 +128,46 @@ end
 % spikes = sparse(spikes);
 
 %% Visualize
-figure; hold on;
-plot(xyL(:,1), xyL(:,2), 'r.');
-plot(xyM(:,1), xyM(:,2), 'g.');
-
-% Compute pos for rgc
-rgcPos = zeros(length(data.rgcType), 2);
-for ii = 1 : length(data.rgcType)
-    w = abs(data.coneWeights(:,ii));
-    indx = (w > quantile(w, 0.9));
-    abs(data.coneWeights(:,ii))
-    rgcPos(ii,:) = mean(data.conePos(indx, :));
-    plot(rgcPos(ii,1), rgcPos(ii,2), 'ko');
-end
-xx = xlim; yy = ylim;
-
-% Make a movie
-figure; axis tight manual;
-for ts = 1 : totTime
-    indx = (spikes(:,ts,1) == 1);
-    plot(rgcPos(indx,1), rgcPos(indx, 2), 'ko');
-    axis([xx yy]);
-    M(ts) = getframe;
-end
-movie(M);
+% figure; hold on;
+% plot(xyL(:,1), xyL(:,2), 'r.');
+% plot(xyM(:,1), xyM(:,2), 'g.');
+% 
+% % Compute pos for rgc
+% rgcPos = zeros(length(data.rgcType), 2);
+% for ii = 1 : length(data.rgcType)
+%     w = abs(data.coneWeights(:,ii));
+%     indx = (w > quantile(w, 0.9));
+%     abs(data.coneWeights(:,ii))
+%     rgcPos(ii,:) = mean(data.conePos(indx, :));
+%     plot(rgcPos(ii,1), rgcPos(ii,2), 'ko');
+% end
+% xx = xlim; yy = ylim;
+% 
+% % Make a movie
+% writerObj = VideoWriter('rgc.avi');
+% writerObj.FrameRate = 20;
+% open(writerObj);
+% I(:) = 0;
+% hf = figure('Units','Normalized','position',[.1 .1 .6 .6]);
+% axis tight manual;
+% for ts = 1 : totTime
+%     subplot(1,2,1);
+%     I(:, 1:round(ts/totTime*imageSz)) = 1;
+%     imshow(I);
+%     
+%     h = subplot(1,2,2); set(h, 'units', 'pixel');
+%     pos = get(h, 'position');
+%     pos(2) = pos(2) + (pos(4) - pos(3))/2; pos(4) = pos(3);
+%     set(h, 'position', pos);
+%     plot(rgcPos(:,1), rgcPos(:,2), 'o','MarkerEdgeColor', [0.8 0.8 0.8]);
+%     hold on;
+%     indx = (spikes(:,ts,1) == 1);
+%     plot(rgcPos(indx,1), rgcPos(indx, 2), 'k.');
+%     axis([xx yy]); %set(gca, 'Visible', off);
+%     hold off;
+%     writeVideo(writerObj,getframe(hf));
+% end
+% close(writerObj);
+%movie(M);
 
 %% Classification

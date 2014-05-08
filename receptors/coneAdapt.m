@@ -82,6 +82,8 @@ volts  = double(sensorGet(sensor, 'volts'));
 
 if isempty(volts), error('cone absorptions should be pre-computed'); end
 
+vSwing = pixelGet(sensorGet(sensor,'pixel'),'voltageSwing');
+
 switch typeAdapt
     case 0 % no adaptation
         gainMap = 1;
@@ -89,8 +91,8 @@ switch typeAdapt
     case 1
         % Use same gain for all cone type
         
-        % Set the gain so that the max - min get scaled to 80 mV
-        gainMap = 0.08 / (max(volts(:)) - min(volts(:)));
+        % Set the gain so that the max - min get scaled to 0.8 * vSwig mV
+        gainMap = 0.8 * vSwing / (max(volts(:)) - min(volts(:)));
         adaptedData = gainMap * volts;
         
         % Set the zero level as the median. Actually, we could use mean,
@@ -103,7 +105,9 @@ switch typeAdapt
         
         for ii = 2 : 4 % L,M,S and we don't need to compute for K
             v = sensorGet(sensor,'volts',ii);
-            gainMap(ii) = 0.08 / (max(v) - min(v));
+            if ~isempty(v)
+                gainMap(ii) = 0.8 * vSwing / (max(v) - min(v));
+            end
         end
         
         nSamples = size(volts, 3);
@@ -131,38 +135,40 @@ switch typeAdapt
         % we took median of cone absorptions as white point and as
         % adaptation offset, then we should be fine with chromatic
         % adaptation.
-        n = 0.7; R_max = 0.04;
+%         n = 0.7; R_max = 0.04;
         
         % Compute white point for L,M,S
-        adaptPoint  = zeros(4,1);
-        for ii = 2 : 4 % ii = 1 is for K, which is ignored
-            v = double(sensorGet(sensor, 'volts', ii));
-            adaptPoint(ii) = median(v);
-        end
-        
+%         adaptPoint  = zeros(4,1);
+%         for ii = 2 : 4 % ii = 1 is for K, which is ignored
+%             v = double(sensorGet(sensor, 'volts', ii));
+%             adaptPoint(ii) = median(v);
+%         end
+%         
         % Convert unit for Kr and Kd
         % Kr = 166; Kd = 194; in units of trolands
         % Here, the conversion is just an approximation.
-        pixel = sensorGet(sensor, 'pixel');
-        photon2volts = pixelGet(pixel, 'conversion gain');         
-        Kr = 16.6 * photon2volts; Kd = 19.4 * photon2volts;
+%         pixel = sensorGet(sensor, 'pixel');
+%         photon2volts = pixelGet(pixel, 'conversion gain');         
+%         Kr = 16.6 * photon2volts; Kd = 19.4 * photon2volts;
+%         
+%         coneType = sensorGet(sensor, 'cone type');
+%         adaptPoint = adaptPoint(coneType);
+%         adaptPoint = repmat(adaptPoint, [1 1 size(volts,3)]);
+%         
+%         % Compute equivalent gain by R(p(Ia)Is|0)
+%         gainMap = volts .* Kd ./ (adaptPoint + Kd); % compute p(Ia)Is
+%         gainMap = gainMap .^ (n-1) * R_max ./ (gainMap.^n + Kr.^n);
+%         
+%         % Compute offset map by R(p(Ia)Ia|0)
+%         offset = adaptPoint .* Kd ./ (adaptPoint + Kd);
+%         offset = offset.^n * R_max ./ (offset.^n + Kr.^n);
+%         
+%         % Compute adapted data
+%         adaptedData = volts .* gainMap;
+%         adaptedData(isnan(adaptedData)) = 0;
         
-        coneType = sensorGet(sensor, 'cone type');
-        adaptPoint = adaptPoint(coneType);
-        adaptPoint = repmat(adaptPoint, [1 1 size(volts,3)]);
-        
-        % Compute equivalent gain by R(p(Ia)Is|0)
-        gainMap = volts .* Kd ./ (adaptPoint + Kd); % compute p(Ia)Is
-        gainMap = gainMap .^ (n-1) * R_max ./ (gainMap.^n + Kr.^n);
-        
-        % Compute offset map by R(p(Ia)Ia|0)
-        offset = adaptPoint .* Kd ./ (adaptPoint + Kd);
-        offset = offset.^n * R_max ./ (offset.^n + Kr.^n);
-        
-        % Compute adapted data
-        adaptedData = volts .* gainMap;
-        adaptedData(isnan(adaptedData)) = 0;
-        % error('NYI');
+        % I'm not sure if this is right. Just throw out an error first
+        error('NYI');
     otherwise
         error('unknown adaptation type');
 end
