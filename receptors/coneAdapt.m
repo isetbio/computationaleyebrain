@@ -1,7 +1,7 @@
-function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt)
+function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt, varargin)
 %% Cone adaptation
 %
-%   [sensor, adaptedData] = coneAdaptation(sensor, typeAdapt)
+%   [sensor, adaptedData] = coneAdaptation(sensor, typeAdapt, varargin)
 %
 % Implement adaptation models to produce the cone volts. Cone absorption
 % sampels should be computed and stored in sensorGet(sensor, volts).
@@ -21,12 +21,6 @@ function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt)
 % the release decreases and the range available for another flash. If you
 % darken from the mean, the rate can increase.
 %
-% The way to compute the mean must depend on a combination of the
-% photoisomerizations and the recycling rate, probably through some
-% equilibrium equation. The recycling rate depends on the isomerization
-% rate and they set an equilibrium that is slower and slower as the mean
-% when background gets brighter.
-%
 % In addition to Rodieck's discussion, there are famous papers by Boynton
 % (e.g. adaptation in cones) expressing such a model based on cone ERPs.
 %
@@ -40,29 +34,27 @@ function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt)
 % different cone types, but we think it's spatial invariant.
 %
 % Inputs:
-%  sensor:     ISETBio sensor with cone absorption computed and stored
-%  typeAdapt:  The adaptation model
-%   typeAdapt= 0 - no adaptation
-%   typeAdapt= 1 - a single gain map for the whole cone array
-%   typeAdapt= 2 - one gain map computed for each cone class
-%   typeAdapt= 3 - non-linear cone adapt for each type of cone
-%   typeAdapt= 4 - cone by cone adaptation (NYI)
+%  sensor     - ISETBio sensor with cone absorption computed and stored
+%  typeAdapt  -  The adaptation model, meaning of value are as below
+%           0 = no adaptation
+%           1 = a single gain map for the whole cone array
+%           2 = one gain map computed for each cone class
+%           3 = cone by cone adaptation (NYI)
+%  varargin   - Cone adaptation parameters, could include
+%    
 %
 % Output:
-%   sensor:        ISETBio sensor with cone adaptation parameters set. The
-%                  parameters include gain and offset. You could retrieve
-%                  the adaptation parameters and data by sensorGet
-%                  function calls.
-%   adaptedData:   Adapted voltage 3D matrix, would be in same size as
-%                  volts image in sensor.
+%   sensor      - ISETBio sensor with cone adaptation parameters set. The
+%                 parameters include gain and offset. You could retrieve
+%                 the adaptation parameters and data by sensorGet function
+%                 calls.
+%   adaptedData - Adapted voltage 3D matrix, would be in same size as volts
+%                 image in sensor.
 %
-%
-% ALERT:  The amount of adaptation is hard coded at this moment. Maybe we
-%         should accept a third input parameter to set it.
-%
-% In the future, we will look at the time series and have a time-varying
-% adaptation function. Generally, cones take 200ms and rods take 800ms for
-% adaptation.
+% Notes:
+%   In the future, we will look at the time series and have a time-varying
+%   adaptation function. Generally, cones take 200ms and rods take 800ms
+%   for adaptation.
 %
 % Examples:
 %   sensor = coneAdapt(sensor, 1);
