@@ -6,8 +6,9 @@ function [sensor, params] = emInit(emType, sensor, params)
 % emType:  Eye movement type {fixation brownian, fixation gaussian}
 % sensor:  The sensor
 % params:  Depends on type
-%   fixation:  sdx, sdy, center, nSamples, randSeed (optional).  The sd
-%   units are in deg of visual angle.
+%   fixation brownian:
+%      center, sdx, sdy, center, nSamples, randSeed (optional).  
+%      The sd units are in deg of visual angle.
 %
 % General Process:
 %   1. Check eyeMoveType and set random seed
@@ -20,7 +21,12 @@ function [sensor, params] = emInit(emType, sensor, params)
 %   sensor       - sensor with eye movement related parameters set
 %
 % Example:
-%    sensor = emInit(sensor, scene, oi, 100, 1)
+%    sensor = sensorCreate('human'); clear params
+%    params.center = 0;
+%    params.Sigma = 0.02; 
+%    params.nSamples = 50;
+%    params.fov = 1;  
+%    sensor = emInit('fixation brownian', sensor, params)
 %
 % (HJ) Copyright PDCSOFT TEAM 2013
 
