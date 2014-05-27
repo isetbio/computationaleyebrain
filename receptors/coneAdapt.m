@@ -1,4 +1,4 @@
-function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt, varargin)
+function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt, params)
 %% Cone adaptation
 %
 %   [sensor, adaptedData] = coneAdaptation(sensor, typeAdapt, varargin)
@@ -39,8 +39,11 @@ function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt, varargin)
 %           0 = no adaptation
 %           1 = a single gain map for the whole cone array
 %           2 = one gain map computed for each cone class
-%           3 = cone by cone adaptation (NYI)
-%  varargin   - Cone adaptation parameters, could include
+%           3 = non-linear adaptation
+%           4 = cone by cone adaptation (NYI)
+%  params     - Cone adaptation parameters, could include
+%    .bgVolts = background voltage
+%    .vSwing  = maximum volts response
 %    
 %
 % Output:
@@ -67,38 +70,55 @@ function [sensor, adaptedData] = coneAdapt(sensor, typeAdapt, varargin)
 %% Check inputs and Init
 if notDefined('sensor'),      error('sensor is required'); end
 if ~sensorCheckHuman(sensor), error('unsupported species'); end
-if notDefined('typeAdapt'),   typeAdapt = 2; end
+if notDefined('typeAdapt'),   typeAdapt = 3; end
+if notDefined('params'), params = []; end
 
 %% Compute cone adaptations
 volts  = double(sensorGet(sensor, 'volts'));
 
 if isempty(volts), error('cone absorptions should be pre-computed'); end
 
-vSwing = pixelGet(sensorGet(sensor,'pixel'),'voltageSwing');
+if isfield(params, 'vSwing')
+    vSwing = params.vSwing;
+else
+    vSwing = pixelGet(sensorGet(sensor,'pixel'),'voltageSwing');
+end
 
+if isfield(params, 'bgVolts')
+    bgVolts = params.bgVolts;
+else
+    bgVolts = median(volts(:));
+end
+    
 switch typeAdapt
     case 0 % no adaptation
         gainMap = 1;
-        offset  = 0;
+        bgVolts  = 0;
     case 1
         % Use same gain for all cone type
         
-        % Set the gain so that the max - min get scaled to 0.8 * vSwig mV
-        gainMap = 0.8 * vSwing / (max(volts(:)) - min(volts(:)));
+        % Adjust for bg volts as offset
+        volts = volts - bgVolts;
+        
+        % Set the gain so that the max - min get scaled to vSwig mV
+        gainMap = vSwing / (max(volts(:)) - min(volts(:)));
         adaptedData = gainMap * volts;
         
-        % Set the zero level as the median. Actually, we could use mean,
-        % but to avoid some extreme bright points, we use median
-        offset  = median(adaptedData(:));
     case 2
         % Use different gains for each cone type
         % For human, the cone types in sensor are 1~4 for K, L, M, S
+        if isscalar(bgVolts), bgVolts = ones(4,1)*bgVolts; end
+        assert(numel(bgVolts) == 4, 'bgVolts should be of 4 elements');
         gainMap = ones(4, 1);
         
+        % Adjust for backgroud
+        volts = volts - bgVolts(sensorGet(sensor, 'cone type'));
+        
+        % Compute gain map
         for ii = 2 : 4 % L,M,S and we don't need to compute for K
             v = sensorGet(sensor,'volts',ii);
             if ~isempty(v)
-                gainMap(ii) = 0.8 * vSwing / (max(v) - min(v));
+                gainMap(ii) = vSwing / (max(v) - min(v));
             end
         end
         
@@ -106,70 +126,60 @@ switch typeAdapt
         gainMap = gainMap(sensorGet(sensor, 'cone type'));
         
         adaptedData = volts .* repmat(gainMap, [1 1 nSamples]);
-        % Set the zero level as the median
-        offset      = median(adaptedData(:));
     case 3
-        % Use non-linear cone adaptation for each cone type
-        % Formula:
-        %   R(Is|Ia) = R(p(Ia)Is|0) - R(p(Ia)Ia|0)
-        %   R(Is|0)  = Is^n R_max / (Is^n + Kr^n)
-        %   p(Ia)    = Kd / (Ia + Kd)
-        % For human:
-        %   n = 0.7; R_max = 40 mV;
-        %   Kr = 166; Kd = 194; (units: trolands)
-        % See Dawis (1982) paper for more details
+        % In this case, we will do non-linear cone adaptation
+        % Reference:
+        %   Felice A. Dunn, et al. Light adaptation in cone vision involves
+        %   switching between receptor and post-receptor sites,
+        %   doi:10.1038/nature06150
+        % From there and some other papers, we know two facts:
+        %   1) The steady state response follows:
+        %      R/R_max = 1/(1 + (I_{1/2}/I_B)^n)
+        %   2) The cone adaptation follows
+        %      AMP/AMP_{dark} = ((a + bI_B)/(a + I_B))/(cI_B+1)
+        % To compute the adapted voltage for input I on background I_B, we
+        % use the following process
+        %   1) Compute steady state response for I as R_i
+        %   2) Compute dark adapted response for I as R_i * AMP / AMP{dark}
+        %   3) Compute I_B adapted response
+        %
+        % Notes:
+        %   In the original paper, the formulas are only tested and fitted
+        %   for L cones. Here, we use it for all cone types and this might
+        %   lead to simulation errors.
+        %
+        %   Also, by this method, the adapted cone volts are still positive
+        %   This is different from the previous two method
+        %
+        % (HJ) May, 2014
         
-        % Question: Does it make sense to use the same Kr and Kd for all
-        % the three cone types?
+        % Check inputs
+        if ~isscalar(bgVolts), error('bgVolts should be scalar'); end
         
-        % From the idea of chromatic adaptation, we should scale the three
-        % channels differently to make the adapted white point "white". If
-        % we took median of cone absorptions as white point and as
-        % adaptation offset, then we should be fine with chromatic
-        % adaptation.
-%         n = 0.7; R_max = 0.04;
+        % Init function handles
+        cg = 1/pixelGet(sensorGet(sensor, 'pixel'), 'conversion gain');
+        cg = cg / sensorGet(sensor, 'exp time');
+        steadyR  = @(x) 1./(1+(45000 ./ x / cg).^0.7)*vSwing;
+        ampRatio = @(x) (100 + 1.3*x/cg)./(100 + x/cg)./(0.00029*x/cg + 1);
         
-        % Compute white point for L,M,S
-%         adaptPoint  = zeros(4,1);
-%         for ii = 2 : 4 % ii = 1 is for K, which is ignored
-%             v = double(sensorGet(sensor, 'volts', ii));
-%             adaptPoint(ii) = median(v);
-%         end
-%         
-        % Convert unit for Kr and Kd
-        % Kr = 166; Kd = 194; in units of trolands
-        % Here, the conversion is just an approximation.
-%         pixel = sensorGet(sensor, 'pixel');
-%         photon2volts = pixelGet(pixel, 'conversion gain');         
-%         Kr = 16.6 * photon2volts; Kd = 19.4 * photon2volts;
-%         
-%         coneType = sensorGet(sensor, 'cone type');
-%         adaptPoint = adaptPoint(coneType);
-%         adaptPoint = repmat(adaptPoint, [1 1 size(volts,3)]);
-%         
-%         % Compute equivalent gain by R(p(Ia)Is|0)
-%         gainMap = volts .* Kd ./ (adaptPoint + Kd); % compute p(Ia)Is
-%         gainMap = gainMap .^ (n-1) * R_max ./ (gainMap.^n + Kr.^n);
-%         
-%         % Compute offset map by R(p(Ia)Ia|0)
-%         offset = adaptPoint .* Kd ./ (adaptPoint + Kd);
-%         offset = offset.^n * R_max ./ (offset.^n + Kr.^n);
-%         
-%         % Compute adapted data
-%         adaptedData = volts .* gainMap;
-%         adaptedData(isnan(adaptedData)) = 0;
+        % Compute steady state response
+        sR = steadyR(volts);
         
-        % I'm not sure if this is right. Just throw out an error first
-        error('NYI');
+        % Compute dark adapted response
+        dR = sR ./ ampRatio(volts);
+        
+        % Compute adapted response at level I_B
+        adaptedData = dR * ampRatio(bgVolts);
+        
+        % Set gain map and offset
+        gainMap = adaptedData ./ volts;
+        bgVolts = 0; % We don't have an actual offset
     otherwise
         error('unknown adaptation type');
 end
 
-% Compute adapted data
-adaptedData = adaptedData - offset;
-
 % Set adaptation parameters back to sensor
 sensor = sensorSet(sensor, 'adaptation gain', gainMap);
-sensor = sensorSet(sensor, 'adaptation offset', offset);
+sensor = sensorSet(sensor, 'adaptation offset', bgVolts);
 
 end
