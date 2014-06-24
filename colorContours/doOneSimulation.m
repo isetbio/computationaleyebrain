@@ -14,6 +14,11 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 % 8/16/13  dhb  Working on this.
 % 8/18/13  dhb  Opponency and second site noise.
 % 8/25/13  dhb  Parameter rationalization.
+% 6/23/14  dhb  Change call of ptbConeIsomerizationsFromSpcctra to ptbConeIsomerizationsFromRadiance.
+%               It looks like this name change was implemented by someone, and an error message
+%               inserted into ptbConeIsomerizationsFromSpectra saying to change the name of the caller.
+%               So I did.
+%          dhb  Absorbtance -> Absorptance in various places to handle fix of spelling implemented at some point.
 
 %% Use PTB to compute cone quantal sensitivities.
 %
@@ -31,17 +36,17 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 
 % First nominal sensitivities
 [ptbNominalBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbNominalPhotorceptorsStruct,ptbNominalIrradianceWattsPerM2] = ...
-    ptbConeIsomerizationsFromSpectra(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
+    ptbConeIsomerizationsFromRadiance(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
     staticParams.pupilDiameterMm,staticComputedValues.focalLengthMm,staticParams.integrationTimeSecs,0);
 ptbNominalBackLMSIsomerizations = round(ptbNominalBackLMSIsomerizations);
-ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorbtance;
+ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorptance;
 ptbNominalLMSEnergySensitivities = ptbNominalPhotorceptorsStruct.energyFundamentals;
 
 [ptbAdjustedBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ...
-    ptbConeIsomerizationsFromSpectra(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
+    ptbConeIsomerizationsFromRadiance(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
     staticParams.pupilDiameterMm,staticComputedValues.focalLengthMm,staticParams.integrationTimeSecs,theParams.macularPigmentDensityAdjust);
 ptbAdjustedBackLMSIsomerizations = round(ptbAdjustedBackLMSIsomerizations);
-ptbAdjustedLMSQuantalEfficiency = ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance;
+ptbAdjustedLMSQuantalEfficiency = ptbAdjustedPhotorceptorsStruct.isomerizationAbsorptance;
 ptbAdjustedLMSEnergySensitivities = ptbAdjustedPhotorceptorsStruct.energyFundamentals;
 
 %% Can simulate different types of color observers.  This is a little bit of a kluge, and
@@ -170,7 +175,7 @@ for t = 1:theParams.nTestLevels;
             % Plot out PTB and isetbio cone quantal spectral sensitivities, optionally
             if (runtimeParams.DO_SIM_PLOTS)
                 figure; clf; hold on
-                plot(SToWls(ptbAdjustedPhotorceptorsStruct.nomogram.S),ptbAdjustedPhotorceptorsStruct.isomerizationAbsorbtance(end:-1:1,:)');
+                plot(SToWls(ptbAdjustedPhotorceptorsStruct.nomogram.S),ptbAdjustedPhotorceptorsStruct.isomerizationAbsorptance(end:-1:1,:)');
                 plot(blankConeResponses.isetLMSQuantalEfficiencyWavelengths,blankConeResponses.isetLMSQuantalEfficiencies(end:-1:1,:)',':');
                 xlabel('Wavelength (nm)');
                 ylabel('Isomerization Quantal Efficiency');

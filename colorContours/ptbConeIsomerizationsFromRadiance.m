@@ -35,6 +35,8 @@ function [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2] = ...
 % the default.
 %
 % 8/4/13  dhb  Wrote it.
+% 6/23/14 dhb  This appears to be a renamed version of ptbConeIsomerizationsFromSpectra,
+%              but there was no comment here to let us all know for sure.
 %
 % DHB/BW ISETBIO Team, 2013
 
