@@ -1,4 +1,4 @@
-function [acc, err, staticValues] = ccAccuracy(simParams, staticValues)
+function [acc, err, sParams] = ccAccuracy(simParams, sParams)
 %% function ccAccuracy(simParams)
 %    find classification accuracy for color discrimination experiment
 %    defined in simParams
@@ -8,7 +8,7 @@ function [acc, err, staticValues] = ccAccuracy(simParams, staticValues)
 %                   for more information about the structure, please refer 
 %                   to setParameters (Name might be changed afterwards) and
 %                   constructSimulationParameters
-%    staticValues - contains precomputed values
+%    sParams      - contains precomputed values
 %                   Required fields include
 %                     .refRGB,  reference color RGB value in 0~1
 %                     .display, ISET compatible dispaly structure
@@ -43,57 +43,46 @@ if nargin < 1, error('simulation parameter structure required'); end
 if nargin < 2, error('static values structure required'); end
 
 %  set number of frames to be used in train and test
-if ~isfield(staticValues, 'nFrames')
-    nFrames = 500;
-else
-    nFrames = staticValues.nFrames;
-end
+try nFrames = sParams.nFrames; catch, nFrames = 3000; end
+try display = sParams.display; catch, display = 'OLED-Sony'; end
 
-if ~isfield(staticValues, 'doSecondSiteNoise')
-    staticValues.doSecondSiteNoise = false;
+if ~isfield(sParams, 'doSecondSiteNoise')
+    sParams.doSecondSiteNoise = false;
 end
 
 %% Compute photon images for reference image
 %  if scene for reference color is not set, create it
-if ~isfield(staticValues, 'refScene')
-    refImg   = ones([staticValues.scenePixels 3]);
+if ~isfield(sParams, 'refScene')
+    refImg   = ones([sParams.scenePixels 3]);
     for i = 1 : 3
         refImg(:,:,i) = simParams.matchRGB(i);
     end
-    %refImgName = fullfile(isetbioRootPath,'tmp',['refImg_' ...
-    %                    num2str(randi(1e6)) '.png']);
-    staticValues.refScene = sceneFromFile(refImgName, 'rgb', ...
-                                          [], staticValues.display);
-    %delete(refImgName);
+    sParams.refScene = sceneFromFile(refImgName, 'rgb', [], display);
 end
-% vcAddAndSelectObject(staticValues.refScene); sceneWindow;
 
 %  if refOI is not computed, create and compute it
-if ~isfield(staticValues, 'refOI')
-    wave   = 380 : 4 : 780;
-    wvf    = wvfCreate('wave',wave);
-    pupilDiameterMm = 3;
-    sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-    wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-    wvf    = wvfComputePSF(wvf);
-    staticValues.refOI = wvf2oi(wvf,'shift invariant');
+if ~isfield(sParams, 'refOI')
+    sParams.refOI = oiCreate('wvf human');
 end
 
 %  if photon images is not computed, compute and store it
-if ~isfield(staticValues, 'isRefVoltsImgComputed') || ...
-        ~staticValues.isRefVoltsImgComputed
-    staticValues.sensor = coneSamples(staticValues.refScene, nFrames, ...
-        staticValues.sensor, staticValues.refOI);
+if ~isfield(sParams, 'isRefVoltsImgComputed') || ...
+        ~sParams.isRefVoltsImgComputed
+    sensor = sensorSet(sParams.sensor, 'sensor positions', ...
+                        zeros(nFrames, 2));
+    sParams.sensor = coneAbsorptions(sensor, sParams.refOI);
+    sParams.isRefVoltsImgComputed = 1;
 end
 
 % get photon absorptions from each cone in the sensor array
 % if doSecondSiteNoise is true, the sensor should contain photon
 % absorptions with second site noise here. This is not reasonable to store
 % it there, should change it to a cone structure later
-refPhotons = sensorGet(staticValues.sensor, 'photons');
-refPhotons = double(refPhotons);
-if staticValues.doSecondSiteNoise
-    refPhotons = coneComputeSSNoise(refPhotons, staticValues.coneType);
+refPhotons = sensorGet(sParams.sensor, 'photons');
+
+if sParams.doSecondSiteNoise
+    coneType = sensorGet(sParams.sensor, 'cone type');
+    refPhotons = coneComputeSSNoise(refPhotons, coneType);
 end
 refPhotons = refPhotons(50:60, 50:60, :);
 
@@ -102,54 +91,38 @@ refPhotons = refPhotons(50:60, 50:60, :);
 if ~isfield(simParams, 'matchRGB')
     % Compute match value
     dir = [cos(simParams.cdAngle) sin(simParams.cdAngle) 0]';
-    matchLMS = staticValues.refLMS + simParams.nTestLevels * dir;
+    matchLMS = sParams.refLMS + simParams.nTestLevels * dir;
     
-    simParams.matchRGB = coneContrast2RGB(staticValues.display,...
-        matchLMS, staticValues.bgColor);
+    simParams.matchRGB = coneContrast2RGB(sParams.display,...
+        matchLMS, sParams.bgColor);
 end
 %  Create image for match color
-if ~isfield(staticValues, 'scenePixels')
-    staticValues.scenePixels = [64 64]; 
+if ~isfield(sParams, 'scenePixels')
+    sParams.scenePixels = [64 64]; 
 end
-if isscalar(staticValues.scenePixels)
-    val = staticValues.scenePixels;
-    staticValues.scenePixels = [val val];
+if isscalar(sParams.scenePixels)
+    val = sParams.scenePixels;
+    sParams.scenePixels = [val val];
 end
 
 % This creates the data that will be written out into the scene file
-matchImg   = ones([staticValues.scenePixels 3]);
+matchImg   = ones([sParams.scenePixels 3]);
 for i = 1 : 3
     matchImg(:,:,i) = simParams.matchRGB(i);
 end
 
-% Create scene for match patch
-% should change the random number to some simulation
-matchImgName = fullfile(isetbioRootPath,'tmp',['matchImg_' ...
-    num2str(randi(1e6)) '.png']);
-imwrite(matchImg, matchImgName);
-
-% Re-write sceneFromFile so instead of a file name, we can send in RGB
-% data. Also, allow the display to be either a name of a file or a display
-% structure. 
-staticValues.display.name = 'LCD-Apple';
-matchScene = sceneFromFile(matchImg, 'rgb', [], ...
-                           staticValues.display.name);
-matchScene = sceneSet(matchScene,'h fov', ...
-                      sceneGet(staticValues.refScene,'h fov'));
-% vcAddAndSelectObject(matchScene); sceneWindow;
-
-% clean up
-delete(matchImgName);
+% Create scene for match patch 
+matchScene = sceneFromFile(matchImg, 'rgb', [], display);
+matchScene = sceneSet(matchScene, 'fov', sceneGet(sParams.refScene,'fov'));
 
 %  Compute cone samples
-sensor = coneSamples(matchScene, nFrames, staticValues.sensor, ...
-    staticValues.refOI);
+sensor = coneSamples(matchScene, nFrames, sParams.sensor, sParams.refOI);
 matchPhotons = sensorGet(sensor, 'photons');
 matchPhotons = double(matchPhotons);
 
 %  Compute second site noise if needed
-if staticValues.doSecondSiteNoise
-    matchPhotons = coneComputeSSNoise(matchPhotons, staticValues.coneType);
+if sParams.doSecondSiteNoise
+    matchPhotons = coneComputeSSNoise(matchPhotons, sParams.coneType);
 end
 
 %  Sample cone response in ROI
@@ -173,6 +146,6 @@ acc = acc(1);
 
 
 %% Tell the calling routine that we computed the refPhotons
-staticValues.isRefVoltsImgComputed = true;
+sParams.isRefVoltsImgComputed = true;
 
 end

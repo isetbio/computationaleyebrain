@@ -81,7 +81,7 @@ if isempty(volts), error('cone absorptions should be pre-computed'); end
 if isfield(params, 'vSwing')
     vSwing = params.vSwing;
 else
-    vSwing = pixelGet(sensorGet(sensor,'pixel'),'voltageSwing');
+    vSwing = sensorGet(sensor,'pixel voltageSwing');
 end
 
 if isfield(params, 'bgVolts')
