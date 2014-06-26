@@ -96,7 +96,7 @@ if USE_PROCLUS
                   'save(sprintf(''~/test%d.mat'',jobindex));'];
     sgerun2(sgeCommand, 'colorContour0', 1, 1:length(simParams));
     % Wait until all job completed
-    % here, we wait until onlly one entry (the interactive window) is
+    % here, we wait until only one entry (the interactive window) is
     % lefted in the job list. I know this is awkward and has a lot of
     % drawbacks. However, I cannot get the jobIDs when they get created. I
     % shall update this part soon, to make it more robust and reasonable

@@ -11,14 +11,17 @@ function [acc, err] = ccAcc(rColor, mColor, params)
 %               - oi, human optics structure
 %               - d, display structure
 %               - svmOpts, params for svm classification
+%               - cropSz, croping size for classification
 %
 %  Outputs:
 %    acc     - classification accuracy
 %    err     - standard deviation of classification accuracy
 %
 %  Example:
+%    [acc, err] = ccAcc([0.5 0.5 0.5], [0.49 0.49 0.5]);
 %
 %  See also:
+%    ccThreshold, svmClassifyAcc
 %
 %  (HJ), ISETBIO TEAM, 2014
 
@@ -72,12 +75,15 @@ sensor = coneAbsorptions(sensor, mOI); % test cone absorptions
 
 %% Add second site noise (cone opponency)
 coneType = sensorGet(sensor, 'cone type');
-rVolts = coneComputeSSNoise(rVolts, coneType);
-mVolts = coneComputeSSNoise(mVolts, coneType);
+cg = sensorGet(sensor, 'conversion gain');
+rVolts = coneComputeSSNoise(rVolts / cg, coneType) * cg;
+mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
 
 %% Crop from center
-rVolts = getMiddleMatrix(rVolts, 14); % Get 15x15 from center
-mVolts = getMiddleMatrix(mVolts, 14); % Get 15x15 from center
+if isfield(params, 'cropSz'), cropSz = params.cropSz;
+else cropSz = 24; end
+rVolts = getMiddleMatrix(rVolts, cropSz); % Get patch from center
+mVolts = getMiddleMatrix(mVolts, cropSz); % Get patch from center
 
 %% SVM classification
 nFolds = 10;
