@@ -3,9 +3,18 @@
 % Confirmat that when we start with the same irradiance function we get
 % the same number of estimated isomerizations
 %
+% 6/23/14  dhb  Change call of ptbConeIsomerizationsFromSpectralRadiance -> ptbConeIsomerizationsFromRadiance,
+%               because that is what it is called now.
+%          dhb  Put the directory one level up onto the path dynamically.  Requires BrainardLabToolbox.
 %
 % DHB/BW Copyright ISETBIO Team, 2013
 
+%% Make sure we are in right place and get the routines one level up
+% onto the path dynamically.
+mFileName = mfilename;
+myDir = fileparts(which(mFileName));
+pathDir = fullfile(myDir,'..','');
+AddToMatlabPathDynamically(pathDir);
 
 %%
 s_initISET
@@ -55,7 +64,7 @@ integrationTimeSec = sensorGet(sensor,'exp time','sec');
 %
 % [isoPerCone,pupilDiamMm,photoreceptors,irradianceWattsPerM2]
 [~, ~, ptbPhotoreceptors, ptbIrradiance] = ...
-    ptbConeIsomerizationsFromSpectralRadiance(radiance(:), wave(:),...
+    ptbConeIsomerizationsFromRadiance(radiance(:), wave(:),...
     pupilDiameterMm, focalLengthMm, integrationTimeSec,0);
 
 % The irradiances differ - this time more than I would like.
