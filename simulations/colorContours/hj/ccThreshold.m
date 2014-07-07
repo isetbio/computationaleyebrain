@@ -95,7 +95,14 @@ while true
         break;
     end
     
-    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
+    if uAcc < pCorrect + 0.01
+        threshold = uDist;
+        return;
+    elseif lAcc > pCorrect - 0.01
+        threshold = lDist;
+        return;
+    end
+    % fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
 end
 
 % Interpolate and find threshold
