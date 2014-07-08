@@ -48,15 +48,10 @@ nLCones = length(LConeResp);
 nMCones = length(MConeResp);
 
 coneResp = coneRespSSNF;
-if any(coneType == 2)
-    coneResp(coneType == 2) = LConeResp - opts.weights * ...
-                          MConeResp(randi(nMCones, [nLCones 1]));
-end
-
-if any(coneType == 3)
-    coneResp(coneType == 3) = MConeResp - opts.weights * ...
-                          LConeResp(randi(nLCones, [nMCones 1]));
-end
+coneResp(coneType == 2) = LConeResp - opts.weights * ...
+                      MConeResp(randi(nMCones, [nLCones 1]));
+coneResp(coneType == 3) = MConeResp - opts.weights * ...
+                      LConeResp(randi(nLCones, [nMCones 1]));
 
 %% Add second site noise
 %  The noise is governed by the specified Fano factor, although we compute

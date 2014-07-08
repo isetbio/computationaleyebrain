@@ -1,4 +1,3 @@
-
 %% Brettel appendix calculation of the cones
 
 % The way Brettel and people calculate the cones is kind of nuts because
