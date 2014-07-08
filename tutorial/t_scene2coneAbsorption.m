@@ -1,5 +1,7 @@
 %% t_scene2coneAbsorption
-%    This is the tutorial script for Psych 221 project
+%
+%  This is the tutorial script for Psych 221 project.
+%
 %  In this script, we illustrate how to build up a scene based on a
 %  calibrated display and generate cone absorption samples
 %
@@ -7,7 +9,7 @@
 
 %% Init Parameters
 if notDefined('ppi'), ppi = 500; end            % points per inch
-if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
+if notDefined('imgFov'), imgFov = [60 60]/60; end % visual angle (degree)
 if notDefined('nFrames'), nFrames = 2000; end   % Number of samples
 
 vDist  = 1.0;                                   % viewing distance (meter)
@@ -20,7 +22,7 @@ display = displaySet(display, 'dpi', ppi);
 
 %% Create Scene
 img = ones(imgSz)*0.5;            % Init to black
-img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in middle
+img(:, round(imgSz(1)/2)) = .99;  % Draw vertical straight line in middle
 img(1:round(imgSz(1)/2), :) = circshift(img(1:round(imgSz(1)/2), :),[0 1]);
 
 % Create scene from file
@@ -52,33 +54,26 @@ oi = oiCompute(scene, oi);
 vcAddAndSelectObject('oi', oi); oiWindow;
 
 %% Create Sensor and Compute Samples
+
 %  Create human sensor
 sensor = sensorCreate('human');
 sensor = sensorSetSizeToFOV(sensor, imgFov, scene, oi); % set fov
 sensor = sensorSet(sensor, 'exp time', 0.05); % integration time: 50 ms
 
-%  Init some parameters
-%  These are parameters for eye movement. Eye movement is very tricky and
-%  at first step, you could turn it off by setting Sigma to zeros(2).
-%  In handling eye movement, you need to make sure that the classifier
-%  cannot tell the difference between two groups based on eye movement
-%  pattern or something related.
-%  Here, I set the eye movement speed to be 1 ms. And sum up to the
-%  exposure time
-emPerExposure   = round(sensorGet(sensor, 'exp time')/0.001);
-params.center   = [0,0];
-params.Sigma    = 6e-5 * eye(2);
-params.nSamples = nFrames + emPerExposure;
-params.fov      = sensorGet(sensor,'fov',scene,oi);
-
 %  Set exposure time to 1 ms
 sensor = sensorSet(sensor, 'exp time', 0.001);
 
 % Set up the eye movement properties
-sensor = emInit('fixation brownian', sensor, params);
+em = emCreate;
+sensor = sensorSet(sensor,'eye movement',em);
+emPerExposure   = round(sensorGet(sensor, 'exp time')/0.001);
+sensor = sensorSet(sensor,'positions',zeros(nFrames + emPerExposure,2));
+sensor = emGenSequence(sensor);
 
 % Compute the cone absopritons
 sensor = coneAbsorptions(sensor, oi);
+
+vcAddObject(sensor); sensorWindow;
 
 % Store the photon samples
 pSamples = double(sensorGet(sensor, 'photons'));
