@@ -1,3 +1,0 @@
-function coneGet
-
-end
