@@ -90,7 +90,7 @@ nFolds = 10;
 if isfield(params, 'svmOpts')
     svmOpts = params.svmOpts;
 else
-    svmOpts = '-s 0 -q';
+    svmOpts = [];
 end
 
 labels = [ones(nSamples,1); -1*ones(nSamples,1)];
@@ -98,7 +98,7 @@ rVolts = RGB2XWFormat(rVolts)';
 mVolts = RGB2XWFormat(mVolts)';
 
 acc = svmClassifyAcc(cat(1, rVolts, mVolts), ...
-                        labels, nFolds, 'svm', svmOpts);
+                        labels, nFolds, 'ranksvm', svmOpts);
 err = acc(2);
 acc = acc(1);
 
