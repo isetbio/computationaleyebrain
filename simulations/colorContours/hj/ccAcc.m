@@ -98,7 +98,7 @@ rVolts = RGB2XWFormat(rVolts)';
 mVolts = RGB2XWFormat(mVolts)';
 
 acc = svmClassifyAcc(cat(1, rVolts, mVolts), ...
-                        labels, nFolds, 'ranksvm', svmOpts);
+                        labels, nFolds, 'svm', svmOpts);
 err = acc(2);
 acc = acc(1);
 
