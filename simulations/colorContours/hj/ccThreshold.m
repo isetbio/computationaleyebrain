@@ -102,7 +102,7 @@ while true
         threshold = lDist;
         return;
     end
-    % fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
+    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
 end
 
 % Interpolate and find threshold
