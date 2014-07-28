@@ -19,7 +19,7 @@ function coneResp = coneComputeSSNoise(coneRespSSNF, coneType, opts)
 %    coneResp      - matrix of cone response with second site noise added
 %
 %  See also:
-%    ccAccuracy
+%    ccAcc
 %
 %  BW/HJ/DHB ISETBIO Team, 2013
 

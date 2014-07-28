@@ -1,4 +1,4 @@
-%% s_colorContours
+% s_colorContours
 %    Compute color discrimination contours
 %
 %  (HJ) ISETBIO TEAM, 2014
@@ -11,8 +11,7 @@ cropSz  = 24;
 
 %% Get the dev stuff onto the path.
 %
-% This uses a BrainardLabToolbox function, but I could
-% move it to the PTB if we decide to go this route.
+% Fragile as it is relative to the location of this script.
 [mFilePath] = fileparts(mfilename('fullpath'));
 AddToMatlabPathDynamically(fullfile(mFilePath,'../../../isetbio dev',''));
     
@@ -32,7 +31,6 @@ end
 
 %% Plot color contour
 threshPts = zeros(length(dirList), 3);
-
 for ii = 1 : length(dirList)
     fName = sprintf('./ccContour%d.mat', ii);
     data = load(fName);
@@ -40,11 +38,10 @@ for ii = 1 : length(dirList)
     threshPts(ii, :) = ref + data.thresh*[cosd(curDir) sind(curDir) 0];
 end
 
-% fit ellipse and plot
+%% Fit ellipse and plot
 figure; hold on;
 plot(threshPts(:,1), threshPts(:,2), 'xr'); % plot points
 [zg, ag, bg, alphag] = fitellipse(threshPts(:,1:2));
 plotellipse(zg, ag, bg, alphag, 'b--')
-
 axis equal; grid on;
 xlabel('L contrast'); ylabel('M contrast');
