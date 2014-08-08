@@ -64,11 +64,13 @@ sensor = sensorSet(sensor, 'exp time', 0.05); % integration time: 50 ms
 sensor = sensorSet(sensor, 'exp time', 0.001);
 
 % Set up the eye movement properties
-em = emCreate;
-sensor = sensorSet(sensor,'eye movement',em);
-emPerExposure   = round(sensorGet(sensor, 'exp time')/0.001);
-sensor = sensorSet(sensor,'positions',zeros(nFrames + emPerExposure,2));
-sensor = emGenSequence(sensor);
+% em = emCreate;
+% sensor = sensorSet(sensor,'eye movement',em);
+% emPerExposure   = round(sensorGet(sensor, 'exp time')/0.001);
+% sensor = sensorSet(sensor,'positions',zeros(nFrames + emPerExposure,2));
+% sensor = emGenSequence(sensor);
+sensor = sensorSet(sensor, 'sensorpositions', 1000);
+sensor = eyemoveInit(sensor);
 
 % Compute the cone absopritons
 sensor = coneAbsorptions(sensor, oi);
@@ -77,15 +79,5 @@ vcAddObject(sensor); sensorWindow;
 
 % Store the photon samples
 pSamples = double(sensorGet(sensor, 'photons'));
-
-% Add 50 samples to 1 to form the 50ms integration time
-% We do use moving sum here
-pSamples = RGB2XWFormat(pSamples);
-pSamples = cumsum(pSamples, 2);
-pSamples = pSamples(:, emPerExposure + 1:end) - ...
-             pSamples(:, 1:end-emPerExposure);
-
-% Now, each line is a sample with noise and you could use this for your
-% classification
 
 %% END
