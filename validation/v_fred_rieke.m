@@ -58,7 +58,7 @@ sensor = sensorSetSizeToFOV(sensor, fov, scene, oi);
 sensor = sensorSet(sensor, 'exp time', 1);
 sensor = sensorComputeNoiseFree(sensor, oi);
 
-photons = gather(sensorGet(sensor, 'photons'));
+photons = sensorGet(sensor, 'photons');
 coneType = sensorGet(sensor, 'cone type');
 
 coneNames = {'L', 'M', 'S'};
