@@ -1,4 +1,4 @@
-%% v_fred_rieke
+%% v_horwitizRieke
 %
 %    Compare cone isomerization results between ISETBIO and Rieke's paper
 %
@@ -41,12 +41,12 @@ d = displayCreate('OLED-Sony', wave);
 %
 %   p.spd = displayGet(d,'spd primaries',2);
 %
-p.freq = 2;
+p.freq = 3;
 p.contrast = 1;
 p.ph  = 0;
 p.ang = 0;
-p.row = 128;
-p.col = 128;
+p.row = 256;
+p.col = 256;
 p.GaborFlag = 0.2;          % standard deviation of the Gaussian window relative to horizontal image size
 scene = sceneCreate('harmonic',p);
 scene = sceneSet(scene, 'h fov', fov);
@@ -55,6 +55,12 @@ scene = sceneSet(scene, 'h fov', fov);
 % above. 
 scene = sceneAdjustIlluminant(scene,sum(displayGet(d,'spd primaries'),2));
 % vcAddObject(scene); sceneWindow;
+
+% This brings the numbers into alignment.
+% But it is too high and will have to come down when we get the monkey
+% optics right.
+% We will ask Austin and Dave for the monkey model eye.
+scene = sceneAdjustLuminance(scene,200);
 
 %%  Show the simulated image
 vcAddObject(scene); sceneWindow;
