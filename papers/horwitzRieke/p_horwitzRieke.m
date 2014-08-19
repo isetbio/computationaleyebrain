@@ -8,21 +8,72 @@
 %
 %  (HJ) ISETBIO TEAM, 2014
 
-%% Create scene
-%  create a half gray scene on sony OLED display
+%%
+s_initISET
+
+%% General scene parameters
+
 wave = (400:10:700)';
 fov  = 1;
 d = displayCreate('OLED-Sony', wave);
-I = 0.75 * ones(100); % 0.75 turns to 0.5 in luminance after gamma table
-scene = sceneFromFile(I, 'rgb', [], d);
+
+%% Not needed at this point
+
+% spd = displayGet(d,'spd');
+% vcNewGraphWin;
+% plot(wave,spd);
+% xlabel('Wave (nm)'); ylabel('Spectral radiance (watts/sr/s/nm/m^2)');
+
+%% Make a scene without knowledge of the display characteristics
+
+% Drifting Gabor, the envelope is fixed and the harmonic moves inside the
+% envelope.
+% Duration 666 ms.
+% The envelope ramps on and off linearly
+% 60 Hz refresh means we show the stimulus for 16 ms and sample it 16
+% times.
+% 3 Hz flicker rate for the harmonic
+% Need to know window size and adjust below.
+
+
+% The mean luminance of the screen is set to 100 cd/m2. 
+% Add a field to p, spd, so that the spd of the scene is specified.
+%
+%   p.spd = displayGet(d,'spd primaries',2);
+%
+p.freq = 2;
+p.contrast = 1;
+p.ph  = 0;
+p.ang = 0;
+p.row = 128;
+p.col = 128;
+p.GaborFlag = 0.2;          % standard deviation of the Gaussian window relative to horizontal image size
+scene = sceneCreate('harmonic',p);
 scene = sceneSet(scene, 'h fov', fov);
 
+% Make the SPD like one of our displays.  This should be eliminated see
+% above. 
+scene = sceneAdjustIlluminant(scene,sum(displayGet(d,'spd primaries'),2));
+% vcAddObject(scene); sceneWindow;
+
+%%  Show the simulated image
+vcAddObject(scene); sceneWindow;
+mid = round(sceneGet(scene,'row')/2);
+plotScene(scene,'radiance hline',[1, mid]);
+
 %% Create human optics
+
 %  According to the paper, pupil size should be of area 12.6 mm^2 (4 mm
 %  pupil diameter)
-pupil_size = 4; % 4 mm diameter
+pupil_size = sqrt(12.6/pi)*2; % 12.6 mm2 is pupil area in HR
 oi = oiCreate('wvf human', pupil_size);
 oi = oiCompute(scene, oi);
+vcAddObject(oi); oiWindow;
+
+%% Show the irradiance
+mid = round(oiGet(oi,'row')/2);
+plotOI(oi,'irradiance hline',[1, mid]);
+az = -13.5; el = 14; view([az el]);
 
 %% Create sensor
 % According to the paper, cone collecting area is 0.6 um^2
@@ -58,7 +109,7 @@ sensor = sensorSetSizeToFOV(sensor, fov, scene, oi);
 sensor = sensorSet(sensor, 'exp time', 1);
 sensor = sensorComputeNoiseFree(sensor, oi);
 
-photons = gather(sensorGet(sensor, 'photons'));
+photons = sensorGet(sensor, 'photons');
 coneType = sensorGet(sensor, 'cone type');
 
 coneNames = {'L', 'M', 'S'};
@@ -66,3 +117,16 @@ for ii = 2 : 4
     fprintf('photoisomerization %s: %d R/sec\n', coneNames{ii-1}, ...
             median(photons(coneType==ii)));
 end
+
+%% Cone as sensor
+vcAddObject(sensor);
+sensorWindow('scale',1);
+
+% Could put up the spectral QE to emphasize lack of lens cutoff.
+
+%% Put up horizontal plot through mosaic of the three types
+mid = sensorGet(sensor,'row')/2;
+plotSensor(sensor,'electrons hline',round([1 mid]));  % (x,y)
+
+%% End
+
