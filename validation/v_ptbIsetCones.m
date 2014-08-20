@@ -25,4 +25,7 @@ plot(wave,photoreceptors.quantalFundamentals)
 % Or they can be specified for calculating with energy
 plot(wave,photoreceptors.energyFundamentals)
 
-%%
+%% Now, get the ISET stuff
+
+
+%% END

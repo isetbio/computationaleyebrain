@@ -1,4 +1,4 @@
-%% v_horwitizRieke
+%% p_horwitizRieke
 %
 %    Compare cone isomerization results between ISETBIO and Rieke's paper
 %
@@ -41,7 +41,7 @@ d = displayCreate('OLED-Sony', wave);
 %
 %   p.spd = displayGet(d,'spd primaries',2);
 %
-p.freq = 3;
+p.freq = 6;
 p.contrast = 1;
 p.ph  = 0;
 p.ang = 0;

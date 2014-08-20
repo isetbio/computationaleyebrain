@@ -34,20 +34,36 @@ function results = doOneSimulation(theParams,staticParams,runtimeParams,staticCo
 % is named for what it does to spectra; it does the inverse to
 % sensitivities.
 
-% First nominal sensitivities
-[ptbNominalBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbNominalPhotorceptorsStruct,ptbNominalIrradianceWattsPerM2] = ...
+% First nominal sensitivities to the background SPD
+% The macular pigment density is set to its nominal, Stockman-Sharpe
+% value, and the 'change' is 0
+[ptbNominalBackLMSIsomerizations,...
+    staticParams.pupilDiameterMm,...
+    ptbNominalPhotorceptorsStruct,...
+    ptbNominalIrradianceWattsPerM2] = ...
     ptbConeIsomerizationsFromRadiance(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
     staticParams.pupilDiameterMm,staticComputedValues.focalLengthMm,staticParams.integrationTimeSecs,0);
-ptbNominalBackLMSIsomerizations = round(ptbNominalBackLMSIsomerizations);
-ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorptance;
+
+% ptbNominalBackLMSIsomerizations = round(ptbNominalBackLMSIsomerizations);
+
+% ptbNominalLMSQuantalEfficiency = ptbNominalPhotorceptorsStruct.isomerizationAbsorptance;
+
+% If we use the displayGet, we don't need this.
 ptbNominalLMSEnergySensitivities = ptbNominalPhotorceptorsStruct.energyFundamentals;
 
-[ptbAdjustedBackLMSIsomerizations,staticParams.pupilDiameterMm,ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ...
+% Same routine but with the macular pigment density parameter adjusted by
+% an amount coded in the final parameter down there.
+[ptbAdjustedBackLMSIsomerizations,staticParams.pupilDiameterMm,...
+    ptbAdjustedPhotorceptorsStruct,ptbAdjustedIrradianceWattsPerM2] = ...
     ptbConeIsomerizationsFromRadiance(staticComputedValues.backSpd,staticComputedValues.wavelengthsNm,...
     staticParams.pupilDiameterMm,staticComputedValues.focalLengthMm,staticParams.integrationTimeSecs,theParams.macularPigmentDensityAdjust);
+
 ptbAdjustedBackLMSIsomerizations = round(ptbAdjustedBackLMSIsomerizations);
+
+% Adjusted means accounting for the macular pigment
 ptbAdjustedLMSQuantalEfficiency = ptbAdjustedPhotorceptorsStruct.isomerizationAbsorptance;
-ptbAdjustedLMSEnergySensitivities = ptbAdjustedPhotorceptorsStruct.energyFundamentals;
+
+% ptbAdjustedLMSEnergySensitivities = ptbAdjustedPhotorceptorsStruct.energyFundamentals;
 
 %% Can simulate different types of color observers.  This is a little bit of a kluge, and
 % may break comparisons between PTB and isetbio that are currently turned off anyway, for
@@ -85,13 +101,20 @@ tempWavelengths = sensorGet(cSensor,'wave');
 if (any(find(tempWavelengths ~= staticComputedValues.wavelengthsNm)))
     error('Wavelength sampling not consistent throughout.');
 end
-cSensor = sensorSet(cSensor,'filter spectra',[zeros(size(ptbAdjustedLMSQuantalEfficiency',1),1) ptbAdjustedLMSQuantalEfficiency']);
+cSensor = sensorSet(cSensor,'filter spectra',...
+    [zeros(size(ptbAdjustedLMSQuantalEfficiency',1),1) ptbAdjustedLMSQuantalEfficiency']);
 sensorSetSizeToFOV(cSensor,0.9*staticParams.fieldOfViewDegrees);
 %sensorConePlot(cSensor);
 
 %% Set up cone conversions for computing stimuli.  These
 % are done in a nominal LMS energy space, which may differ
 % from the space of the simulated observer.
+%
+% If we had passed in the new display structure, we could replace the line
+% below with the following
+%   d = displayCreate('LCD-Apple');
+%   rgb2cones = displayGet(d,'rgb2lms')';
+%
 rgb2cones = ptbNominalLMSEnergySensitivities*staticComputedValues.displaySpd;
 backLMS = rgb2cones*staticComputedValues.backRGB;
 

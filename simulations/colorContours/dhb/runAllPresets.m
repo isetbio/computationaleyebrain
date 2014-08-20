@@ -20,7 +20,7 @@ cd(fileparts(mfilename('fullpath'))); %#ok<MCCD>
 %     'MacularPigmentVary'};
 % thePresets = {'RandomSurroundWithSecondSiteNoise' 'SelectiveSurroundWithSecondSiteNoise' };
 thePresets = {'RandomSurroundNoSecondSiteNoise'};
-
+thePresets = {'QuickTest'};
 %% Run 'em
 for p = 1:length(thePresets)
     colorContours(thePresets{p});
