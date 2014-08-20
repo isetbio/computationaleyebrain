@@ -96,6 +96,7 @@ title('Magnification corrected comparison');
 %%  ISETBIO sensor absorptions
 %
 sensor    = sensorCreate('human');
+sensor    = sensorSet(sensor,'macular density',0.35);
 isetCones = sensorGet(sensor,'spectral qe');
 isetCones = isetCones(:,2:4);
 
