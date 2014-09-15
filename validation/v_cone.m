@@ -5,53 +5,61 @@
 % BW/HJ ISETBIO Team 2013
 
 %%
-cone = coneCreate;
-wave = coneGet(cone,'wave');
+sensor = sensorCreate('human');
+wave   = sensorGet(sensor,'wave');
+human  = sensorGet(sensor,'human');
 
 %%
 vcNewGraphWin([],'tall');
 subplot(4,1,1)
-plot(wave,coneGet(cone,'cone spectral absorptance'));
+plot(wave,coneGet(human.cone,'cone spectral absorptance'));
 title('Cone spectral absorptance')
 
 subplot(4,1,2)
-lens = coneGet(cone,'lens');
-plot(wave,lensGet(lens,'transmittance'))
+plot(wave,lensGet(human.lens,'transmittance'))
 title('Lens transmittance')
 
 subplot(4,1,3)
-macular = coneGet(cone,'macular');
-plot(wave,macularGet(macular,'transmittance'))
+plot(wave,macularGet(human.macular,'transmittance'))
 title('Macular transmittance')
 
 subplot(4,1,4)
-plot(wave,coneGet(cone,'effective spectral absorptance'))
-title('Cone-ocular absorptance')
+plot(wave,coneGet(human.cone,'cone spectral absorbance'))
+title('Cone-ocular absorbance')
+
+%%
+vcNewGraphWin;
+s = sensorGet(sensor,'spectral qe');
+plot(wave,s)
 
 %% Plot again, but change the macular pigment density to 0
 
-m = coneGet(cone,'macular');
-m = macularSet(m,'density',0);
-cone = coneSet(cone,'macular',m);
+human.macular = macularSet(human.macular,'density',0);
 
 %%
+
 vcNewGraphWin([],'tall');
 subplot(4,1,1)
-plot(wave,coneGet(cone,'cone spectral absorptance'));
+plot(wave,coneGet(human.cone,'cone spectral absorptance'));
 title('Cone spectral absorptance')
 
 subplot(4,1,2)
-lens = coneGet(cone,'lens');
-plot(wave,lensGet(lens,'transmittance'))
+plot(wave,lensGet(human.lens,'transmittance'))
 title('Lens transmittance')
 
 subplot(4,1,3)
-macular = coneGet(cone,'macular');
-plot(wave,macularGet(macular,'transmittance'))
+plot(wave,macularGet(human.macular,'transmittance'))
 title('Macular transmittance')
 
 subplot(4,1,4)
-plot(wave,coneGet(cone,'effective spectral absorptance'))
-title('Cone-ocular absorptance')
+plot(wave,coneGet(human.cone,'cone spectral absorbance'))
+title('Cone-ocular absorbance')
+
+%%
+vcNewGraphWin;
+sensor = sensorSet(sensor,'human',human);
+
+s = sensorGet(sensor,'spectral qe');
+plot(wave,s)
 
 %% End
