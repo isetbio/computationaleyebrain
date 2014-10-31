@@ -60,7 +60,7 @@ expData.acc = []; expData.err = []; expData.mContrast = [];
 
 % Init pCorrect
 if isfield(params, 'pCorrect'), pCorrect = params.pCorrect;
-else pCorrect = 0.8; end
+else pCorrect = 0.82; end
 
 %% Binary search
 lDist = 0; lAcc = 0.5;
@@ -88,6 +88,10 @@ while true
         lDist = curDist;
         lAcc = curAcc;
     end
+    
+    % print debug info
+    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
+    
     expData.acc = cat(1, expData.acc, curAcc);
     expData.err = cat(1, expData.err, curErr);
     expData.mContrast = cat(1, expData.mContrast, mContrast(:)');
@@ -102,7 +106,6 @@ while true
         threshold = lDist;
         return;
     end
-    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
 end
 
 % Interpolate and find threshold

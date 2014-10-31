@@ -45,7 +45,12 @@ mScene = sceneFromFile(mColor(ones(sz, 1), ones(sz, 1), :), 'rgb', [], d);
 mScene = sceneSet(mScene, 'fov', 0.5);
 
 %% Compute optical image
-if isfield(params, 'oi'), oi = params.oi; else oi = oiCreate('human'); end
+if isfield(params, 'oi')
+    oi = params.oi;
+else
+    oi = oiCreate('wvf human');
+end
+
 rOI = oiCompute(rScene, oi);
 mOI = oiCompute(mScene, oi);
 
@@ -53,7 +58,7 @@ mOI = oiCompute(mScene, oi);
 if isfield(params, 'sensor')
     sensor = params.sensor;
 else
-    sensor = sensorCreate('human');
+    sensor = sensorCreate('human', params);
     fov = sceneGet(rScene, 'fov');
     sensor = sensorSetSizeToFOV(sensor, fov, rScene, oi);
 end
@@ -68,10 +73,12 @@ sensor = sensorSet(sensor, 'sensor positions', zeros(nSamples, 2));
 
 % compute adapted cone samples
 sensor = coneAbsorptions(sensor, rOI); % reference cone absorptions
-[~, rVolts] = coneAdapt(sensor);       % reference adapted data
+rVolts = sensorGet(sensor, 'volts');
+% [~, rVolts] = coneAdapt(sensor);       % reference adapted data
 
 sensor = coneAbsorptions(sensor, mOI); % test cone absorptions
-[~, mVolts] = coneAdapt(sensor);       % test adapted data
+mVolts = sensorGet(sensor, 'volts');
+% [~, mVolts] = coneAdapt(sensor);       % test adapted data
 
 %% Add second site noise (cone opponency)
 coneType = sensorGet(sensor, 'cone type');

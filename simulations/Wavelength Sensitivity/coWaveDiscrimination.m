@@ -43,8 +43,6 @@ else
     tWave = [];
 end
 
-wave   = 380 : 780;
-pupilDiameterMm = 3;
 svmOpts = '-s 0 -q';
 nFolds = 10;
 
@@ -52,13 +50,14 @@ nFolds = 10;
 %  scene{1} - uniform patch with reference wavelength
 scene{1} = sceneCreate('uniform monochromatic', refWave, 128);
 scene{1} = sceneSet(scene{1}, 'fov', sceneSz);
-
-% XYZ = ieReadSpectra('XYZ', 380:780);
-% adjLum = XYZ(wave==refWave,2) / XYZ(wave==550, 2) * 100;
-% scene{1} = sceneAdjustLuminance(scene{1}, adjLum);
-scene{1} = sceneAdjustLuminance(scene{1}, 100);
 vcAddAndSelectObject('scene', scene{1});
 % sceneWindow;
+
+% by default, scene{1} is equal luminance with mean luminance equals 100
+% we can adjust it to have equal energy, say 1
+energy = sum(sceneGet(scene{1}, 'energy'), 3);
+p = sceneGet(scene{1}, 'photons');
+scene{1} = sceneSet(scene{1}, 'photons', p / mean(energy(:)));
 
 %% Create Human Optics
 %  create lens for standard human observer
@@ -66,12 +65,7 @@ vcAddAndSelectObject('scene', scene{1});
 %  to store the computed optical image
 
 % generate human optics structure
-wvf    = wvfCreate('wave',wave);
-sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-
-wvf    = wvfComputePSF(wvf, false);
-oi     = wvf2oi(wvf,'shift invariant', false);
+oi = oiCreate('wvf human');
 
 % compute optical image
 OI{1} = oiCompute(scene{1}, oi);
@@ -87,9 +81,7 @@ pparams.humanConeDensities = density;
 sensor = sensorCreate('human', [], pparams);
 sensor = sensorSet(sensor, 'exp time', expTime);
 sensor = sensorSetSizeToFOV(sensor, sceneSz, scene{1}, OI{1});
-
-sensor = sensorSet(sensor,'movement positions', [0 0]);
-sensor = sensorSet(sensor,'frames per position', nFrames);
+sensor = sensorSet(sensor, 'sensorpositions', zeros(nFrames, 2));
 
 sensorSz = sensorGet(sensor, 'size');
 sensorC = round(sensorSz/2);
@@ -99,11 +91,15 @@ sensorC = round(sensorSz/2);
 %  Compute samples of cone absorptions
 %  The absorptions for the two groups are normalized to have same mean
 %
-
 sensor = coneAbsorptions(sensor, OI{1}, 0);
 refPhotons = double(sensorGet(sensor, 'photons'));
-refPhotons = refPhotons(sensorC(1)-2 : sensorC(1)+2, ...
-    sensorC(2)-2 : sensorC(2)+2, :);
+
+% do L-M wiring and add second site noise
+coneType = sensorGet(sensor, 'cone type');
+refPhotons = coneComputeSSNoise(refPhotons, coneType);
+
+refPhotons = refPhotons(sensorC(1)-3 : sensorC(1)+3, ...
+    sensorC(2)-3 : sensorC(2)+3, :);
 refPhotons = RGB2XWFormat(refPhotons);
 
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
@@ -125,17 +121,28 @@ if isempty(tWave)
         vcDeleteSelectedObject('scene');
         scene{2} = sceneCreate('uniform monochromatic', wave, 128);
         scene{2} = sceneSet(scene{2}, 'fov', sceneSz);
+        
+        energy = sum(sceneGet(scene{2}, 'energy'), 3);
+        p = sceneGet(scene{2}, 'photons');
+        scene{2} = sceneSet(scene{2}, 'photons', p / mean(energy(:)));
+        
+        
         vcAddAndSelectObject('scene', scene{2});
         vcDeleteSelectedObject('oi');
         OI{2} = oiCompute(scene{2}, oi);
         vcAddAndSelectObject('oi', OI{2});
         sensor = coneAbsorptions(sensor, OI{2}, 0);
         matchPhotons = double(sensorGet(sensor, 'photons'));
-        matchPhotons = matchPhotons(sensorC(1)-2 : sensorC(1)+2, ...
-            sensorC(2)-2 : sensorC(2)+2, :);
+        
+        % second site noise
+        matchPhotons = coneComputeSSNoise(matchPhotons, coneType);
+        
+        % croping
+        matchPhotons = matchPhotons(sensorC(1)-3 : sensorC(1)+3, ...
+            sensorC(2)-3 : sensorC(2)+3, :);
         matchPhotons = RGB2XWFormat(matchPhotons);
         
-        matchPhotons = matchPhotons * mean(refPhotons(:))/ mean(matchPhotons(:));
+        % matchPhotons = matchPhotons * mean(refPhotons(:))/ mean(matchPhotons(:));
         % accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
         %     labels, nFolds, 'svm', svmOpts);
         accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
@@ -153,7 +160,7 @@ if isempty(tWave)
         % Make sure it will not loop infinitely
         iter = iter + 1;
         if iter > 8
-            tWave = [0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10];
+            tWave = [0.1 0.2 0.3 0.4 0.6 0.8 1 1.3 1.5 1.7 2:0.5:10 11:20];
             break;
         end
         
@@ -179,17 +186,19 @@ for ii = 1 : length(tWave)
     vcDeleteSelectedObject('scene');
     scene{2} = sceneCreate('uniform monochromatic', wave(ii,:), 128);
     scene{2} = sceneSet(scene{2}, 'fov', sceneSz);
+    scene{2} = sceneAdjustLuminance(scene{2}, 100);
     vcAddAndSelectObject('scene', scene{2});
     vcDeleteSelectedObject('oi');
     OI{2} = oiCompute(scene{2}, oi);
     vcAddAndSelectObject('oi', OI{2});
     sensor = coneAbsorptions(sensor, OI{2}, 0);
     matchPhotons = double(sensorGet(sensor, 'photons'));
-    matchPhotons = matchPhotons(sensorC(1)-2 : sensorC(1)+2, ...
-        sensorC(2)-2 : sensorC(2)+2, :);
+    matchPhotons = coneComputeSSNoise(matchPhotons, coneType);
+    matchPhotons = matchPhotons(sensorC(1)-3 : sensorC(1)+3, ...
+        sensorC(2)-3 : sensorC(2)+3, :);
     matchPhotons = RGB2XWFormat(matchPhotons);
     
-    matchPhotons = matchPhotons * mean(refPhotons(:))/ mean(matchPhotons(:));
+    % matchPhotons = matchPhotons * mean(refPhotons(:))/ mean(matchPhotons(:));
     % accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
     %     labels, nFolds, 'svm', svmOpts);
     accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
@@ -202,7 +211,7 @@ end
 %% Identify JND wavelength
 wave = wave(:,1);
 try
-    tRange = min(wave):(min(wave)/100):max(wave);
+    tRange = min(wave):((wave(2)-wave(1))/100):max(wave);
     interpolatedAcc = interp1(wave, acc, tRange, 'linear');
     [~, ind] = min(abs(interpolatedAcc - threshold));
     jndWave = tRange(ind);
