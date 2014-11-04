@@ -7,7 +7,7 @@
 s_initISET;
 ref     = [0 0 0];
 dirList = 0:10:359;  % directions
-cropSz  = 24;
+cropSz  = 12;
 
 %% Compute classification accuracy
 %  Set up proclus command

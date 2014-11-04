@@ -60,13 +60,13 @@ expData.acc = []; expData.err = []; expData.mContrast = [];
 
 % Init pCorrect
 if isfield(params, 'pCorrect'), pCorrect = params.pCorrect;
-else pCorrect = 0.82; end
+else pCorrect = 0.8; end
 
 %% Binary search
 lDist = 0; lAcc = 0.5;
 
 % Estimate upper bound
-uDist = 0.1; uAcc = 0;
+uDist = 0.2; uAcc = 0;
 while uAcc < pCorrect
     mContrast = rContrast + uDist * direction;
     mColor = coneContrast2RGB(d, mContrast, bgColor);

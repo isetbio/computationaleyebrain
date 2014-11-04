@@ -48,7 +48,7 @@ mScene = sceneSet(mScene, 'fov', 0.5);
 if isfield(params, 'oi')
     oi = params.oi;
 else
-    oi = oiCreate('wvf human');
+    oi = oiCreate('human');
 end
 
 rOI = oiCompute(rScene, oi);
@@ -58,7 +58,7 @@ mOI = oiCompute(mScene, oi);
 if isfield(params, 'sensor')
     sensor = params.sensor;
 else
-    sensor = sensorCreate('human', params);
+    sensor = sensorCreate('human', [], params);
     fov = sceneGet(rScene, 'fov');
     sensor = sensorSetSizeToFOV(sensor, fov, rScene, oi);
 end
@@ -88,7 +88,7 @@ mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
 
 %% Crop from center
 if isfield(params, 'cropSz'), cropSz = params.cropSz;
-else cropSz = 24; end
+else cropSz = 12; end
 rVolts = getMiddleMatrix(rVolts, cropSz); % Get patch from center
 mVolts = getMiddleMatrix(mVolts, cropSz); % Get patch from center
 
