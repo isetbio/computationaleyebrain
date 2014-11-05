@@ -15,6 +15,8 @@ cropSz  = 12;
 cmd = '[thresh, expData] = ccThreshold(ref, dirList(jobindex), params);';
 cmd = [cmd 'save(sprintf(''~/ccContour%d.mat'',jobindex));'];
 params.ccParams.cropSz = cropSz;
+params.ccParams.rgbDensities = [0.3 0.6 0 0.1];
+
 try % try use proclus
     sgerun2(cmd, 'colorContour', 1, 1:length(dirList));
 catch % compute locally
