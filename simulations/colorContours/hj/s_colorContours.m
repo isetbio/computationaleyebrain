@@ -6,7 +6,7 @@
 %% Init parameters
 s_initISET;
 ref     = [0 0 0];
-dirList = [0 15 25 30 40 42 45 47 50 55 65 90 135];  % directions
+dirList = [0 15 25 30 40 42 45 47 50 55 65 135];  % directions
 dirList = [dirList dirList - 180];
 cropSz  = 12;
 
