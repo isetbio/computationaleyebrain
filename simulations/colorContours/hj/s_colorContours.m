@@ -31,6 +31,7 @@ threshPts = zeros(length(dirList), 3);
 
 for ii = 1 : length(dirList)
     fName = sprintf('./ccContour%d.mat', ii);
+    if ~exist(fName, 'file'), continue; end
     data = load(fName);
     curDir = dirList(ii); % current direction
     threshPts(ii, :) = ref + data.thresh*[cosd(curDir) sind(curDir) 0];
