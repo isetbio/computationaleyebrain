@@ -1,4 +1,4 @@
-%% s_waveDiscrimination_Proclus
+%% s_waveDiscriminavtion_Proclus
 %    This script helps run wavelength discrimination in parallel on
 %    Proclus
 %
@@ -7,6 +7,8 @@
 %  (HJ) ISETBIO TEAM, 2014
 
 refWave = 400:5:600;
+params.cropSz = 4; % 9x9
+params.rgbDensities = [0.3 0.6 0 0.1]; % deuternaopia
 
 try % try using proclus to accelerate computation
     cmd = ['[jndWave, expData] =' ...
