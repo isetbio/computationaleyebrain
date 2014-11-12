@@ -6,7 +6,7 @@
 %
 %  (HJ) ISETBIO TEAM, 2014
 
-refWave = 400:10:700;
+refWave = 400:5:600;
 
 try % try using proclus to accelerate computation
     cmd = ['[jndWave, expData] =' ...

@@ -150,7 +150,7 @@ while true
     % do classification
     accuracy = svmClassifyAcc(cat(1, refPhotons', matchPhotons'), ...
         labels, nFolds, 'linear', svmOpts);
-    fprintf('wave: %f\t acc:%f\n', (w_min + w_max)/2, acc(1));
+    fprintf('wave: %f\t acc:%f\n', (w_min + w_max)/2, accuracy(1));
     
     % log experiment data
     expData.acc   = cat(1, expData.acc, accuracy(1));
@@ -172,13 +172,14 @@ while true
     end
     
     if acc_max < threshold + 0.01 || acc_min > threshold - 0.01
-        jndWave = tWave(1);
+        jndWave = tWave(1) - refWave(1);
         return;
     end
 end
 
 %% Identify JND wavelength by interpolation
 jndWave = w_min + (w_max-w_min) * (threshold-acc_min) / (acc_max-acc_min);
+
 
 end
 %% END
