@@ -24,7 +24,7 @@ plot(wave,macularGet(human.macular,'transmittance'))
 title('Macular transmittance')
 
 subplot(4,1,4)
-plot(wave,coneGet(human.cone,'cone spectral absorbance'))
+plot(wave,coneGet(human.cone,'absorbance'))
 title('Cone-ocular absorbance')
 
 %%
@@ -52,7 +52,7 @@ plot(wave,macularGet(human.macular,'transmittance'))
 title('Macular transmittance')
 
 subplot(4,1,4)
-plot(wave,coneGet(human.cone,'cone spectral absorbance'))
+plot(wave,coneGet(human.cone,'absorbance'))
 title('Cone-ocular absorbance')
 
 %%
@@ -61,5 +61,6 @@ sensor = sensorSet(sensor,'human',human);
 
 s = sensorGet(sensor,'spectral qe');
 plot(wave,s)
+title('Spectral QE')
 
 %% End
