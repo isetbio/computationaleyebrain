@@ -66,7 +66,7 @@ else pCorrect = 0.8; end
 lDist = 0; lAcc = 0.5;
 
 % Estimate upper bound
-uDist = 0.1; uAcc = 0;
+uDist = 0.2; uAcc = 0;
 while uAcc < pCorrect
     mContrast = rContrast + uDist * direction;
     mColor = coneContrast2RGB(d, mContrast, bgColor);
@@ -88,6 +88,10 @@ while true
         lDist = curDist;
         lAcc = curAcc;
     end
+    
+    % print debug info
+    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
+    
     expData.acc = cat(1, expData.acc, curAcc);
     expData.err = cat(1, expData.err, curErr);
     expData.mContrast = cat(1, expData.mContrast, mContrast(:)');
@@ -102,7 +106,6 @@ while true
         threshold = lDist;
         return;
     end
-    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
 end
 
 % Interpolate and find threshold
