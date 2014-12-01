@@ -55,7 +55,7 @@ if barWidth < min(offset), warning('barwidth is too small'); end
 % Init classification parameters
 svmOpts = '-s 0 -q';
 nFolds = 10;
-labels = [ones(nFrames,1); -1*ones(nFrames,1)];
+labels = [ones(nFrames,1); -ones(nFrames,1)];
 acc = zeros(length(tDist), 1);
 err = zeros(length(tDist), 1);
 
@@ -75,18 +75,12 @@ scene{1} = sceneAdjustLuminance(scene{1}, meanLum);
 
 %% Create Human Lens
 %  Create a typical human lens
-wave   = 380 : 4 : 780;
-wvf    = wvfCreate('wave',wave);
-pupilDiameterMm = 3;
-sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-wvf    = wvfComputePSF(wvf, false);
-oi     = wvf2oi(wvf,'shift invariant', false);
+oi = oiCreate('wvf human');
 
 % Compute optical image
 % Actually, we could wait to compute it in coneSamples
 % But, we compute it here to do sanity check
-vcAddAndSelectObject('scene', scene{1});
+% vcAddAndSelectObject('scene', scene{1});
 OI{1} = oiCompute(scene{1}, oi);
 
 % Show irradiance (optical image) 
