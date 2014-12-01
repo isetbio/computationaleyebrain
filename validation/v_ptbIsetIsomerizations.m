@@ -48,7 +48,6 @@ irradiance = vcGetROIData(oi,roiLocs,'energy');
 irradiance = mean(irradiance);
 vcNewGraphWin; plot(wave,irradiance); grid on
 
-
 %% Ratio between ISETBIO radiance and irradiance
 vcNewGraphWin; plot(radiance./irradiance)
 
@@ -68,7 +67,7 @@ m = opticsGet(optics,'magnification',sceneGet(scene,'distance'));
     pupilDiameterMm, focalLengthMm, integrationTimeSec,0);
 
 % ptb effective absorbtance
-ptbCones = ptbPhotoreceptors.isomerizationAbsorbtance'; % Appropriate for quanta
+ptbCones = ptbPhotoreceptors.isomerizationAbsorptance'; % Appropriate for quanta
 %ptbCones = [zeros(size(ptbCones,1),1),ptbCones];
 
 %% Compare the irradiances 
@@ -86,14 +85,19 @@ vcNewGraphWin;
 plot(wave,ptbIrradiance(:)/(1+abs(m))^2,'ro',wave,irradiance(:),'ko');
 
 %%  ISETBIO sensor absorptions
-cone = coneCreate;
-isetCones = coneGet(cone, 'effective absorptance');
+% cone = coneCreate;
+% isetCones = coneGet(cone, 'absorptance');
+
+sensor    = sensorCreate('human');
+sensor    = sensorCompute(sensor,oi);
+isetCones = sensorGet(sensor,'human effective absorptance');
 
 %% Compare PTB sensor spectral responses with ISETBIO
+isetCones = isetCones(:,2:4);
 vcNewGraphWin; plot(wave, isetCones);
 hold on; plot(wave, ptbCones, '--');
 
-vcNewGraphWin; plot(wave,ptbCones);
+vcNewGraphWin; 
 plot(ptbCones(:),isetCones(:),'o');
 hold on; plot([0 1],[0 1], '--');
 
