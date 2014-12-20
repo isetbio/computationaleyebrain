@@ -27,6 +27,10 @@ params.col = 240;        % number of samples in horizontal direction
 %  create scene
 sceneH = sceneCreate('harmonic', params);
 
+%  adjust illuminant to D65
+il = illuminantCreate('D65', sceneGet(sceneH, 'wave'));
+sceneH = sceneAdjustIlluminant(sceneH, il);
+
 %  visualize
 vcAddObject(sceneH); sceneWindow;
 
@@ -36,6 +40,7 @@ sceneSz = [params.row params.col];
 
 %  create uniform scene with D65 illuminance
 sceneU = sceneCreate('uniform D65', sceneSz);
+sceneU = sceneSet(sceneU, 'h fov', sceneGet(sceneH, 'h fov')); % set fov
 sceneU = sceneAdjustLuminance(sceneU, sceneGet(sceneH, 'mean luminance'));
 
 %  visualize
