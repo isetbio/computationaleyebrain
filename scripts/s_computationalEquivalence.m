@@ -69,16 +69,97 @@ subplot(2,2,3); imshow(sceneGet(sceneU, 'rgb image'));
 title('Scene Radiance (Uniform)');
 
 % Plot optical irradiance map
-subplot(2,2,2);imshow(oiGet(oiH, 'rgb image'));
+subplot(2,2,2); imshow(oiGet(oiH, 'rgb image'));
 title('Optical Image (Harmonics)');
 
 subplot(2,2,4); imshow(oiGet(oiU, 'rgb image'));
 title('Optical Image (Uniform)');
 
 %% Create scenes for aligned and mis-aligned lines
+%  set parameters
+params = []; % clean up
+params.sceneSz   = [240 240]; % scene size (number of samples)
+params.barWidth  = 2;         % bar width in number of samples
+params.barReflect = 1;        % bar reflectance
+params.bgReflect  = 0;        % background reflectance
+params.il         = il;       % illuminance
+
+%  create scene - misaligned lines
+params.offset = 1;         % misaligned offset in number of samples
+sceneV = sceneCreate('vernier', 'object', params); % misaligned
+sceneV = sceneSet(sceneV, 'h fov', 0.5);
+
+%  create scene - aligned lines
+params.offset = 0;
+sceneA = sceneCreate('vernier', 'object', params); % aligned
+sceneA = sceneSet(sceneA, 'h fov', 0.5);
+
+%  visualize
+vcAddObject(sceneV); vcAddObject(sceneA);
+sceneWindow;
 
 %% Optical irradiance image
+%  Compute irradiance map
+oiV = oiCompute(sceneV, oi);
+oiA = oiCompute(sceneA, oi);
+
+%  Visualize
+vcAddObject(oiV); vcAddObject(oiA);
+oiWindow;
 
 %% Compute cone absorptions
+%  Create cone mosaics for standard human observer
+sensor = sensorCreate('human');
+sensor = sensorSetSizeToFOV(sensor, oiGet(oi, 'fov'), [], oi);
+
+expTime  = sensorGet(sensor, 'exp time');
+sampTime = sensorGet(sensor, 'time interval');
+nSamples = round(expTime / sampTime);
+
+%  Set eye-movement params
+sensor = sensorSet(sensor, 'exp time', sampTime); 
+sensor = sensorSet(sensor, 'em type', [1 0 1]); % tremor and micro-saccade
+
+params = []; % clean up
+params.nSamples = nSamples;
+
+sensor = eyemoveInit(sensor, params);
+
+%  Compute photon absorptions
+sensorV = sensorCompute(sensor, oiV);
+p = sensorGet(sensorV, 'photons'); % photon absorption for each 1 ms
+p = sum(p, 3); % photon absorption during the exposure time
+sensorV = sensorSet(sensorV, 'exp time', expTime);
+sensorV = sensorSet(sensorV, 'photons', p);
+
+sensorA = sensorCompute(sensor, oiA);
+p = sensorGet(sensorA, 'photons'); % photon absorption for each 1 ms
+p = sum(p, 3); % photon absorption during the exposure time
+sensorA = sensorSet(sensorA, 'exp time', expTime);
+sensorA = sensorSet(sensorA, 'photons', p);
+
+%  Visualize
+vcAddObject(sensorV); vcAddObject(sensorA);
+sensorWindow('scale', true);
 
 %% Compare aligned and mis-aligned lines
+%  Plot optical irradiance image
+vcNewGraphWin;
+subplot(2,2,1); imshow(oiGet(oiV, 'rgb image'));
+title('Optical Image (Mis-aligned)');
+
+subplot(2,2,3); imshow(oiGet(oiA, 'rgb image'));
+title('Optical Image (Aligned)');
+
+%  Plot cone absorptions
+gam = 1; % gamma
+scale = true; % scale image
+
+
+subplot(2,2,2); 
+imshow(sensorGet(sensorV, 'rgb image', 'volts', gam, scale));
+title('Cone Photon Absorptions (Misaligned)');
+
+subplot(2,2,4); 
+imshow(sensorGet(sensorA, 'rgb image', 'volts', gam, scale));
+title('Cone Photon Absorption (Aligned)');
