@@ -1,6 +1,6 @@
-function [acc, err] = ccAcc(rColor, mColor, params)
+function [acc, err, params] = ccAcc(rColor, mColor, params)
 %% Compute classification accuracy
-%    ccAcc(rColor, mColor, params)
+%    [acc, err, params] = ccAcc(rColor, mColor, params)
 %
 %  Inputs:
 %    rColor   - 3x1 vector, reference color in RGB
@@ -68,6 +68,7 @@ if isfield(params, 'nSamples')
     nSamples = params.nSamples;
 else
     nSamples = 3000;
+    params.nSamples = nSamples;
 end
 sensor = sensorSet(sensor, 'sensor positions', zeros(nSamples, 2));
 
@@ -88,7 +89,7 @@ mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
 
 %% Crop from center
 if isfield(params, 'cropSz'), cropSz = params.cropSz;
-else cropSz = 12; end
+else cropSz = 12; params.cropSz = cropSz; end
 rVolts = getMiddleMatrix(rVolts, cropSz); % Get patch from center
 mVolts = getMiddleMatrix(mVolts, cropSz); % Get patch from center
 
@@ -98,6 +99,7 @@ if isfield(params, 'svmOpts')
     svmOpts = params.svmOpts;
 else
     svmOpts = [];
+    params.svmOpts = [];
 end
 
 labels = [ones(nSamples,1); -1*ones(nSamples,1)];
