@@ -6,12 +6,12 @@ function [acc, err, params] = ccAcc(rColor, mColor, params)
 %    rColor   - 3x1 vector, reference color in RGB
 %    mColor   - 3x1 vector, test/match color in RGB
 %    params   - parameter structure, could include
-%               - nSamples, number of samples per color
-%               - sensor, human eye sensor structure
-%               - oi, human optics structure
-%               - d, display structure
-%               - svmOpts, params for svm classification
-%               - cropSz, croping size for classification
+%               .nSamples, number of samples per color
+%               .sensor, human eye sensor structure
+%               .oi, human optics structure
+%               .d, display structure
+%               .svmOpts, params for svm classification
+%               .cropSz, croping size for classification
 %
 %  Outputs:
 %    acc     - classification accuracy
