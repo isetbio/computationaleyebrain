@@ -42,7 +42,7 @@ title('Comparison of Optics'); legend('ISETBIO Optics', 'Bradley Paper');
 
 %% Light adaptation
 %  In ISETBIO, light adaptation in cone photoreceptors is implemented in
-%  coneAdapt. Light adaption in RGC has not been implemented yet
+%  coneAdapt. Light adaption in RGC is implemented in layerAdapt.m
 %
 %  In Bradley et al. paper, the light adaptation is by local luminance gain
 %  controll, which scales the response by its neighborhood mean luminance
