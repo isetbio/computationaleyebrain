@@ -20,8 +20,7 @@ oi = oiCreate('human'); % standard human optics
 otf = oiGet(oi, 'optics otf', 540); % otf at 540 nm
 
 %  get frequency support in cycles / degree
-fx = oiGet(oi, 'optics otf fx');   % frequency support in cycles / mm
-fx = fx * tand(1) * oiGet(oi, 'focal length') * 1000; % units conversion
+fx = oiGet(oi, 'optics otf fx', 'cycles/deg'); % frequency support
 fx = fx(fx >= 0); % use non-negative frequencies only
 
 %  plot mtf function
@@ -42,6 +41,12 @@ title('Comparison of Optics'); legend('ISETBIO Optics', 'Bradley Paper');
 % seems like it's close to MTF in ISETBIO for wavelength around 540 nm
 
 %% Light adaptation
-
+%  In ISETBIO, light adaptation in cone photoreceptors is implemented in
+%  coneAdapt. Light adaption in RGC has not been implemented yet
+%
+%  In Bradley et al. paper, the light adaptation is by local luminance gain
+%  controll, which scales the response by its neighborhood mean luminance
+%
+%  
 
 %% 
