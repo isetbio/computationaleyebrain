@@ -63,6 +63,7 @@ params.sampTime = 0.001; % 1 ms
 sensor = sensorCreate('human', [], params);
 sensor = sensorSet(sensor, 'exp time', expTime);
 sensor = sensorSet(sensor, 'sample time interval', params.sampTime); % 1 ms
+sensor = sensorSetSizeToFOV(sensor, sceneGet(sceneU, 'h fov'), sceneU, oiU);
 
 % Generate eye movement sequence
 % params.emType = [1 0 0]; % include tremor only
