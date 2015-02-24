@@ -29,7 +29,7 @@ if notDefined('params'), params = []; end
 if ischar(d), d = displayCreate(d); end
 
 try thresh = params.threshold; catch, thresh = 0.8; end
-try tDist  = params.tDist;     catch, tDist  = 0.2:1.5; end
+try tDist  = params.tDist;     catch, tDist  = 0.7:0.02:0.8; end
 
 %% Compute classification accuracy for each distance
 %  init parameters
@@ -39,6 +39,7 @@ err = zeros(length(tDist), 1);
 %  loop over tDist and compute
 for ii = 1 : length(tDist)
     [acc(ii), err(ii)] = coPixelVisibilityAcc(d, tDist(ii), params);
+    fprintf('Distance: %.2f\t Accuracy:%.2f\n', tDist(ii), acc(ii));
 end
 
 %% Interpolate and estimate merely visible distance

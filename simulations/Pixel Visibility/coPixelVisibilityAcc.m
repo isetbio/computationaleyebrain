@@ -31,17 +31,18 @@ try density = params.coneDensity; catch, density = [0 .6 .3 .1]; end
 try expTime = params.expTime;     catch, expTime = 0.05; end
 try nFrames = params.nFrames;     catch, nFrames = 3000; end
 try cropSz  = params.cropSz;      catch, cropSz  = [12 12]; end
+try sceneI  = params.sceneI;      catch, sceneI  = ones(20); end
 
 % init parameters for classifiers
-svmOpts = '-s 0 -q';
+svmOpts = '-q';
 nFolds = 10;         % folds of cross-validation
 labels = [ones(nFrames,1); -ones(nFrames,1)];
 
 %% Generate scene
 %  Set display to white and generate scene
-imgSz  = 20; doSub = true;
+doSub = true;
 d = displaySet(d, 'viewing distance', tDist);
-sceneD = sceneFromFile(ones(imgSz), 'rgb', [], d, [], doSub);
+sceneD = sceneFromFile(sceneI, 'rgb', [], d, [], doSub, [], 20);
 
 %  Generate control scene by spatially averaging radiance
 p  = mean(mean(sceneGet(sceneD, 'photons')));
@@ -82,7 +83,7 @@ matchPhotons = RGB2XWFormat(matchPhotons);
 
 %% Classification
 accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-    labels, nFolds, 'svm', svmOpts);
+    labels, nFolds, 'linear', svmOpts);
 
 err = accuracy(2);
 acc = accuracy(1);
