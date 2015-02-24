@@ -29,6 +29,7 @@ function [acc, err, params] = ccAcc(rColor, mColor, params)
 if notDefined('rColor'), error('reference color required'); end
 if notDefined('mColor'), error('match color required'); end
 if notDefined('params'), params = []; end
+if isfield(params, 'rseed'), rng(rseed); else params.rseed = rng; end
 
 %% Set up scene
 if isfield(params, 'd'), d = params.d; else d = 'OLED-Sony'; end
@@ -70,6 +71,8 @@ else
     nSamples = 3000;
     params.nSamples = nSamples;
 end
+
+% disable eye movement
 sensor = sensorSet(sensor, 'sensor positions', zeros(nSamples, 2));
 
 % compute adapted cone samples
