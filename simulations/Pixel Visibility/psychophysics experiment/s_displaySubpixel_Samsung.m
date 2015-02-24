@@ -26,8 +26,9 @@ stimParams = initStimParams;
 d = initFixParams(d, 0.25); % fixation fov to 0.25
 stairParams = initStaircaseParams;
 
-priorityLevel    = 0;
-trialGenFuncName = 'pixelDetectionTrial'; 
+% init feedback sound
+correctSnd = soundFreqSweep(200, 500, .1);
+incorrectSnd = soundFreqSweep(1000, 200, .5);
 
 %% Custumize the instruction Page
 instructions{1} = 'Pixelation Visibility Test\n';
@@ -71,12 +72,13 @@ keyList(includeKeys) = 1;
 pressKey2Begin(d, 0, false, cell2mat(instructions));
 
 % test colors
-c = [1 0 0; 0 1 0; 0 0 1; 1 1 0; 1 0 1; 0 1 1; 1 1 1];
+c = [1 0 0; 0 1 0; 0 0 1; 1 1 0; 1 0 1; 0 1 1; 1 1 1; ...
+    .34 0 0; 0 .11 0; 0 0 1;];
 c = reshape(c, [size(c,1), 1, size(c,2)]);
 
 % patterns
-pixelSz = 1:5;
-nTrials = 20; % repeat per case
+pixelSz = 2:3;
+nTrials = 25; % repeat per case
 
 % sequence of experiment
 idx = randperm(nTrials * length(pixelSz) * size(c, 1));
@@ -108,10 +110,22 @@ for ii = 1 : length(idx)
     
     % wait for response
     [~,KeyCode] = KbWait(device); WaitSecs(0.1);
-    if KbName(keyCode) == 'z', res = 1; else res = 0; end
+    if KbName(KeyCode) == 'z', res = 1; else res = 0; end
     
     % record
     result(ic, ip, in) = (res == pos);
+    
+    % feedback
+    if res == pos
+        sound(correctSnd);
+    else
+        sound(incorrectSnd);
+    end
+    
+    % draw black and wait
+    Screen('FillRect', d.windowPtr, [0 0 0]);
+    Screen('Flip', d.windowPtr);
+    WaitSecs(0.5);
 end                                                                                 
 
 %% Close window and clean up

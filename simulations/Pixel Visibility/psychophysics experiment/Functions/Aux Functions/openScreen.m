@@ -44,7 +44,7 @@ end
 
 % check background color
 if ~isfield(d, 'backColorRgb')
-    d.backColorRgb = [0.5 0.5 0.5]';
+    d.backColorRgb = [0 0 0]';
 end
 
 %% Parse varargin
@@ -81,7 +81,7 @@ end
 
 %% Init screen parameters
 % Skip flickering warning
-Screen('Preference', 'SkipSyncTests', 0);
+Screen('Preference', 'SkipSyncTests', 1);
 
 % Set the resolution
 try

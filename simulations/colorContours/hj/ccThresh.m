@@ -102,7 +102,7 @@ while true
     end
     
     % print debug info
-    fprintf('curDist:%f\t curAcc:%f\n', curDist, curAcc);
+    fprintf('Contrast: %f\t Accuracy:%f\n', curDist, curAcc);
     
     expData.acc = cat(1, expData.acc, curAcc);
     expData.err = cat(1, expData.err, curErr);
