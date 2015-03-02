@@ -18,7 +18,7 @@ ieInit; % Initialize a new ISET session
 %  In this section, we create a display structure with calibrated data.
 %  Also, we set up the viewing distance of experiment settings.
 
-vDist = 0.8; % viewing distance
+vDist = 1.5; % viewing distance
 
 d = displayCreate('LCD-Gechic'); % create display structure
 d = displaySet(d, 'viewing distance', vDist); % set viewing distance
@@ -30,7 +30,9 @@ d = displaySet(d, 'viewing distance', vDist); % set viewing distance
 %  In this section, we create a scene radiance map for certain image shown
 %  on that calibrated display
 
-img = ones(20); % image to be shown on the display
+img = zeros(40,40,3); % image to be shown on the display
+img(1:4:end, 1:4:end, 3) = 1;
+img(2:4:end, 2:4:end, 3) = 1;
 doSub = true;   % we do care the subpixel structure
 oSample = 20;   % upsampling rate for each pixel
 
