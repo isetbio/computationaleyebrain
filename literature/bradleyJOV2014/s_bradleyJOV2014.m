@@ -49,4 +49,47 @@ title('Comparison of Optics'); legend('ISETBIO Optics', 'Bradley Paper');
 %
 %  
 
-%% 
+%% Ganglion cell
+%    A simple center surround mechanism is implemented in the paper
+%    Here, we will re-write that code in an easy to understand way
+%
+%    Filter is defined as difference of Guassian: 
+%      D(y;x) = wc* Gauss_c(y;x) - (1-wc)*Gauss_s(y;x)
+%
+
+% init parameters
+fov = 3; % field of view
+wc  = 0.53; % weight for center gaussian
+ks  = 10.1; % standard deviation for surround filter
+kc  = 1;
+
+% create a simple scene and compute cone absorptions
+scene = sceneFromFile('eagle.jpg', 'rgb', [], 'LCD-Apple');
+scene = sceneSet(scene, 'h fov', fov); % set field of view to smaller value
+oi = oiCreate('wvf human'); % human optics
+oi = oiCompute(scene, oi);
+sensor = sensorCreate('human'); % create human cone mosaic
+sensor = sensorSetSizeToFOV(sensor, fov, scene, oi); % adjust sensor size
+sensor = sensorCompute(sensor, oi);
+
+% visualize sensor image
+vcAddObject(sensor); sensorWindow;
+
+p = sensorGet(sensor, 'photons'); % get photons
+
+% create filter
+fc = fspecial('gaussian', 20, kc); % center filter
+fs = fspecial('gaussian', 20, ks); % surround filter
+p_filtered = wc * imfilter(p, fc) - (1-wc) * imfilter(p, fs);
+
+% visualize
+vcNewGraphWin;
+pf = p_filtered;
+coneType = sensorGet(sensor, 'cone type');
+for ii = 2:4
+    indx = (coneType == ii);
+    pf(indx) = p_filtered(indx) - min(p_filtered(indx));
+    pf(indx) = pf(indx) / max(pf(indx));
+end
+imshow(pf);
+
