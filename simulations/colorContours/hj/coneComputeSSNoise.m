@@ -8,7 +8,7 @@ function coneResp = coneComputeSSNoise(coneRespSSNF, coneType, opts)
 %    thing applies to M cones
 %
 %  Inputs:
-%    coneRespSSNF  - matrix of cone absorption with second site noise
+%    coneRespSSNF  - matrix of cone absorption with no second site noise
 %    coneType      - matrix of same size as coneRespSSNF, coneType
 %                    specifies the type of each cone by number 1 ~ 4 for
 %                    (K, L, M, S) correspondingly

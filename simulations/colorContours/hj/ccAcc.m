@@ -85,10 +85,12 @@ mVolts = sensorGet(sensor, 'volts');
 % [~, mVolts] = coneAdapt(sensor);       % test adapted data
 
 %% Add second site noise (cone opponency)
-coneType = sensorGet(sensor, 'cone type');
-cg = sensorGet(sensor, 'conversion gain');
-rVolts = coneComputeSSNoise(rVolts / cg, coneType) * cg;
-mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
+% coneType = sensorGet(sensor, 'cone type');
+% cg = sensorGet(sensor, 'conversion gain');
+% rVolts = coneComputeSSNoise(rVolts / cg, coneType) * cg;
+% mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
+rVolts = coneComputeCenterSurround(rVolts);
+mVolts = coneComputeCenterSurround(mVolts);
 
 %% Crop from center
 if isfield(params, 'cropSz'), cropSz = params.cropSz;

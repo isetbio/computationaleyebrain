@@ -78,6 +78,7 @@ vcAddObject(sensor); sensorWindow;
 p = sensorGet(sensor, 'photons'); % get photons
 
 % create filter
+% actually, we could call coneComputeCenterSurround(p) instead
 fc = fspecial('gaussian', 20, kc); % center filter
 fs = fspecial('gaussian', 20, ks); % surround filter
 p_filtered = wc * imfilter(p, fc) - (1-wc) * imfilter(p, fs);
