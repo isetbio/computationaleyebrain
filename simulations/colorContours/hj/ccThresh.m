@@ -76,12 +76,12 @@ else pCorrect = 0.8; params.pCorrect = pCorrect; end
 
 %% Binary search
 lDist = 0; lAcc = 0.5;
-
+s = sensorCreate('human');
 % Estimate upper bound
 uDist = 0.2; uAcc = 0;
 while uAcc < pCorrect
     mContrast = rContrast + uDist * direction;
-    mColor = coneContrast2RGB(d, mContrast, bgColor);
+    mColor = coneContrast2RGB(d, mContrast, bgColor, s);
     uAcc   = ccAcc(rColor, mColor, params.ccParams);
     uDist  = uDist + 0.1;
     assert(uDist < 0.6, 'Cannot classify even with obvious difference');
@@ -91,7 +91,7 @@ end
 while true
     curDist = (lDist + uDist) / 2;
     mContrast = rContrast + curDist * direction;
-    mColor = coneContrast2RGB(d, mContrast, bgColor);
+    mColor = coneContrast2RGB(d, mContrast, bgColor, s);
     [curAcc, curErr, ccParams] = ccAcc(rColor, mColor, params.ccParams);
     if curAcc > pCorrect
         uDist = curDist;

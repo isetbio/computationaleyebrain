@@ -32,7 +32,11 @@ if notDefined('params'), params = []; end
 if isfield(params, 'rseed'), rng(rseed); else params.rseed = rng; end
 
 %% Set up scene
-if isfield(params, 'd'), d = params.d; else d = 'OLED-Sony'; end
+if isfield(params, 'd'), d = params.d; 
+else
+    d = displayCreate('OLED-Sony');
+    d = displaySet(d, 'gamma', repmat(linspace(0,1,1024), [1 1 4]));
+end
 if isfield(params, 'sceneSz'), sz = params.sceneSz; else sz = 64; end
 
 % Create reference scene
@@ -68,7 +72,7 @@ end
 if isfield(params, 'nSamples')
     nSamples = params.nSamples;
 else
-    nSamples = 3000;
+    nSamples = 8000;
     params.nSamples = nSamples;
 end
 
@@ -89,8 +93,8 @@ mVolts = sensorGet(sensor, 'volts');
 % cg = sensorGet(sensor, 'conversion gain');
 % rVolts = coneComputeSSNoise(rVolts / cg, coneType) * cg;
 % mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
-rVolts = coneComputeCenterSurround(rVolts);
-mVolts = coneComputeCenterSurround(mVolts);
+% rVolts = coneComputeCenterSurround(rVolts);
+% mVolts = coneComputeCenterSurround(mVolts);
 
 %% Crop from center
 if isfield(params, 'cropSz'), cropSz = params.cropSz;

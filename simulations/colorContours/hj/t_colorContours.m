@@ -23,6 +23,10 @@ cropSz  = 22;    % Number of cones is 2*cropSz + 1
 params.ccParams.cropSz = cropSz; % Size of patch used for classification
 params.ccParams.rgbDensities = [0 .6 .3 .1]; %Ratio of K, L, M and S cones
 
+d = displayCreate('OLED-Sony');
+d = displaySet(d, 'gamma', repmat(linspace(0,1,1024)', [1 1 4]));
+params.ccParams.d = d;
+
 % Compute detection threshold for each direction
 threshPts = zeros(length(dirList), 3);
 
