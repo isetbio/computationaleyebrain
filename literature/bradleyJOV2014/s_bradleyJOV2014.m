@@ -4,7 +4,7 @@
 %
 %       Retina-V1 model of detectability across the visual field
 %
-%    This scirpt compares the components, performance and results between
+%    This script compares the components, performance and results between
 %    their implementation and ISETBIO implementation
 %
 %  (HJ) ISETBIO TEAM, 2015
