@@ -103,5 +103,22 @@ vcAddObject(oiA); vcAddObject(oiM); oiWindow;
 %    In this section, we compute the human cone absorption samples with
 %    fixational eye movement.
 
+%  set parameters
+params.humanConeDensities = [0 0.6 0.3 0.1]; % cone spatial density KLMS
+params.wave = wave; % wavelength
+sampTime = 0.001; % sample time interval
+params.totTime = 0.05; % set total time
+params.emFlag = [1 0 0]; % eye movement type flag
 
+%  create human sensor
+sensor = sensorCreate('human', [], params);
+
+%  adjust sensor size
+sensor = sensorSetSizeToFOV(sensor, sceneGet(sceneA, 'fov'), sceneA, oiA);
+
+%  set up eye movements
+sensor = sensorSet(sensor, 'time interval', sampTime);
+sensor = eyemoveInit(sensor, params);
+
+%  randomize initial points
 %% Analysis
