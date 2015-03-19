@@ -16,15 +16,17 @@
 %  Initialize a new session
 ieInit;
 
-%% Create Scene
-%  In the section, we create a verneir scene radiance image by specifying a
-%  image on some calibrated displays. This method can take some steps, but
-%  it's more flexible. Another way to create vernier scenes is to call
-%  sceneCreate('vernier') directly
+%% Create the display
 
-% Create scene with RGB image on display
-% set parameters
+% In this example we impose a linear gamma table, though
+% in general it could be the default or anything.
+d = displayCreate('LCD-Apple');
+% d = displaySet(d, 'gamma', repmat(linspace(0, 1, 256)', [1 3]));
+
 viewDist = 2; % viewing distance in meters
+d = displaySet(d, 'viewing distance', viewDist);
+
+%% Create the the RGB image
 imgSz    = [200 80]; % image size in pixels
 barColor = [1 1 1]; % RGB value for foreground bar
 bgColor  = [0.5 0.5 0.5]; % Background color
@@ -35,13 +37,6 @@ doSub = false; % rendering scene at pixel level (no subpixel rendering)
 wave  = 400:10:700; % wavelength sample points
 meanLum = [];  % adjustment to scene mean luminance - don't adjust it
 
-% create display and linearize its gamma table
-d = displayCreate('LCD-Apple');
-d = displaySet(d, 'gamma', repmat(linspace(0, 1, 256)', [1 3]));
-d = displaySet(d, 'viewing distance', viewDist);
-vcAddObject(d); displayWindow;
-
-% create image
 img = zeros([imgSz 3]);
 barIndx = (1:barWidth) - floor((barWidth+1)/2) + imgSz(2)/2;
 for ii = 1 : 3 % loop over color primaries (RGB)
@@ -49,23 +44,46 @@ for ii = 1 : 3 % loop over color primaries (RGB)
     img(:, barIndx, ii) = barColor(ii); % set foreground bar
 end
 imgA = img; imgM = img; % A for aligned, M for mis-aligned
-imgM(1:imgSz(1)/2, :,:) = circshift(img(1:imgSz(1)/2, :,:), offset, 2);
-
+imgM(1:imgSz(1)/2, :,:) = circshift(img(1:imgSz(1)/2, :,:), [0 offset 0]);
+        
 vcNewGraphWin([], 'tall'); 
 subplot(2,1,1); imshow(imgA); title('Aligned Image');
 subplot(2,1,2); imshow(imgM); title('Misaligned Image');
 
-% create a scene with the image and display
-sceneA = sceneFromFile(imgA, 'rgb', meanLum, d, wave, doSub);
-sceneM = sceneFromFile(imgM, 'rgb', meanLum, d, wave, doSub);
+%% Create Vernier Scene in its full radiance representation
+%
+%  In the section, we create a vernier scene radiance image by specifying a
+%  image on some calibrated displays. This method makes each of the
+%  parameters explicit. This provides flexibility for scripting. 
+%
+%  Another way to create a vernier scene with default parameters is to call 
+%
+%     scene = sceneCreate('vernier');
+%     vcAddObject(scene); sceneWindow;
+%
+% directly
+
+% Create a scene with the image using the display parameters
+% The scene spectral radiance is created using the RGB image and the
+% properties of the display.
+sceneA = sceneFromFile(imgA, 'rgb', meanLum, d, wave, doSub); % aligned
+sceneM = sceneFromFile(imgM, 'rgb', meanLum, d, wave, doSub); % mis-aligned
 
 vcAddObject(sceneA); vcAddObject(sceneM); sceneWindow;
 
+%% Examine some of the scene properties
+
+% This is the scene luminance at the different sample points on the display
+sz = sceneGet(sceneM,'size');
+plotScene(sceneM,'luminance hline',[1,round(sz(1)/2)]);
+
+% This is the full spectral radiance on the same line
+plotScene(sceneM,'radiance hline',[1,round(sz(1)/2)]);
+
+
 %% Compute Irradiance with Optics Wavefront
 %    In this section, we compute the optical image (irradiance map) by
-%    using human optics wavefront. Another good way to do this computation
-%    is using a shift-invariant model with simulated chromatic abbretion
-%    (Wandell, 1994).
+%    using human optics wavefront.
 %
 %    If we just want a standard human optics model, we can simplify the
 %    code as oiCraete('wvf human');
@@ -93,17 +111,43 @@ wvf = wvfComputePSF(wvf);
 oi = wvf2oi(wvf, 'human');
 oi = oiSet(oi, 'name', sprintf('Human WVF %.1f mm', pupilSize));
 
-% compute irradiance map (optical image)
+%% Examine the point spread function at different wavelengths
+
+% This is the standard model based on the Thibos AO estimates of the human
+% wavefront function
+plotOI(oi,'psf 550');
+nPoints = 50;
+plotOI(oi,'ls wavelength',[],nPoints);
+
+
+%% compute irradiance map (optical image)
 oiA = oiCompute(sceneA, oi);
 oiM = oiCompute(sceneM, oi);
 
 vcAddObject(oiA); vcAddObject(oiM); oiWindow;
 
+% Another way to do this computation is using the chromatic aberration in
+% the Marimont and Wandell model (1994, JOSA).  You can create that oi
+% structure simply by calling oi = oiCreate('human');
+
+%% Examine the irradiance at the retina, prior to absorption
+
+% This is the scene luminance at the different sample points on the display
+sz = sceneGet(oiA,'size');
+plotOI(oiA,'illuminance hline',[1,round(sz(1)/2)]);
+
+% This is the full spectral radiance on the same line
+plotOI(oiA,'irradiance hline',[1,round(sz(1)/2)]);
+view(89.5,55);
+% Notice that the short-wavelength light is spread a lot more at the
+% retinal surface than the middle wavelength light.
+% The long-wavelength is spread a little bit more.
+
 %% Compute Photon Absorptions of Human Cone Receptors
 %    In this section, we compute the human cone absorption samples with
 %    fixational eye movement.
 
-%  set parameters
+%  set retinal cone parameters
 params.humanConeDensities = [0 0.6 0.3 0.1]; % cone spatial density KLMS
 params.wave = wave; % wavelength
 sampTime = 0.001; % sample time interval
