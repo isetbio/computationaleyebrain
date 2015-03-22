@@ -31,7 +31,7 @@ imgSz    = [200 80]; % image size in pixels
 barColor = [1 1 1]; % RGB value for foreground bar
 bgColor  = [0.5 0.5 0.5]; % Background color
 barWidth = 3; % width of the bar in pixels
-offset   = 1; % mis-alignment size in pixels
+offset   = 1; % mis-alignment size in pixels, converted to deg later
 
 doSub = false; % rendering scene at pixel level (no subpixel rendering)
 wave  = 400:10:700; % wavelength sample points
@@ -147,22 +147,125 @@ view(89.5,55);
 %    In this section, we compute the human cone absorption samples with
 %    fixational eye movement.
 
-%  set retinal cone parameters
+%  set retinal cone parameters, but no eye movements
 params.humanConeDensities = [0 0.6 0.3 0.1]; % cone spatial density KLMS
 params.wave = wave; % wavelength
-sampTime = 0.001; % sample time interval
-params.totTime = 0.05; % set total time
-params.emFlag = [1 0 0]; % eye movement type flag
 
 %  create human sensor
-sensor = sensorCreate('human', [], params);
+cones = sensorCreate('human', [], params);
 
 %  adjust sensor size
-sensor = sensorSetSizeToFOV(sensor, sceneGet(sceneA, 'fov'), sceneA, oiA);
+cones = sensorSetSizeToFOV(cones, sceneGet(sceneA, 'fov'), sceneA, oiA);
 
-%  set up eye movements
-sensor = sensorSet(sensor, 'time interval', sampTime);
-sensor = eyemoveInit(sensor, params);
+cones = sensorCompute(cones,oiM);
+vcAddObject(cones); sensorWindow('scale',1);
 
-%  randomize initial points
-%% Analysis
+%% Static analysis, without eye movements
+
+% Plot the average of the top and bottom half, looking for displacement
+% of peak
+e  = sensorGet(cones,'photons');
+sz = sensorGet(cones,'size');
+midSensor = floor(sz(2)/2) + 1;
+
+midRow    = floor((sz(1)/2));
+topSensor = 1:midRow;
+botSensor = (midRow+1):sz(1);
+topE  = mean(e(topSensor,:),1)/max(e(:));
+botE  = mean(e(botSensor,:),1)/max(e(:));
+
+% Graph the top and bottom
+vcNewGraphWin;
+plot([topE(:),botE(:)])
+% line([midSensor,midSensor],[min(e(:)) max(e(:))],'color','r')
+grid on; legend('top','bottom')
+title(sprintf('Bar offset %0.f (arc sec)',sceneGet(sceneM,'degrees per sample','arcsec')))
+ylabel('Normalized cone absorptions');
+xlabel('Position (um)');
+
+%% Analysis with eye movements
+
+% Set up eye movement parameters
+sampTime = 0.001; % sample time interval
+cones = sensorSet(cones, 'time interval', sampTime);
+cones = sensorSet(cones,'exp time',sampTime);
+
+% Eye movement type flag
+% Each entry is a type of eye movement
+% Tremor, drift, microsaccade
+
+params.emFlag = [1 1 1]; 
+
+% This is how long we run the sequence for
+params.totTime = 0.500;  % set total time, 200 ms
+
+% Attach the eye movement parameters to the cone array object
+cones = eyemoveInit(cones, params);
+
+% For demo, we enlarge the eye movement tremo
+tremor = sensorGet(cones,'em tremor');
+tremor.amplitude = tremor.amplitude*5;
+cones = sensorSet(cones,'em tremor',tremor);
+
+% Generate the eye movement sequence
+cones = emGenSequence(cones);
+
+% Show the eye movement positions
+p = sensorGet(cones,'sensor positions');
+
+vcNewGraphWin;
+plot(p(:,1),p(:,2),'-o')
+xlabel('Cone position');
+ylabel('Cone Position')
+set(gca,'xlim',[-15 15],'ylim',[-15 15]);
+grid on
+
+%% Show the cone absorptions each millisecond
+
+% Notice that when we make an eye movement video we call coneAbsorptions,
+% not sensorCompute.  The coneAbsorptions function is an interface to
+% sensorCompute
+cones = coneAbsorptions(cones,oiM);
+
+% Get the time series out from the cone photon data
+absorptions = sensorGet(cones,'photons');
+
+% This should work, but it depends on having a later version of Matlab than
+% 2013b
+%   mplay(absorptions,'intensity',10);
+
+vcNewGraphWin;
+vObj = VideoWriter('coneAbsorptions.avi');
+open(vObj);
+colormap(gray);
+nframes = size(absorptions,3);
+% Record the movie
+mx = max(absorptions(:));
+for j = 1:nframes 
+    image(absorptions(:,:,j)*(255/mx)); drawnow;
+    F = getframe;
+    writeVideo(vObj,F);
+end
+close(vObj);
+fprintf('Max cone absorptions %.0f\n',mx);
+
+%% Temporal integration from Rieke applied to the cone absorptions
+[cones,adaptedData] = coneAdapt(cones,'rieke');
+adaptedData = ieScale(adaptedData,0,1);
+
+vcNewGraphWin;
+vObj = VideoWriter('coneVoltage.avi');
+open(vObj);
+colormap(gray);
+nframes = size(adaptedData,3);
+% Record the movie
+mx = max(adaptedData(:));
+for j = 1:nframes 
+    image(255*adaptedData(:,:,j)); drawnow;
+    F = getframe;
+    writeVideo(vObj,F);
+end
+close(vObj);
+
+
+%%
