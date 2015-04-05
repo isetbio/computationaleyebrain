@@ -37,17 +37,9 @@ vcAddAndSelectObject('scene', scene); sceneWindow;
 
 %% Create Human Lens
 %  Create a typical human lens
-wave   = 380 : 4 : 780;
-wvf    = wvfCreate('wave', wave);
-pupilDiameterMm = 3; % 3 mm
-sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-wvf    = wvfComputePSF(wvf);
-oi     = wvf2oi(wvf,'shift invariant');
+oi = oiCreate('wvf human');
 
 % Compute optical image
-% Actually, we could wait to compute it in coneSamples
-% But, we compute it here to do sanity check
 oi = oiCompute(scene, oi);
 
 % Visualize optical image
@@ -64,12 +56,6 @@ sensor = sensorSet(sensor, 'exp time', 0.05); % integration time: 50 ms
 sensor = sensorSet(sensor, 'exp time', 0.001);
 
 % Set up the eye movement properties
-% em = emCreate;
-% sensor = sensorSet(sensor,'eye movement',em);
-% emPerExposure   = round(sensorGet(sensor, 'exp time')/0.001);
-% sensor = sensorSet(sensor,'positions',zeros(nFrames + emPerExposure,2));
-% sensor = emGenSequence(sensor);
-sensor = sensorSet(sensor, 'sensorpositions', 1000);
 sensor = eyemoveInit(sensor);
 
 % Compute the cone absopritons
