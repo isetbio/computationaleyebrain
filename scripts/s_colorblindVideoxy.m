@@ -8,7 +8,7 @@
 ieInit;
 wave = 420:5:700;  % wavelength samples in nm
 XYZ  = ieReadSpectra('XYZ', wave);
-cbType = 'Deutan'; % color blind type
+cbType = 'Tritan'; % color blind type
 n = length(wave);
 
 %% Plot visible region in xy
@@ -32,6 +32,17 @@ cbXYZ = squeeze(cbXYZ);
 
 cbxy_l = bsxfun(@rdivide, cbXYZ, sum(cbXYZ, 2));
 plot(cbxy_l(:,1), cbxy_l(:,2), 'o')
+
+xlabel('CIE-x'); ylabel('CIE-y'); grid on;
+
+%% Non-negative Constraints
+LMS  = squeeze(xyz2lms(reshape(XYZ, [n 1 3])));
+dLMS = dColorTransform(LMS, 3);
+cbXYZ = lms2xyz(reshape(dLMS, [n 1 3]));
+cbXYZ = squeeze(cbXYZ);
+
+cbxy_n = bsxfun(@rdivide, cbXYZ, sum(cbXYZ, 2));
+plot(cbxy_n(:,1), cbxy_n(:,2), 'o')
 
 %% 
 vcNewGraphWin; hold on;
