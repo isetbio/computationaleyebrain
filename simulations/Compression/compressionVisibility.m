@@ -65,3 +65,5 @@ acc = svmClassifyAcc(data, labels, nFolds, 'linear', svmOpts);
 
 err = acc(2);
 acc = acc(1);
+
+%%
