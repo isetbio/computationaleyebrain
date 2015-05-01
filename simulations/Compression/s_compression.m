@@ -9,12 +9,14 @@
 webdir = 'http://scarlet.stanford.edu/validation/SCIEN/ISETBIO/VESA/img';
 
 % The ones ending in x0 are uncompressed
-urlwrite(fullfile(webdir,'t_FineTextRendering14_x0.bmp'),'original.bmp');
-% vcNewGraphWin; imshow(imread('original.bmp'))
+% urlwrite(fullfile(webdir,'t_FineTextRendering14_x0.bmp'),'original.bmp');
+imgO = im2double(imread(fullfile(webdir,'t_FineTextRendering14_x0.bmp')));
+% vcNewGraphWin; imshow(imgO)
 
 % There are various types of compression
-urlwrite(fullfile(webdir,'t_FineTextRendering14_x9.bmp'),'compressed.bmp');
-% vcNewGraphWin; imshow(imread('compressed.bmp'))
+% urlwrite(fullfile(webdir,'t_FineTextRendering14_x9.bmp'),'compressed.bmp');
+imgC = im2double(imread(fullfile(webdir,'t_FineTextRendering14_x9.bmp')));
+% vcNewGraphWin; imshow(imgC)
 
 
 %% Set display and viewing parameters
@@ -23,10 +25,10 @@ urlwrite(fullfile(webdir,'t_FineTextRendering14_x9.bmp'),'compressed.bmp');
 d = displayCreate('LCD-Apple');
 
 % viewing distance and other conditions could be set here.
-sceneO = sceneFromFile('original.bmp','rgb',[],d);
+sceneO = sceneFromFile(imgO,'rgb',[],d);
 vcAddObject(sceneO); sceneWindow;
 
-sceneC = sceneFromFile('compressed.bmp','rgb',[],d);
+sceneC = sceneFromFile(imgC,'rgb',[],d);
 vcAddObject(sceneC); sceneWindow;
 
 
