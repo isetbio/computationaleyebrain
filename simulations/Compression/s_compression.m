@@ -17,31 +17,40 @@ imgO = im2double(imread(fullfile(webdir,'t_FineTextRendering14_x0.bmp')));
 % urlwrite(fullfile(webdir,'t_FineTextRendering14_x9.bmp'),'compressed.bmp');
 imgC = im2double(imread(fullfile(webdir,'t_FineTextRendering14_x9.bmp')));
 % vcNewGraphWin; imshow(imgC)
-
+imgSz = [size(imgO, 1), size(imgO,2)];
 
 %% Set display and viewing parameters
-
 % Model the display
 d = displayCreate('LCD-Apple');
 
-% viewing distance and other conditions could be set here.
-sceneO = sceneFromFile(imgO,'rgb',[],d);
-vcAddObject(sceneO); sceneWindow;
+% Experiment conditions
+% viewing distance
+vd = 1;
+d = displaySet(d, 'viewing distance', vd);
 
-sceneC = sceneFromFile(imgC,'rgb',[],d);
-vcAddObject(sceneC); sceneWindow;
+% eye position and spatial integration size
+pSzDeg  = 0.5; % spatial integration size in degree
+pSzDots = pSzDeg * displayGet(d, 'dots per deg'); % convert to pixels
 
+nTrial = 5;
 
+% upper left position of region of interest (eye pos)
+pos = floor(bsxfun(@times, rand(nTrial, 2), imgSz - pSzDots));
 
-%%  Model the human observer
+%% Compute classification accuracy
+acc = zeros(nTrial, 1);
+pRange = 1:pSzDots;
 
-% Choose a model of the optics
-
-% Decide on eye movements
-
-% render cone mosaics 
-
-%% Run classifiers on them.
-
+for ii = 1 : nTrial
+    % crop image to the region of interest
+    pO = imgO(pos(ii, 1) + pRange, pos(ii,2)+pRange, :);
+    pC = imgC(pos(ii, 1) + pRange, pos(ii,2)+pRange, :);
+    
+    % compute acc
+    acc(ii) = compressionVisibility(pO, pC, d);
+    
+    % print log
+    fprintf('Trial: %d\t Accuracy: %.2f\n', ii, acc(ii));
+end
 
 %% End

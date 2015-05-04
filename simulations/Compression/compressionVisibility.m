@@ -28,13 +28,14 @@ if notDefined('testImg'), error('test image required'); end
 if notDefined('d'), error('display structure required'); end
 if notDefined('params'), params = []; end
 
-try vd = params.vd; catch, vd = 1; end
 try nFrames = params.nFrames; catch, nFrames = 3000; end
 try cone = params.cone; catch, cone = coneCreate; end
 try nFolds = params.nFolds; catch, nFolds = 5; end
 try svmOpts = params.svmOpts; catch, svmOpts = []; end
 
-d = displaySet(d, 'viewing distance', vd);
+if isfield(params, 'vd')
+    d = displaySet(d, 'viewing distance', params.vd);
+end
 
 %% Compute radiance, irradiance and cone absorptions
 %  Create scene and compute radiance
