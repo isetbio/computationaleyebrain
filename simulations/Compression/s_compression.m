@@ -25,11 +25,11 @@ d = displayCreate('LCD-Apple');
 
 % Experiment conditions
 % viewing distance
-vd = 1;
+vd = 1;  % Meter
 d = displaySet(d, 'viewing distance', vd);
 
 % eye position and spatial integration size
-pSzDeg  = 0.5; % spatial integration size in degree
+pSzDeg  = 0.15; % spatial integration size in degree
 pSzDots = pSzDeg * displayGet(d, 'dots per deg'); % convert to pixels
 
 nTrial = 5;
@@ -38,15 +38,16 @@ nTrial = 5;
 pos = floor(bsxfun(@times, rand(nTrial, 2), imgSz - pSzDots));
 
 %% Compute classification accuracy
-acc = zeros(nTrial, 1);
-pRange = 1:pSzDots;
+acc = zeros(nTrial, 1);  % nfold accuracy
+pRange = 1:pSzDots;      % Crop region
 
 for ii = 1 : nTrial
     % crop image to the region of interest
+    % Let's use imcrop
     pO = imgO(pos(ii, 1) + pRange, pos(ii,2)+pRange, :);
     pC = imgC(pos(ii, 1) + pRange, pos(ii,2)+pRange, :);
     
-    % compute acc
+    % compute acc for the cropped image, in display RGB.
     acc(ii) = compressionVisibility(pO, pC, d);
     
     % print log

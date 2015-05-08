@@ -1,6 +1,7 @@
 function [acc, err] = compressionVisibility(refImg, testImg, d, params)
 %% Computing classification accuracy for compressed images
-%    function compressionVisibility(refImg, testImg, d, [params]);
+%
+%  [acc,err] = compressionVisibility(refImg, testImg, d, [params]);
 %
 %  Inputs:
 %    refImg  - reference RGB image
@@ -38,9 +39,10 @@ if isfield(params, 'vd')
 end
 
 %% Compute radiance, irradiance and cone absorptions
+
 %  Create scene and compute radiance
-refScene = sceneFromFile(refImg, 'rgb', [], d);
-testScene = sceneFromFile(testImg, 'rgb', [], d);
+refScene  = sceneFromFile(refImg, 'rgb', [], d);
+testScene = sceneFromFile(testImg,'rgb', [], d);
 fov = sceneGet(refScene, 'h fov');
 
 %  Human optics model and compute irradiance
@@ -59,6 +61,10 @@ refP   = sensorGet(sensor, 'photons');
 sensor = coneAbsorptions(sensor, testOI);
 testP  = sensorGet(sensor, 'photons');
 
+% diff = mean(refP,3) - mean(testP,3);
+% vcNewGraphWin; imagesc(diff); colorbar;
+% vcNewGraphWin; imagesc(mean(refP,3)); vcNewGraphWin; imagesc(mean(testP,3))
+%
 %% Classify
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
 data   = cat(1, RGB2XWFormat(refP)', RGB2XWFormat(testP)');
