@@ -1,5 +1,8 @@
 %% t_displayPixelLayoutFont
 %
+%    OBSOLETE.
+%    see t_displayPixelLayoutSCIELAB
+%
 %    In this script, we simulate a letter on different types of
 %    displays. Then, we compare the scene radiance and optical images at
 %    different viewing distance
