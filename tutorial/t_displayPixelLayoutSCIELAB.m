@@ -19,7 +19,7 @@ displayName = {'Dell-Chevron', 'LCD-HP'};
 
 %% Font
 
-font = fontCreate;             % letter g
+font = fontCreate('w');             % letter 'g' or 'w'
 font.bitmap = 1 - font.bitmap; % flip data to be white letter on black
 
 %% Show the subpixel images, though they are clear in the scene

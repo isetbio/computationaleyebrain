@@ -68,7 +68,7 @@ for ii = 1 : nDist
 end
 
 %% Font on different display
-font = fontCreate; % letter g
+font = fontCreate('g'); % letter g
 font.bitmap = 1 - font.bitmap; % flip it to be white letter on black
 padsz = [5 5]; padval = 0; % padding size and val for sceneFromFont
 
