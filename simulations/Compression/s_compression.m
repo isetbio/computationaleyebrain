@@ -16,19 +16,31 @@ imgList = lsScarlet([webdir '/Full_1080p_ref_images'], '.bmp');
 d = displayCreate('LCD-Apple');
 
 % Experiment conditions
-% viewing distance
-vd = 1;  % Meter
+% Adjust viewing distance to match pixel per degree
+ppd = 60; % 60 pixels per degree
+vd  = ppd / displayGet(d, 'dpi') / tand(1) * 0.0254;  % Meter
 d = displaySet(d, 'viewing distance', vd);
+invGamma = displayGet(d, 'inverse gamma'); % inverse gamma table
+rgb2xyz = displayGet(d, 'rgb2xyz'); % rgb to xyz tranformation matrix
+wp = displayGet(d, 'white xyz'); % white point
 
 % eye position and spatial integration size
-pSzDeg  = 0.12; % spatial integration size in degree
+pSzDeg  = 0.1; % spatial integration size in degree
 pSzDots = round(pSzDeg * displayGet(d, 'dots per deg')); % convert to dots
 
 nTrial = 10;
 
 % Init for accuracy
-acc = zeros(length(imgList), 16);
+acc = zeros(length(imgList), 16); % in shape of n_images, n_algorithms
+expAcc = nan(length(imgList), 16);
+cieDeltaE  = zeros(length(imgList), 16);
+scieDeltaE = zeros(length(imgList), 16);
 
+%% Load experiment data
+expData = importdata('2014_VESA.csv');
+expData.textdata = expData.textdata(2:end, 1);
+
+%% Compute accuracy for algorithms and images
 for ii = 1 : length(imgList)
     % get image name with out '.bmp'
     imgName = [webdir '/cropped_images/' imgList(ii).name(1:end-4)];
@@ -67,7 +79,37 @@ for ii = 1 : length(imgList)
         
         % print log
         fprintf('%.2f\n', acc(ii, jj));
+        
+        % try load experiment data
+        try
+            expImg = sprintf('%s_x%d.bmp', imgList(ii).name(1:end-4), jj);
+            indx = cellfun(@(s) ~isempty(strfind(s, expImg)), expData.textdata);
+            expAcc(ii, jj) = expData.data(indx);
+        catch
+        end
+        
+        % compute DeltaEab for CIELab
+        imgO_Linear = ieLUTLinear(imgO, invGamma);
+        imgC_Linear = ieLUTLinear(imgC, invGamma);
+        imgO_XYZ = imageLinearTransform(imgO_Linear, rgb2xyz);
+        imgC_XYZ = imageLinearTransform(imgC_Linear, rgb2xyz);
+        de = deltaEab(imgO_XYZ, imgC_XYZ, wp);
+        cieDeltaE(ii, jj) = median(de(:));
+        
+        % compue DeltaEab for SCIELab
+        params.sampPerDeg = ppd;
+        params.imageFormat = 'xyz10';
+        params.filters = []; 
+        params.deltaEversion = '1976';
+        de = scielab(imgO_XYZ, imgC_XYZ, wp, params);
+        scieDeltaE(ii, jj) = median(de(:));
     end
 end
+
+%% Visualize
+vcNewGraphWin; plot(acc(:), expAcc(:), 'o');
+xlabel('Predicted Accuracy'); ylabel('Measurement Accuracy');
+
+save result.mat acc expAcc cieDeltaE scieDeltaE
 
 %% End
