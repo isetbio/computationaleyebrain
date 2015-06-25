@@ -21,17 +21,23 @@ plot([xy(:,1);xy(1,1)], [xy(:,2);xy(1,2)], '--', 'LineWidth', 2);
 %% Plot Brettel transform
 wp = ieXYZFromEnergy(1e-3*ones(1, n), wave);
 cbXYZ = lms2xyz(xyz2lms(reshape(XYZ, [n 1 3]), cbType, 'Brettel', wp));
+% cbXYZ = lms2xyz(xyz2lms(reshape(XYZ, [n 1 3]), 1, wp));
 cbXYZ = squeeze(cbXYZ);
 
+cbXYZ_b = cbXYZ;
 cbxy_b = bsxfun(@rdivide, cbXYZ, sum(cbXYZ, 2));
-plot(cbxy_b(:,1), cbxy_b(:,2), 'o')
+
+indx = inpolygon(cbxy_b(:,1), cbxy_b(:,2), xy(:,1), xy(:,2));
+plot(cbxy_b(indx,1), cbxy_b(indx,2), 'o')
 
 %% Plot Linear transform
 cbXYZ = lms2xyz(xyz2lms(reshape(XYZ, [n 1 3]), cbType, 'Linear'));
 cbXYZ = squeeze(cbXYZ);
 
+cbXYZ_l = cbXYZ;
 cbxy_l = bsxfun(@rdivide, cbXYZ, sum(cbXYZ, 2));
-plot(cbxy_l(:,1), cbxy_l(:,2), 'o')
+indx = inpolygon(cbxy_l(:,1), cbxy_l(:,2), xy(:,1), xy(:,2));
+plot(cbxy_l(indx,1), cbxy_l(indx,2), 'o')
 
 xlabel('CIE-x'); ylabel('CIE-y'); grid on;
 
@@ -41,8 +47,25 @@ dLMS = dColorTransform(LMS, 3);
 cbXYZ = lms2xyz(reshape(dLMS, [n 1 3]));
 cbXYZ = squeeze(cbXYZ);
 
+cbXYZ_n = cbXYZ;
 cbxy_n = bsxfun(@rdivide, cbXYZ, sum(cbXYZ, 2));
-plot(cbxy_n(:,1), cbxy_n(:,2), 'o')
+
+indx = inpolygon(cbxy_n(:,1), cbxy_n(:,2), xy(:,1), xy(:,2));
+plot(cbxy_n(indx,1), cbxy_n(indx,2), 'o')
+
+%% Comparison with Alpern Data in units of DeltaE
+%  Assuming the luminance level is 50 cd/m^2 and equal energy gray
+%  whitepoint with luminance 100
+lum = 50;    % stimulus brightness
+wplum = 100; % white point brightness
+alpern_XYZ = bsxfun(@times, [data, 1-sum(data, 2)], lum./data(:,2));
+cbXYZ_bs   = bsxfun(@times, cbXYZ_b, lum./cbXYZ_b(:,2));
+cbXYZ_ns   = bsxfun(@times, cbXYZ_n, lum./cbXYZ_n(:,2));
+
+wp = wp / wp(2) * wplum;
+de = zeros(length(wave), 2); % first column for brettel, second for SET
+de(:, 1) = deltaEab(alpern_XYZ, cbXYZ_bs, wp, '2000');
+de(:, 2) = deltaEab(alpern_XYZ, cbXYZ_ns, wp, '2000');
 
 %% Make a video
 hfig = vcNewGraphWin; hold on; grid on;
