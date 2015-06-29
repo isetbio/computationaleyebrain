@@ -25,10 +25,10 @@ rgb2xyz = displayGet(d, 'rgb2xyz'); % rgb to xyz tranformation matrix
 wp = displayGet(d, 'white xyz'); % white point
 
 % eye position and spatial integration size
-pSzDeg  = 0.1; % spatial integration size in degree
+pSzDeg  = 0.08; % spatial integration size in degree
 pSzDots = round(pSzDeg * displayGet(d, 'dots per deg')); % convert to dots
 
-nTrial = 10;
+nTrial = 15;
 
 % Init for accuracy
 acc = zeros(length(imgList), 16); % in shape of n_images, n_algorithms
@@ -97,12 +97,12 @@ for ii = 1 : length(imgList)
         cieDeltaE(ii, jj) = median(de(:));
         
         % compue DeltaEab for SCIELab
-        params.sampPerDeg = ppd;
-        params.imageFormat = 'xyz10';
-        params.filters = []; 
-        params.deltaEversion = '1976';
-        de = scielab(imgO_XYZ, imgC_XYZ, wp, params);
-        scieDeltaE(ii, jj) = median(de(:));
+        % params.sampPerDeg = ppd;
+        % params.imageFormat = 'xyz10';
+        % params.filters = []; 
+        % params.deltaEversion = '1976';
+        % de = scielab(imgO_XYZ, imgC_XYZ, wp, params);
+        % scieDeltaE(ii, jj) = median(de(:));
     end
 end
 
