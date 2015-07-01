@@ -112,4 +112,12 @@ xlabel('Predicted Accuracy'); ylabel('Measurement Accuracy');
 
 save result.mat acc expAcc cieDeltaE scieDeltaE
 
+%% Analyze
+%  See rank correlation
+indx = ~isnan(expAcc);
+exp_diff = bsxfun(@minus, expAcc(indx), expAcc(indx)');
+sim_diff = bsxfun(@minus, acc(indx), acc(indx)');
+rank_corr = sum(exp_diff(:) .* sim_diff(:) >= 0) / numel(exp_diff);
+
+
 %% End
