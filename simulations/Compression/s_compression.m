@@ -119,5 +119,32 @@ exp_diff = bsxfun(@minus, expAcc(indx), expAcc(indx)');
 sim_diff = bsxfun(@minus, acc(indx), acc(indx)');
 rank_corr = sum(exp_diff(:) .* sim_diff(:) >= 0) / numel(exp_diff);
 
+% See rank correlation
+indx = abs(exp_diff) > 0.05;
+rank_corr_large = sum(exp_diff(indx) .* sim_diff(indx) >= 0)/sum(indx(:));
 
+% Mean and variation of each image
+sim_imgMean = mean(acc, 2); sim_imgStd = std(acc, [], 2);
+exp_imgMean = nanmean(expAcc, 2); exp_imgStd = nanstd(expAcc, [], 2);
+indx = ~isnan(exp_imgMean);
+vcNewGraphWin; hold on;
+X = 1:sum(indx); X = X(:);
+bar(X, [sim_imgMean(indx) exp_imgMean(indx)]);
+errorbar([X-0.15 X+0.15], [sim_imgMean(indx) exp_imgMean(indx)], ...
+    [sim_imgStd(indx) exp_imgStd(indx)], '.');
+grid on;
+ax = gca; ax.XTick = X; ax.XTickLabel = {imgList(indx).name};
+ax.XTickLabelRotation = 45;
+legend('ISETBIO Pred', 'Measurement Data');
+
+% Mean and variation of each algorithm
+sim_algMean = mean(acc); sim_algStd = std(acc);
+exp_algMean = nanmean(expAcc); exp_algStd = nanstd(expAcc);
+indx = ~isnan(exp_algMean);
+vcNewGraphWin; hold on;
+X = 1:sum(indx); X = X(:);
+bar(X, [sim_algMean(indx)' exp_algMean(indx)']);
+errorbar([X-0.15 X+0.15], [sim_algMean(indx)' exp_algMean(indx)'], ...
+    [sim_algStd(indx)' exp_algStd(indx)'], '.');
+grid on;
 %% End
