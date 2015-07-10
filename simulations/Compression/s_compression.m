@@ -5,6 +5,12 @@
 % HJ/BW Vistasoft
 
 %% Load Image List
+
+% We might use the rdata command in isetbio
+% remote.host = 'http://scarlet.stanford.edu/validation/SCIEN/ISETBIO/VESA';
+% remote.directory = 'Full_1080p_ref_images';
+% imgList = rdata('ls',remote,'.bmp');
+
 %  Web directory for image data set
 webdir = 'http://scarlet.stanford.edu/validation/SCIEN/ISETBIO/VESA';
 
@@ -60,7 +66,8 @@ for ii = 1 : length(imgList)
     % There are various types of compression labeled by x1 ~ x16
     for jj = 1 : 16
         % try loading compressed images
-        try imgC = im2double(imread(sprintf([imgName '_x%d.bmp'], jj)));
+        try 
+            imgC = im2double(imread(sprintf([imgName '_x%d.bmp'], jj)));
         catch
             warning('Image missing:%s_x%d.bmp', imgName, jj);
         end
