@@ -7,10 +7,11 @@
 % (HJ) Jan, 2014
 
 %% Init Parameters
-if notDefined('ppi'), ppi = 1000; end            % points per inch
-if notDefined('imgFov'), imgFov = [6 6]/60; end % visual angle (degree)
-if isscalar(imgFov), imgFov = [imgFov imgFov];end
-if notDefined('nFrames'), nFrames = 3000; end   % Number of samples
+ieInit;
+
+ppi = 1000;            % points per inch
+imgFov = [.1 .1];      % image field of view
+nFrames = 5000;        % Number of samples
 
 vDist  = 1.0;                                   % viewing distance (meter)
 imgSz  = round(tand(imgFov)*vDist*39.37*ppi);   % number of pixels in image
@@ -21,20 +22,15 @@ display = displayCreate('LCD-Apple');
 display = displaySet(display, 'dpi', ppi);
 
 %% Create Scene
+%  create vernier scene
 scene = cell(2, 1);
-% img = ones(imgSz)*0.5;            % Init to black
-% img(:, round(imgSz(2)/2)) = .99;  % Draw vertical straight line in middle
-% scene{1} = sceneFromFile(img, 'rgb', [], display); % create scene
+
 params.display = display;
 params.sceneSz = imgSz;
 params.offset  = 0;
 params.barWidth = 1;
 params.bgColor = 0.5;
 scene{1} = sceneCreate('vernier', 'display', params);
-
-% img(1:round(imgSz(1)/2), :) = circshift(img(1:round(imgSz(1)/2), :),[0 1]);
-%img = circshift(img, [0 1]);
-% scene{2} = sceneFromFile(img, 'rgb', [], display);
 params.offset = 1;
 scene{2} = sceneCreate('vernier', 'display', params);
 
@@ -45,25 +41,17 @@ for ii = 1 : 2
 end
 
 % Show radiance image (scene)
-vcAddAndSelectObject('scene', scene{1});
-vcAddAndSelectObject('scene', scene{2}); sceneWindow;
+% vcAddAndSelectObject('scene', scene{1});
+% vcAddAndSelectObject('scene', scene{2}); sceneWindow;
 
 %% Create Human Lens
 %  Create a typical human lens
-wave   = 380 : 4 : 780;
-wvf    = wvfCreate('wave',wave);
-pupilDiameterMm = 3;
-sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
-wvf    = wvfComputePSF(wvf, false);
-oi     = wvf2oi(wvf,'shift invariant', false);
+oi = oiCreate('wvf human');
 
 % Compute optical image
 % Actually, we could wait to compute it in coneSamples
 % But, we compute it here to do sanity check
-vcAddAndSelectObject('scene', scene{1});
 OIs{1} = oiCompute(scene{1}, oi);
-vcAddAndSelectObject('scene', scene{2});
 OIs{2} = oiCompute(scene{2}, oi);
 
 % Show irradiance (optical image) 
@@ -129,45 +117,31 @@ emDuration = 0.001;
 sensor = sensorSet(sensor, 'exp time', emDuration);
 sensor = sensorSetSizeToFOV(sensor, imgFov, scene{1}, OIs{1});
 
-%  Init some parameters
-%  Simga is etimated from Jon's data fitted by Brownian motion
-params.center   = [0,0];
-params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
-%params.nSamples = round(0.05 / emDuration)*nFrames;
-emPerExposure = round(expTime / emDuration);
-params.nSamples = nFrames + emPerExposure;
-params.fov      = sensorGet(sensor,'fov',scene{1},oi);
-
-% Set up the eye movement properties
-sensor = emInit('fixation gaussian', sensor, params);
+% Generate eyemovement
+p.nSamples = nFrames + 50;
+sensor = eyemoveInit(sensor, p);
 
 % Compute the cone absopritons
 sensor = coneAbsorptions(sensor, OIs{1}, 2);
 
 % Store the photon samples
-pSamples1 = double(sensorGet(sensor, 'photons'));
+pSamples1 = sensorGet(sensor, 'photons');
 
 % Compute cone absorptions for the second stimulus and store photon
 % absorptions
 sensor = coneAbsorptions(sensor, OIs{2}, 2);
-pSamples2 = double(sensorGet(sensor, 'photons'));
-
-%  Fit Gaussian mean for ideal observer calculation.
-% gMu1 = mean(pSamples1, 3); gMu2 = mean(pSamples2, 3);
-
-%  Compute error rate
+pSamples2 = sensorGet(sensor, 'photons');
 
 
 %% Do it by SVM
 % Classification
-fprintf('Start SVM Classification\n');
-svmOpts = '-s 0 -q';
-
 nFolds = 10;
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
 refPhotons   = RGB2XWFormat(pSamples1);
+
 % Add 50 samples to 1 to form the 50ms integration time
 % We do use moving sum here
+emPerExposure = 50;
 refPhotons = cumsum(refPhotons, 2);
 refPhotons = refPhotons(:, emPerExposure + 1:end) - ...
              refPhotons(:, 1:end-emPerExposure);
@@ -179,11 +153,11 @@ matchPhotons = matchPhotons(:, emPerExposure + 1:end) - ...
              matchPhotons(:, 1:end-emPerExposure);
 
 acc = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-    labels, nFolds, 'svm', svmOpts);
+    labels, nFolds, 'linear');
 
-fprintf('SVM acc:%f\n',acc);
+fprintf('SVM acc:%f\n',acc(1));
 
 %% Do it by KMean
-idx = kmeans(cat(1,refPhotons', matchPhotons'),2);
-idx = idx * 2 - 3;
-fprintf('kmeans accuracy: %f\n',sum(idx == labels) / length(labels));
+% idx = kmeans(cat(1,refPhotons', matchPhotons'),2);
+% idx = idx * 2 - 3;
+% fprintf('kmeans accuracy: %f\n',sum(idx == labels) / length(labels));
