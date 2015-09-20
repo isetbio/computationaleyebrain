@@ -12,7 +12,7 @@ function [threshold, params] = ccThresh(rContrast, direction, params)
 %                .ccParams - parameter structure for ccAcc function
 %  
 %  Outputs:
-%    threshold - threshold found, if failed, NAN is returned
+%    threshold - threshold found, if failed, NaN is returned
 %    params    - parameters used for the simulations, includes
 %                .rseed    - random seed for the experiment
 %                .pCorrect - percent of correctness for threshold
@@ -44,15 +44,16 @@ if notDefined('rContrast'), error('reference contrast required'); end
 if notDefined('direction'), error('direction required'); end
 if notDefined('params'), params = []; end
 
-% Init random seed
-if isfield(params, 'rseed'), rng(params.rseed);
-else params.rseed = rng; end
-
 % Init display
 expData.rContrast = rContrast(:)';
 if ~isfield(params, 'ccParams'), params.ccParams = []; end
-if isfield(params.ccParams, 'd'), d = params.ccParams.d;
-else d = 'LCD-Apple'; params.ccParams.d = d; end
+if isfield(params.ccParams, 'd')
+    d = params.ccParams.d;
+else
+    d = displayCreate('OLED-Sony');
+    d = displaySet(d, 'gamma', 'linear');
+    params.ccParams.d = d;
+end
 expData.display = d;
 
 % Init background color
@@ -102,7 +103,7 @@ while true
     end
     
     % print debug info
-    fprintf('Contrast: %f\t Accuracy:%f\n', curDist, curAcc);
+    fprintf('\t\tContrast: %f\t Accuracy:%f\n', curDist, curAcc);
     
     expData.acc = cat(1, expData.acc, curAcc);
     expData.err = cat(1, expData.err, curErr);
@@ -125,6 +126,6 @@ threshold = lDist + (uDist - lDist)*(pCorrect - lAcc)/(uAcc - lAcc);
 
 % set expData and ccParams to params
 params.expData = expData;
-params.ccParams = rmfield(ccParams, 'rseed');
+params.ccParams = ccParams;
 
 end

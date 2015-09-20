@@ -1,44 +1,57 @@
 %% s_colorContours
+%
 %   Compute color discrimination contours.
 %
 %   This calculates threshold increment for a uniform patch on a solid
-%   background.  The noise arises from photon absorptions and second-site
+%   background. The noise arises from photon absorptions and second-site
 %   additive noise.
 %
 %  (HJ) ISETBIO TEAM, 2014
 
 %% Init parameters
-s_initISET;
+ieInit;
 
 %% Set up the stimulus parameters
 ref     = [0 0 0];    % Background alone, no contrast
-dirList = [0 15 25 30 40 42 45 47 50 55 65 90 115 135 150];  % color directions in L-M
+dirList = [0 15 25 30 40 42 45 47 50 55 65 90 115 135 150];  % color directions in degrees
+% dirList = [0 30 45 60 90 135];
 dirList = [dirList dirList - 180];    % Color directions made symmetric
-cropSz  = 22;    % Number of cones is 2*cropSz + 1
+sensorSz  = [45, 45]; % Number of cones
 
 % Set the cone backgrounds maybe other parameters up here ...
 
 %% Compute classification accuracy
-%  Set up proclus command
-cmd = '[thresh, expData] = ccThresh(ref, dirList(jobindex), params);';
-cmd = [cmd 'save(sprintf(''~/ccContour%d.mat'',jobindex));'];
-params.ccParams.cropSz = cropSz;
-params.ccParams.rgbDensities = [0 0.6 0.3 .1];  % Blank, L, M and S proportions
+%  Set up command
+cmd = '[thresh, params] = ccThresh(ref, dirList(ii), params);';
+params.ccParams.sensorSz = sensorSz;
 
-try % try use proclus
-    sgerun2(cmd, 'colorContour', 1, 1:length(dirList));
-catch % compute locally
-    for ii = 1 : length(dirList)
-        [thresh, expData] = ccThresh(ref, dirList(ii), params);
-        save(sprintf('~/ccContour%d.mat', ii));
-    end
+% Cone densities for blank, L, M and S
+params.ccParams.cone = coneCreate;
+params.ccParams.cone.spatialDensity = [0 0.6 0.3 0.1];
+d = displayCreate('OLED-Sony', 'wave', 400:10:700);
+d = displaySet(d, 'gamma', 'linear');
+params.ccParams.d = d;
+
+cprintf('*Keywords', 'Color Discrimination Contour\n');
+dataDir = '~/SimResults/ColorContour/Detection/';
+for ii = 1 : length(dirList)
+    % print progress
+    fprintf('\t(%d deg L-M)\n', dirList(ii));
+    
+    % compute threshold
+    eval(cmd);
+    fname = fullfile(dataDir, sprintf('%d.mat', dirList(ii)));
+    save(fname, 'thresh', 'params');
+    
+    % print results
+    fprintf('\t\tThreshold:%.4f\n', thresh);
 end
 
 %% Plot color contour
 threshPts = zeros(length(dirList), 3);
 
 for ii = 1 : length(dirList)
-    fName = sprintf('./ccContour%d.mat', ii);
+    fName = fullfile(dataDir, sprintf('%d.mat', dirList(ii)));
     if ~exist(fName, 'file'), continue; end
     data = load(fName);
     curDir = dirList(ii); % current direction

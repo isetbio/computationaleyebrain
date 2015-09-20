@@ -29,31 +29,30 @@ function [acc, err, params] = ccAcc(rColor, mColor, params)
 if notDefined('rColor'), error('reference color required'); end
 if notDefined('mColor'), error('match color required'); end
 if notDefined('params'), params = []; end
-if isfield(params, 'rseed'), rng(rseed); else params.rseed = rng; end
 
 %% Set up scene
 if isfield(params, 'd'), d = params.d; 
 else
     d = displayCreate('OLED-Sony');
-    d = displaySet(d, 'gamma', repmat(linspace(0,1,1024), [1 1 4]));
+    d = displaySet(d, 'gamma', 'linear');
 end
 if isfield(params, 'sceneSz'), sz = params.sceneSz; else sz = 64; end
 
 % Create reference scene
 rColor = reshape(rColor, [1 1 3]);
 rScene = sceneFromFile(rColor(ones(sz, 1), ones(sz, 1), :), 'rgb', [], d);
-rScene = sceneSet(rScene, 'fov', 0.5);
+rScene = sceneSet(rScene, 'fov', 5);
 
 % Create test/match scene
 mColor = reshape(mColor, [1 1 3]);
 mScene = sceneFromFile(mColor(ones(sz, 1), ones(sz, 1), :), 'rgb', [], d);
-mScene = sceneSet(mScene, 'fov', 0.5);
+mScene = sceneSet(mScene, 'fov', 5);
 
 %% Compute optical image
 if isfield(params, 'oi')
     oi = params.oi;
 else
-    oi = oiCreate('human');
+    oi = oiCreate('wvf human');
 end
 
 rOI = oiCompute(rScene, oi);
@@ -63,30 +62,30 @@ mOI = oiCompute(mScene, oi);
 if isfield(params, 'sensor')
     sensor = params.sensor;
 else
-    sensor = sensorCreate('human', [], params);
-    fov = sceneGet(rScene, 'fov');
-    sensor = sensorSetSizeToFOV(sensor, fov, rScene, oi);
+    if isfield(params, 'sensorSz'), sz = params.sensorSz;
+    else sz = [45, 45]; end
+    
+    sensor = sensorCreate('human', [], params.cone);
+    % fov = sceneGet(rScene, 'fov');
+    % sensor = sensorSetSizeToFOV(sensor, fov, rScene, oi);
+    sensor = sensorSet(sensor, 'size', sz);
 end
 
 % set up number of samples
 if isfield(params, 'nSamples')
     nSamples = params.nSamples;
 else
-    nSamples = 8000;
+    nSamples = 5000;
     params.nSamples = nSamples;
 end
 
 % disable eye movement
 sensor = sensorSet(sensor, 'sensor positions', zeros(nSamples, 2));
+sensor = coneAbsorptions(sensor, rOI);
+rPhotons = sensorGet(sensor, 'photons');
 
-% compute adapted cone samples
-sensor = coneAbsorptions(sensor, rOI); % reference cone absorptions
-rVolts = sensorGet(sensor, 'volts');
-% [~, rVolts] = coneAdapt(sensor);       % reference adapted data
-
-sensor = coneAbsorptions(sensor, mOI); % test cone absorptions
-mVolts = sensorGet(sensor, 'volts');
-% [~, mVolts] = coneAdapt(sensor);       % test adapted data
+sensor = coneAbsorptions(sensor, mOI);
+mPhotons = sensorGet(sensor, 'photons');
 
 %% Add second site noise (cone opponency)
 % coneType = sensorGet(sensor, 'cone type');
@@ -96,14 +95,8 @@ mVolts = sensorGet(sensor, 'volts');
 % rVolts = coneComputeCenterSurround(rVolts);
 % mVolts = coneComputeCenterSurround(mVolts);
 
-%% Crop from center
-if isfield(params, 'cropSz'), cropSz = params.cropSz;
-else cropSz = 12; params.cropSz = cropSz; end
-rVolts = getMiddleMatrix(rVolts, cropSz); % Get patch from center
-mVolts = getMiddleMatrix(mVolts, cropSz); % Get patch from center
-
 %% SVM classification
-nFolds = 10;
+nFolds = 5;
 if isfield(params, 'svmOpts')
     svmOpts = params.svmOpts;
 else
@@ -112,12 +105,10 @@ else
 end
 
 labels = [ones(nSamples,1); -1*ones(nSamples,1)];
-rVolts = RGB2XWFormat(rVolts)';
-mVolts = RGB2XWFormat(mVolts)';
+rPhotons = RGB2XWFormat(rPhotons)';
+mPhotons = RGB2XWFormat(mPhotons)';
 
-acc = svmClassifyAcc(cat(1, rVolts, mVolts), ...
-                        labels, nFolds, 'linear', svmOpts);
-err = acc(2);
-acc = acc(1);
+acc = svmAcc([rPhotons; mPhotons], labels, nFolds, 'linear', svmOpts);
+err = nan;
 
 end
