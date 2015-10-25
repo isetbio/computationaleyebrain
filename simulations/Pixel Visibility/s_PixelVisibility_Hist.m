@@ -65,12 +65,13 @@ oi  = oiCompute(oi, scene);  % irradiance map for image on display
 %  In this section, we compute the cone absorption for standard human
 %  observer
 
-params.humanConeDensity = [0 0.6 0.3 0.1]; % cone density for K,L,M,S
+cone = coneCreate;
+cone.spatialDensity = [0 0.6 0.3 0.1]; % cone density for K,L,M,S
 expTime = 0.05; % cone integration time
 sampleTime = 0.001; % sample interval
 
 % create human cone mosaic
-sensor = sensorCreate('human', [], params);
+sensor = sensorCreate('human', cone);
 sensor = sensorSet(sensor, 'exp time', expTime);
 sensor = sensorSet(sensor, 'sample time interval', sampleTime);
 sensor = sensorSetSizeToFOV(sensor, sceneGet(scene, 'h fov'), scene, oi);
