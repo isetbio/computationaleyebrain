@@ -18,7 +18,7 @@ ieInit; % Initialize a new ISET session
 %  In this section, we create a display structure with calibrated data.
 %  Also, we set up the viewing distance of experiment settings.
 
-vDist = 1.5; % viewing distance
+vDist = 2; % viewing distance
 
 d = displayCreate('LCD-Gechic'); % create display structure
 d = displaySet(d, 'viewing distance', vDist); % set viewing distance
@@ -31,10 +31,14 @@ d = displaySet(d, 'viewing distance', vDist); % set viewing distance
 %  on that calibrated display
 
 img = zeros(40,40,3); % image to be shown on the display
-img(1:4:end, 1:4:end, 3) = 1;
-img(2:4:end, 1:4:end, 3) = 1;
-img(1:4:end, 2:4:end, 3) = 1;
-img(2:4:end, 2:4:end, 3) = 1;
+% img(1:4:end, 1:4:end, :) = 1;
+% img(2:4:end, 1:4:end, :) = 1;
+% img(1:4:end, 2:4:end, :) = 1;
+% img(2:4:end, 2:4:end, :) = 1;
+
+% every other pixel
+img(1:2:end, 1:2:end, :) = 1;
+
 
 imgFov = 40 * displayGet(d, 'deg per pixel');
 
@@ -45,12 +49,22 @@ oSample = 20;   % upsampling rate for each pixel
 scene = sceneFromFile(img, 'rgb', [], d, [], doSub, [], oSample);
 
 % uniform scene for comparison
-p  = mean(mean(sceneGet(scene, 'photons'))); % average photon rate
-sz = sceneGet(scene, 'size');
-sceneU = sceneSet(scene, 'photons', repmat(p, [sz 1]));
+% p  = mean(mean(sceneGet(scene, 'photons'))); % average photon rate
+% sz = sceneGet(scene, 'size');
+% sceneU = sceneSet(scene, 'photons', repmat(p, [sz 1]));
 
 % visualize
 % vcAddObject(scene); sceneWindow;
+
+% The analysis is based on the perfectly uniform field with matched
+% luminance and spd. It's not uniform image on that display
+%
+% We could also compare with the uniform image on display
+
+imgU = ones(40, 40, 3);
+sceneU = sceneFromFile(imgU, 'rgb', [], d, [], doSub, [], oSample);
+sceneU = sceneAdjustLuminance(sceneU, sceneGet(scene, 'mean luminance'));
+vcAddObject(sceneU); sceneWindow;
 
 %% Optical Irradiance
 %  In this section, we create the optics stucture for standard human
@@ -62,6 +76,8 @@ oi = oiCreate('wvf human');
 % compute irradiance map
 oiU = oiCompute(oi, sceneU); % irradiance map for uniform field
 oi  = oiCompute(oi, scene);  % irradiance map for image on display
+
+% oiFov = oiGet(oi, 'fov');
 
 % visualize
 % vcAddObject(oi); oiWindow;
@@ -85,7 +101,7 @@ sensor = sensorSet(sensor, 'sensor positions', zeros(1000, 2));
 
 % compute cone absorptions
 sensor = coneAbsorptions(sensor, oi);
-sensorU = sensorComputeNoiseFree(sensor, oiU);
+sensorU = coneAbsorptions(sensor, oiU);
 
 % visualize
 % vcAddObject(sensor); sensorWindow;
@@ -104,10 +120,14 @@ for ii = 2 : 4
     % plot histogram of image on display
     indx = (coneType == ii);
     [f, x] = hist(p(repmat(indx, [1 1 size(p,3)])), 20);
-    bar(x, f/trapz(x,f));
+    bar(x, f/trapz(x,f), 'r');
     
     % plot theoretical curve
     meanP = median(pU(indx));
     plot(x, 1/sqrt(2*pi*meanP)*exp(-0.5*(x-meanP).^2/meanP), ...
         '--r','lineWidth', 2);
+    
+    % plot the uniform display image case
+    [f, x] = hist(pU(repmat(indx, [1 1 size(p,3)])), 20);
+    bar(x, f/trapz(x,f), 'g');
 end
