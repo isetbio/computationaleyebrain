@@ -18,7 +18,7 @@ ieInit; % Initialize a new ISET session
 %  In this section, we create a display structure with calibrated data.
 %  Also, we set up the viewing distance of experiment settings.
 
-vDist = 2; % viewing distance
+vDist = 1.5; % viewing distance
 
 d = displayCreate('LCD-Gechic'); % create display structure
 d = displaySet(d, 'viewing distance', vDist); % set viewing distance
@@ -31,10 +31,23 @@ d = displaySet(d, 'viewing distance', vDist); % set viewing distance
 %  on that calibrated display
 
 img = zeros(40,40,3); % image to be shown on the display
+
+% 2x2 pixel
 % img(1:4:end, 1:4:end, :) = 1;
 % img(2:4:end, 1:4:end, :) = 1;
 % img(1:4:end, 2:4:end, :) = 1;
 % img(2:4:end, 2:4:end, :) = 1;
+
+% 3x3 pixel
+% img(1:9:end, 1:9:end, :) = 1;
+% img(2:9:end, 1:9:end, :) = 1;
+% img(3:9:end, 1:9:end, :) = 1;
+% img(1:9:end, 2:9:end, :) = 1;
+% img(2:9:end, 2:9:end, :) = 1;
+% img(3:9:end, 2:9:end, :) = 1;
+% img(1:9:end, 3:9:end, :) = 1;
+% img(2:9:end, 3:9:end, :) = 1;
+% img(3:9:end, 3:9:end, :) = 1;
 
 % every other pixel
 img(1:2:end, 1:2:end, :) = 1;
@@ -81,6 +94,7 @@ oi  = oiCompute(oi, scene);  % irradiance map for image on display
 
 % visualize
 % vcAddObject(oi); oiWindow;
+% vcAddObject(oiU); oiWindow;
 
 %% Cone Absorption
 %  In this section, we compute the cone absorption for standard human
@@ -95,16 +109,25 @@ sampleTime = 0.001; % sample interval
 sensor = sensorCreate('human', cone);
 sensor = sensorSet(sensor, 'exp time', expTime);
 sensor = sensorSet(sensor, 'sample time interval', sampleTime);
-sensor = sensorSetSizeToFOV(sensor, sceneGet(scene, 'h fov'), scene, oi);
 
+% a cone is about 2 microns in size 
+% a blur circle is about 3-5 cones
+% so we want 10 micron sFOV
+% sFOV is in degrees of visual angle so convert 
+% One degree of visual angle = 330 microns 
+% so 10 microns = 1/33 degree or 0.0303 degrees
+sFOV = 0.0303
+% sensor = sensorSetSizeToFOV(sensor, sceneGet(scene, 'h fov'), scene, oi);
+sensor = sensorSetSizeToFOV(sensor, sFOV, scene, oi);
 sensor = sensorSet(sensor, 'sensor positions', zeros(1000, 2));
 
 % compute cone absorptions
-sensor = coneAbsorptions(sensor, oi);
+sensor = coneAbsorptions(sensor, oi);  
 sensorU = coneAbsorptions(sensor, oiU);
 
 % visualize
 % vcAddObject(sensor); sensorWindow;
+% vcAddObject(sensorU); sensorWindow;
 
 %% Analysis
 %  In this section, we plot the histogram of each cone type
@@ -120,14 +143,14 @@ for ii = 2 : 4
     % plot histogram of image on display
     indx = (coneType == ii);
     [f, x] = hist(p(repmat(indx, [1 1 size(p,3)])), 20);
-    bar(x, f/trapz(x,f), 'r');
+    bar(x, f/trapz(x,f), 'g');
     
-    % plot theoretical curve
+%     % plot theoretical curve
     meanP = median(pU(indx));
     plot(x, 1/sqrt(2*pi*meanP)*exp(-0.5*(x-meanP).^2/meanP), ...
         '--r','lineWidth', 2);
     
     % plot the uniform display image case
     [f, x] = hist(pU(repmat(indx, [1 1 size(p,3)])), 20);
-    bar(x, f/trapz(x,f), 'g');
+    bar(x, f/trapz(x,f), 'r');
 end
