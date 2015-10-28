@@ -31,8 +31,9 @@ d = displaySet(d, 'viewing distance', vDist); % set viewing distance
 %  on that calibrated display
 
 img = zeros(40,40,3); % image to be shown on the display
-img(1:4:end, 1:4:end, 3) = 1;
-img(2:4:end, 2:4:end, 3) = 1;
+% img(1:4:end, 1:4:end, 3) = 1;
+% img(2:4:end, 2:4:end, 3) = 1;
+
 doSub = true;   % we do care the subpixel structure
 oSample = 20;   % upsampling rate for each pixel
 
