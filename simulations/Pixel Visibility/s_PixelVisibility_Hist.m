@@ -69,7 +69,7 @@ scene = sceneFromFile(img, 'rgb', [], d, [], doSub, [], oSample);
 % sceneU = sceneSet(scene, 'photons', repmat(p, [sz 1]));
 
 % visualize
-% vcAddObject(scene); sceneWindow;
+vcAddObject(scene); sceneWindow;
 
 % The analysis is based on the perfectly uniform field with matched
 % luminance and spd. It's not uniform image on that display
@@ -139,20 +139,53 @@ p = sensorGet(sensor, 'photons');
 pU = sensorGet(sensorU, 'photons');
 
 figure;
+% for ii = 2 : 4
+%     subplot(1,3,ii-1); hold on;
+%     
+%     % plot histogram of image on display
+%     indx = (coneType == ii);
+%     [f, x] = hist(p(repmat(indx, [1 1 size(p,3)])), 20);
+%     bar(x, f/trapz(x,f), 'g');
+%     
+% %     % plot theoretical curve
+% %     meanP = median(pU(indx));
+% %     plot(x, 1/sqrt(2*pi*meanP)*exp(-0.5*(x-meanP).^2/meanP), ...
+% %         '--r','lineWidth', 2);
+%     
+%     % plot the uniform display image case
+%     [f, x] = hist(pU(repmat(indx, [1 1 size(p,3)])), 20);
+%     bar(x, f/trapz(x,f), 'r');
+% end
+
+
 for ii = 2 : 4
     subplot(1,3,ii-1); hold on;
     
     % plot histogram of image on display
     indx = (coneType == ii);
     [f, x] = hist(p(repmat(indx, [1 1 size(p,3)])), 20);
-    bar(x, f/trapz(x,f), 'g');
+    h = bar(x, f/trapz(x,f), 'g');
+    set(h,'facecolor','g','edgecolor','g')
+%     h.FaceColor = [0 0.5 0.0];
+    h.EdgeColor = 'g';
     
 %     % plot theoretical curve
-    meanP = median(pU(indx));
-    plot(x, 1/sqrt(2*pi*meanP)*exp(-0.5*(x-meanP).^2/meanP), ...
-        '--r','lineWidth', 2);
+%     meanP = median(pU(indx));
+%     plot(x, 1/sqrt(2*pi*meanP)*exp(-0.5*(x-meanP).^2/meanP), ...
+%         '--r','lineWidth', 2);
     
     % plot the uniform display image case
     [f, x] = hist(pU(repmat(indx, [1 1 size(p,3)])), 20);
-    bar(x, f/trapz(x,f), 'r');
+    h = bar(x, f/trapz(x,f), 'r');
+    set(h,'facecolor','r','edgecolor','r')
+%     h.FaceColor = [0 0.0 0.5];
+    h.EdgeColor = 'r';
 end
+
+
+y = randn(10000,1);
+[n,x] = hist(y,30);
+h = bar(x,n);
+set(h,'facecolor','r','edgecolor','b')
+h.FaceColor = [0 0.0 0.5];
+h.EdgeColor = 'r';
