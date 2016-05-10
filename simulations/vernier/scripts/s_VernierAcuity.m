@@ -9,7 +9,7 @@
 %% Init Parameters
 ieInit;
 
-ppi = 1000;            % points per inch
+ppi = 400;             % points per inch
 imgFov = [.5 .5];      % image field of view
 sensorFov = [.2 .2];   % field of view of sensor
 nFrames = 5000;        % Number of samples
@@ -87,14 +87,25 @@ pSamples2 = sensorGet(sensor, 'photons');
 pSamples2 = sum(reshape(pSamples2, [sz nFrames 50]), 4);
 
 
-%% Do it by SVM
+%% SVM linear classification
 % Classification
 nFolds = 10;
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
 data = cat(1, RGB2XWFormat(pSamples1)', RGB2XWFormat(pSamples2)');
 
-[acc, w] = svmClassifyAcc(data, labels, nFolds, 'linear');
-fprintf('SVM acc:%f\n',acc(1));
+% Normalize data
+data = bsxfun(@rdivide, bsxfun(@minus, data, mean(data)), std(data));
+
+% Choose parameter C in svm and compute cross-validation error
+opts = sprintf('-s 2 -q -C -v %d', nFolds);
+res = train(labels, sparse(data), opts);
+
+% Get weights of svm linear classifier
+opts = sprintf('-s 2 -q -c %f', res(1));
+svmStruct = train(labels, sparse(data), opts);
+w = svmStruct.w;
+
+fprintf('SVM acc:%f\n', res(2));
 
 % show weight image
-vcNewGraphWin; imagesc(reshape(mean(w, 2), sz));
+vcNewGraphWin; imagesc(reshape(w, sz));

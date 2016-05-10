@@ -1,4 +1,4 @@
-%% s_displayLetters
+%% s_clearType_NonClearType
 %
 %
 %
