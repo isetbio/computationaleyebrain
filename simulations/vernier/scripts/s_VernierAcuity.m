@@ -14,7 +14,7 @@ imgFov = [.5 .5];      % image field of view
 sensorFov = [.2 .2];   % field of view of sensor
 nFrames = 5000;        % Number of samples
 
-vDist  = 1.0;                                   % viewing distance (meter)
+vDist  = 2.0;                                   % viewing distance (meter)
 imgSz  = round(tand(imgFov)*vDist*39.37*ppi);   % number of pixels in image
 imgFov = atand(max(imgSz)/ppi/39.37/vDist);     % Actual fov
 
@@ -70,7 +70,7 @@ sensor = sensorSetSizeToFOV(sensor, sensorFov(1), scene{1}, OIs{1});
 sz = sensorGet(sensor, 'size');
 
 % Generate eyemovement
-p.nSamples = nFrames * 50;
+p.nSamples = nFrames * expTime;
 sensor = eyemoveInit(sensor, p);
 
 % Compute the cone absopritons
