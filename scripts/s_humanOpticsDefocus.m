@@ -9,7 +9,7 @@
 ieInit; % initialize a new ISET session
 
 pupilSize = 3; % pupil size diameter in mm, can choose from 7.5, 6, 4.5, 3
-defocus   = 2; % defocus in diopters
+defocus   = 1; % defocus in diopters
 
 fov = 1; % field of view of the scene
 
@@ -19,7 +19,7 @@ zCoefs = wvfLoadThibosVirtualEyes(pupilSize);
 
 % adjust for defocus
 microns = wvfDefocusDioptersToMicrons(defocus, pupilSize);
-zCoefs(4) = zCoefs(4) + microns;
+zCoefs(5) = zCoefs(5) + microns;
 
 %% Create Scene and Human optics
 %  create a scene
@@ -28,14 +28,14 @@ scene = sceneSet(scene, 'fov', fov);
 
 % create human optics structure
 oi = oiCreate('wvf human'); % in focus
-oiD = oiCreate('wvf human', [], [], [], pupilSize, zCoefs); % defocused
+oiD = oiCreate('wvf human', pupilSize, zCoefs); % defocused
 
 % compute irradiance map
 oi = oiCompute(scene, oi);
 oiD = oiCompute(scene, oiD);
 
 % visualize
-vcAddObject(oi); vcAddObject(oiD); oiWindow;
+% vcAddObject(oi); vcAddObject(oiD); oiWindow;
 
 %% Get and Plot PSF (or OTF)
 %  We will get the point spread function from the optics and plot it

@@ -66,7 +66,7 @@ rColor = coneContrast2RGB(d, rContrast, bgColor);
 
 % Init direction
 expData.diretion = direction;
-direction = [cosd(direction) sind(direction) 0];
+direction = [0 cosd(direction) sind(direction)];
 
 % Init mContrast, acc, err
 expData.acc = []; expData.err = []; expData.mContrast = [];
@@ -89,7 +89,7 @@ while uAcc < pCorrect
 end
 
 % Binary search
-while true
+while uDist - lDist > 1e-5
     curDist = (lDist + uDist) / 2;
     mContrast = rContrast + curDist * direction;
     mColor = coneContrast2RGB(d, mContrast, bgColor, s);

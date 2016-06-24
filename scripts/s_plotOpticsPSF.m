@@ -28,9 +28,9 @@ end
 %% Plot PSF as a function of defocus and astigmatism
 pupilMM = 3;
 zCoefs = wvfLoadThibosVirtualEyes(pupilMM);
-astig = 0.5;
+astig = 0;
 
-for defocus = -0.5:0.5:0.5
+for defocus = -0.5:0.5:1
     % adjust coefficients
     % a simpler way to set defocus is wvfSet(wvf, 'defocusdiopters', val)
     Z = zCoefs;

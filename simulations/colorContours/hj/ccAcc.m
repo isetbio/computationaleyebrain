@@ -65,10 +65,11 @@ else
     if isfield(params, 'sensorSz'), sz = params.sensorSz;
     else sz = [45, 45]; end
     
-    sensor = sensorCreate('human', [], params.cone);
+    sensor = sensorCreate('human', params.cone);
     % fov = sceneGet(rScene, 'fov');
     % sensor = sensorSetSizeToFOV(sensor, fov, rScene, oi);
     sensor = sensorSet(sensor, 'size', sz);
+    % sensor.human.macular.density = 0;
 end
 
 % set up number of samples
@@ -87,13 +88,36 @@ rPhotons = sensorGet(sensor, 'photons');
 sensor = coneAbsorptions(sensor, mOI);
 mPhotons = sensorGet(sensor, 'photons');
 
+%% Compute outer-segment and retina ganglion cell response
+% osL = osCreate('linear');
+% osL = osSet(osL, 'patch size', sensorGet(sensor, 'width', 'um'));
+% osL = osSet(osL, 'time step', sensorGet(sensor, 'time interval', 'sec'));
+% 
+% sensor = sensorSet(sensor, 'photons', rPhotons(:, :, 1));
+% osL = osCompute(osL, sensor);
+% 
+% irParams.name      = 'Macaque inner retina 1'; % This instance
+% irParams.eyeSide   = 'left';   % Which eye
+% irParams.eyeRadius = 0;        % Radius in mm
+% irParams.eyeAngle  = 90;       % Polar angle in degrees
+% 
+% innerRetina = irCreate(osL, irParams);
+% innerRetina.mosaicCreate('model','glm','type','on midget');
+% 
+% for ii = 1 : size(rPhotons, 3)
+%     photons = repmat(rPhotons(:, :, ii), [1 1 50]);
+%     sensor = sensorSet(sensor, 'photons', photons);
+%     osL = osCompute(osL, sensor);
+%     
+%     innerRetina = irCompute(innerRetina, osL);
+% end
+
 %% Add second site noise (cone opponency)
-% coneType = sensorGet(sensor, 'cone type');
-% cg = sensorGet(sensor, 'conversion gain');
-% rVolts = coneComputeSSNoise(rVolts / cg, coneType) * cg;
-% mVolts = coneComputeSSNoise(mVolts / cg, coneType) * cg;
-% rVolts = coneComputeCenterSurround(rVolts);
-% mVolts = coneComputeCenterSurround(mVolts);
+coneType = sensorGet(sensor, 'cone type');
+rPhotons = coneComputeSSNoise(rPhotons, coneType);
+mPhotons = coneComputeSSNoise(mPhotons, coneType);
+rPhotons = coneComputeCenterSurround(rPhotons);
+mPhotons = coneComputeCenterSurround(mPhotons);
 
 %% SVM classification
 nFolds = 5;

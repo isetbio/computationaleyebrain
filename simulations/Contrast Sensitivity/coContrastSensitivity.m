@@ -1,4 +1,4 @@
-function [jndContrast, acc, err, tContrast] = coContrastSensitivity(frequency, params)
+function [jndContrast, acc, tContrast] = coContrastSensitivity(frequency, params)
 %% function coContrastSensitivity(contrast, frequency, [params])
 %    Calculate the contrast sensitivity functions of the computational
 %    observer based on the cone absorptions.
@@ -18,7 +18,6 @@ function [jndContrast, acc, err, tContrast] = coContrastSensitivity(frequency, p
 %  Outputs:
 %    jndContrast - JND for given threshold
 %    acc         - classification accuracy
-%    err         - std of classificaiton error
 %    tContrast   - array of contrast tested
 %
 %  (HJ) March, 2014
@@ -29,26 +28,26 @@ if notDefined('frequency'), error('freqency required'); end
 if notDefined('params'), params = []; end
 
 %  set parameters
-try sceneSz = params.sceneSz; catch, sceneSz = 0.5; end % fov (degree)
+try sensorFov = params.sensorSz; catch, sensorFov = 0.28; end
 try density = params.coneDensity; catch, density = [0 .6 .3 .1]; end
 try expTime = params.expTime; catch, expTime = 0.05; end % integration time
 try emDuration = params.emDuration; catch, emDuration = 0.01; end
 try nFrames = params.nFrames; catch, nFrames = 3000; end
 try meanLum = params.meanLuminance; catch, meanLum = 100; end
-try sceneWave = params.sceneWave; catch, sceneWave = 380:780; end
+try sceneWave = params.sceneWave; catch, sceneWave = 400:10:700; end
 try threshold = params.threshold; catch, threshold = 0.8; end
+try defocus = params.defocus; catch, defocus = 0; end
 
 if isfield(params, 'testContrast')
     tContrast = params.testContrast;
 else
-    tContrast = [.1 .05 .04 .03 .02 .01 .005 0.004 0.003 .002];
+    tContrast = [.1 .07 .05 .03 .02 .01]; % [.1 .05 .04 .03 .02 .01 .005 0.004 0.003 .002];
 end
 
-svmOpts = '-s 0 -q';
 nFolds = 10;
+opts = sprintf('-s 2 -q -C -v %d', nFolds);
 labels = [ones(nFrames,1); -1*ones(nFrames,1)];
 acc = zeros(length(tContrast), 1);
-err = zeros(length(tContrast), 1);
 
 %% Create scene
 %  scene{1} - uniform patch
@@ -72,17 +71,20 @@ scene{1} = sceneAdjustLuminance(scene{1}, meanLum);
 %
 
 % generate human optics structure
-wave   = 380 : 780;
-wvf    = wvfCreate('wave',wave);
+wave   = 400 : 10 : 700;
+wvf    = wvfCreate('wave', wave);
 pupilDiameterMm = 3;
 sample_mean = wvfLoadThibosVirtualEyes(pupilDiameterMm);
-wvf    = wvfSet(wvf,'zcoeffs',sample_mean);
+
+microns = wvfDefocusDioptersToMicrons(defocus, pupilDiameterMm);
+sample_mean(4) = sample_mean(4) + microns;
+
+wvf    = wvfSet(wvf,'zcoeffs', sample_mean);
 
 wvf    = wvfComputePSF(wvf, false);
-oi     = wvf2oi(wvf,'shift invariant', false);
+oi     = wvf2oi(wvf);
 
 % compute optical image
-vcAddAndSelectObject('scene', scene{1});
 OI{1} = oiCompute(scene{1}, oi);
 
 %% Create Human Photoreceptors (cones)
@@ -92,64 +94,50 @@ OI{1} = oiCompute(scene{1}, oi);
 %
 
 % generate human photoreceptors structure
-params.humanConeDensities = density;
-sensor = sensorCreate('human', [], params);
-sensor = sensorSetSizeToFOV(sensor, sceneSz, scene{1}, OI{1});
+cone = coneCreate('human', 'spatial density', density);
+
+sensor = sensorCreate('human', cone);
+sensor = sensorSetSizeToFOV(sensor, sensorFov, scene{1}, OI{1});
 sensor = sensorSet(sensor, 'exp time', emDuration);
 
-params.center   = [0,0];
-params.Sigma    = 1e-4 *[0.3280 0.0035; 0.0035 0.4873]*emDuration*1000;
-%params.Sigma = zeros(2);
-emPerExposure = round(expTime / emDuration);
+% Set exposure time to 1 ms
+emDuration = 0.001;
+emPerExposure = expTime / emDuration;
+sensor = sensorSet(sensor, 'exp time', emDuration);
+    
+% Generate eyemovement
 params.nSamples = nFrames * emPerExposure;
-params.fov      = sensorGet(sensor,'fov',scene{1}, OI{1});
-
-% Set up the eye movement properties
-sensor = emInit('fixation gaussian', sensor, params);
-
+sensor = eyemoveInit(sensor, params);
 
 %% Compute Human cone absorptions
 %  Compute samples of cone absorptions
 %  The absorptions for the two groups are normalized to have same mean
-%
-sensorSz = sensorGet(sensor, 'size');
-sensorC = round(sensorSz/2);
-vcAddAndSelectObject('oi', OI{1});
-
-sensor = coneAbsorptions(sensor, OI{1}, 2);
+sensor = coneAbsorptions(sensor, OI{1});
 refPhotons = double(sensorGet(sensor, 'photons'));
 
-% take a small portion out
-refPhotons = refPhotons(round(sensorC(1)/2):round(sensorC(1)*3/2), ...
-    round(sensorC(2)/2):round(sensorC(2)*3/2), :);
-refPhotons   = RGB2XWFormat(refPhotons);
-sz = size(refPhotons);
-refPhotons = sum(reshape(refPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
-
+% temporal integration
+sz = sensorGet(sensor, 'size');
+refPhotons = sum(reshape(refPhotons, [sz nFrames emPerExposure]), 4);
 
 for ii = 1 : length(tContrast)
-    vcDeleteSelectedObject('scene');
     pparams.contrast = tContrast(ii); % contrast
-    scene{2} = sceneCreate('harmonic',pparams, sceneWave);
-    scene{2} = sceneSet(scene{2},'fov',1);
+    scene{2} = sceneCreate('harmonic', pparams, sceneWave);
+    scene{2} = sceneSet(scene{2}, 'fov', 1);
     scene{2} = sceneAdjustLuminance(scene{2}, meanLum);
 
-    vcAddAndSelectObject('scene', scene{2});
     OI{2} = oiCompute(scene{2}, oi);
     
-    sensor = coneAbsorptions(sensor, OI{2}, 2);
+    sensor = coneAbsorptions(sensor, OI{2});
     matchPhotons = double(sensorGet(sensor, 'photons'));
-    matchPhotons = matchPhotons(round(sensorC(1)/2):round(sensorC(1)*3/2), ...
-        round(sensorC(2)/2):round(sensorC(2)*3/2), :);
+    matchPhotons = sum(reshape(matchPhotons, [sz nFrames emPerExposure]), 4);
     
-    matchPhotons = RGB2XWFormat(matchPhotons);
-    matchPhotons = sum(reshape(matchPhotons, [sz(1) sz(2)/emPerExposure emPerExposure]), 3);
+    data = cat(1, RGB2XWFormat(refPhotons)', RGB2XWFormat(matchPhotons)');
     
-    accuracy = svmClassifyAcc(cat(1,refPhotons', matchPhotons'), ...
-        labels, nFolds, 'svm', svmOpts);
-    
-    err(ii) = accuracy(2);
-    acc(ii) = accuracy(1);
+    % Normalize data
+    data = bsxfun(@rdivide, bsxfun(@minus, data, mean(data)), std(data));
+    res = train(labels, sparse(data), opts);
+    acc(ii) = res(2);
+    fprintf('contrast:%.3f\t accuracy:%.2f\n', tContrast(ii), acc(ii));
 end
 
 % Find JND
