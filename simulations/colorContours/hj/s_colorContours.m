@@ -13,7 +13,7 @@ ieInit;
 
 %% Set up the stimulus parameters
 ref     = [0 0 0];    % Background alone, no contrast 
-dirList = [30 60 120 150]; % [0 30 60 75 80 85 90 95 100 105 120 150]; % [0 15 25 30 40 42 45 47 50 55 65 90 115 135 150];  % color directions in degrees
+dirList = [0 15 25 30 40 42 45 47 50 55 65 90 115 135 150];  % color directions in degrees
 % dirList = [0 30 45 60 90 135];
 dirList = [dirList dirList - 180];    % Color directions made symmetric
 sensorSz  = [25, 25]; % Number of cones
@@ -27,7 +27,7 @@ params.ccParams.sensorSz = sensorSz;
 
 % Cone densities for blank, L, M and S
 params.ccParams.cone = coneCreate;
-params.ccParams.cone.spatialDensity = [0.6 0.3 0 0.1]; % [0 0.3 0.6 0.1];
+params.ccParams.cone.spatialDensity = [0 0.3 0.6 0.1];
 d = displayCreate('OLED-Sony', 'wave', 400:10:700);
 d = displaySet(d, 'gamma', 'linear');
 params.ccParams.d = d;
